@@ -77,28 +77,44 @@ def load_theme_map():
         return json.load(f)
 
 
-def compute_theme_perf(conn, tmap=None):
-    """테마별 최근 1개월(~21거래일)·3개월(~63거래일) 동일가중 수익률. 캐시 가격 사용."""
+def compute_theme_perf(conn, tmap=None, master=None, top_n=10):
+    """테마별 최근 1개월(~21거래일)·3개월(~63거래일) 수익률.
+    편차 축소를 위해 각 테마의 '시총 상위 top_n 종목'만 동일가중으로 계산."""
     if tmap is None:
         tmap = load_theme_map()
+    if master is None:
+        from factor.universe import build_master
+        master = build_master()
+    shares = {str(r.code).zfill(6): r.shares for r in master.itertuples(index=False)}
+
     needed = set()
     for t in tmap["themes"].values():
         needed.update(t["codes"])
-    ret = {}
+    ret, marcap = {}, {}
     for c in needed:
         rows = conn.execute(
             "SELECT close FROM daily_prices WHERE code=? AND close IS NOT NULL "
             "ORDER BY date DESC LIMIT 64", (c,)).fetchall()
         cl = [r[0] for r in rows]
+        if not cl:
+            continue
         r1 = (cl[0] / cl[21] - 1) if len(cl) >= 22 and cl[21] else None
         r3 = (cl[0] / cl[63] - 1) if len(cl) >= 64 and cl[63] else None
         ret[c] = (r1, r3)
+        sh = shares.get(c)
+        if sh:
+            marcap[c] = sh * cl[0]
     out = []
     for no, t in tmap["themes"].items():
-        r1s = [ret[c][0] for c in t["codes"] if ret.get(c) and ret[c][0] is not None]
-        r3s = [ret[c][1] for c in t["codes"] if ret.get(c) and ret[c][1] is not None]
+        # 가격 있는 구성종목을 시총 상위로 정렬 → top_n
+        priced = [c for c in t["codes"] if c in ret]
+        priced.sort(key=lambda c: marcap.get(c, 0), reverse=True)
+        top = priced[:top_n]
+        r1s = [ret[c][0] for c in top if ret[c][0] is not None]
+        r3s = [ret[c][1] for c in top if ret[c][1] is not None]
         out.append({
-            "no": no, "name": t["name"], "count": len(t["codes"]), "priced": len(r1s),
+            "no": no, "name": t["name"], "count": len(t["codes"]),
+            "priced": len(priced), "used": len(r1s),
             "ret_1m": round(sum(r1s) / len(r1s) * 100, 1) if r1s else None,
             "ret_3m": round(sum(r3s) / len(r3s) * 100, 1) if r3s else None,
         })

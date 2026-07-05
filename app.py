@@ -137,7 +137,9 @@ def api_themes():
         conn = _conn()
         _cache["theme_perf"] = compute_theme_perf(conn, get_tmap())
         conn.close()
-    rows = [r for r in _cache["theme_perf"] if r["priced"] >= 3]  # 표본 3+ 만
+    # 클러터·편차 축소: 구성종목 충분(전체 8+, 계산에 3+ 사용)한 테마만
+    rows = [r for r in _cache["theme_perf"]
+            if r.get("used", 0) >= 3 and r["count"] >= 8]
     rows.sort(key=lambda r: (r["ret_1m"] is not None, r["ret_1m"]), reverse=True)
     return {"count": len(rows), "rows": rows}
 
