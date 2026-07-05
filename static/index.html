@@ -194,13 +194,13 @@ async function loadCards(asof){
     <div class="row" onclick="location.href='/weekly'"><span class="nm" style="color:var(--accent)">📈 주간 리포트 보기</span><span>→</span></div>`;
   el.innerHTML=`
     <div class="scard"><h3>💎 저평가 우량주 TOP5 (가치+퀄리티)</h3>${val}</div>
-    <div class="scard" id="cardThemes"><h3>🔥 이번주 강세 테마 TOP3</h3><span class="mut" style="font-size:12px">불러오는 중…</span></div>
+    <div class="scard" id="cardThemes"><h3>🔥 최근 1개월 강세 테마 TOP3</h3><span class="mut" style="font-size:12px">불러오는 중…</span></div>
     <div class="scard"><h3>ℹ️ 개요</h3>${mkt}</div>`;
   try{
     const t=await fetch('/api/themes').then(x=>x.json());
     const top=t.rows.slice(0,3).map(x=>`<div class="row" onclick="openTheme('${x.name.replace(/'/g,"\\'")}')">
       <span class="nm">${x.name}</span><span class="${(x.ret_1m||0)>=0?'pos':'neg'}">${x.ret_1m>=0?'+':''}${x.ret_1m}%</span></div>`).join('');
-    document.getElementById('cardThemes').innerHTML=`<h3>🔥 이번주 강세 테마 TOP3 <span class="mut" style="font-weight:400">1개월</span></h3>${top}`;
+    document.getElementById('cardThemes').innerHTML=`<h3>🔥 최근 1개월 강세 테마 TOP3 <span class="mut" style="font-weight:400">구성종목 평균 주가등락</span></h3>${top}`;
   }catch(e){}
 }
 function render(){
