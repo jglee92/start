@@ -1,0 +1,84 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>소개 · 방법론 · 면책 · 개인정보처리방침 | 가치+퀄리티 팩터 리서치</title>
+<meta name="description" content="한국 주식 가치+퀄리티 팩터 리서치 도구의 소개, 백테스트 방법론(시점정합·상장폐지 포함·거래비용 반영), 투자 면책조항, 개인정보처리방침.">
+<link rel="canonical" href="/about">
+<style>
+  body{max-width:760px;margin:0 auto;padding:28px 20px 60px;line-height:1.7;
+    font-family:-apple-system,"Segoe UI",Roboto,"Malgun Gothic",sans-serif;color:#1a2028;background:#fff}
+  @media (prefers-color-scheme:dark){body{background:#0f1216;color:#e6ebf1}a{color:#4f9dff}}
+  h1{font-size:24px} h2{font-size:18px;margin-top:32px;border-top:1px solid #8883;padding-top:20px}
+  h3{font-size:15px;margin-top:20px} a{color:#1f6fe0}
+  .top{font-size:13px;color:#888;margin-bottom:16px}
+  code{background:#8881;padding:1px 5px;border-radius:4px}
+</style>
+</head>
+<body>
+<div class="top"><a href="/">← 대시보드로</a></div>
+<h1>가치+퀄리티 팩터 리서치 — 소개 · 방법론</h1>
+<p>이 사이트는 한국 주식(KOSPI·KOSDAQ)을 <strong>가치(밸류)와 퀄리티(수익성·안정성)</strong>
+관점에서 분석하는 <strong>리서치·의사결정 지원 도구</strong>입니다. 매매 자동화나 개별 종목
+매수 추천을 제공하지 않으며, 공개된 데이터를 정량적으로 정리해 보여줍니다.</p>
+
+<h2>무엇을 하나</h2>
+<ul>
+  <li><strong>가치+퀄리티 종합점수</strong>: 이익수익률·장부수익률·매출수익률(가치)과
+    ROE·영업이익률·저부채(퀄리티)를 유니버스 내 백분위로 표준화해 합산.</li>
+  <li><strong>섹터·테마 분류</strong>: 업종·시장 테마별로 종목을 모아 상대 강세를 관찰.</li>
+  <li><strong>백테스트 검증</strong>: 과거 데이터로 팩터의 유효성을 <em>정직하게</em> 측정.</li>
+</ul>
+
+<h2>백테스트 방법론 (원본 연구)</h2>
+<p>대부분의 개인 백테스트가 실패하는 이유는 세 가지 함정 때문입니다. 이 도구는 그 함정을
+정면으로 통제합니다.</p>
+<h3>1) 시점정합(Point-in-Time)</h3>
+<p>각 리밸런싱 시점에 <strong>그때 실제로 공시돼 있던 전년도 재무만</strong> 사용합니다.
+미래 정보가 새어드는 look-ahead 편향을 차단합니다.</p>
+<h3>2) 상장폐지 포함(생존편향 제거)</h3>
+<p>지금은 사라진 상장폐지 종목도 <strong>그 시점엔 살아있었다</strong>는 사실을 반영해,
+폐지로 손실난 종목을 결과에 포함합니다. 현재 상장 종목만 보는 순진한 백테스트는 수익을
+과대평가합니다.</p>
+<h3>3) 거래비용 반영</h3>
+<p>수수료·증권거래세·슬리피지를 왕복으로 차감합니다. 배당은 세후 총수익 기준으로 가산합니다.</p>
+<h3>핵심 결과 (요약)</h3>
+<p>가장 엄격한 조건(시점정합·상폐포함·비용·배당 반영)에서 가치+퀄리티 포트폴리오는
+동일가중 유니버스를 <strong>연 약 +3%p</strong> 상회했으며(방어적, 하락장에서 특히), 배당
+포함 시 절대수익도 시장(코스피)을 근소하게 앞섰습니다. 다만 절대 수익률 자체는 낮았고,
+특정 해(테마 랠리 구간)에는 크게 뒤처졌습니다. <strong>과거 성과가 미래를 보장하지
+않습니다.</strong></p>
+
+<h2>데이터 출처</h2>
+<p>주가·상장/폐지 정보: FinanceDataReader(공개). 재무·배당: 금융감독원 전자공시
+DART OpenAPI. 지수: 공개 지수 데이터. 뉴스: 공개 뉴스 검색 피드. 각 출처의 저작권과
+이용약관은 해당 제공자에 있으며, 본 사이트는 정보를 요약·링크하는 방식으로 참고 제공합니다.</p>
+
+<h2 id="disclaimer">투자 면책조항</h2>
+<p>본 사이트의 모든 정보는 <strong>정보 제공·교육 목적</strong>이며, 특정 종목의 매수·매도
+권유나 투자 자문이 아닙니다. 데이터 오류·지연·누락이 있을 수 있습니다. 투자 결정과 그
+결과에 대한 책임은 전적으로 이용자 본인에게 있습니다. 과거 수익률은 미래 수익을 보장하지
+않으며, 투자에는 원금 손실 위험이 있습니다. 운영자는 본 정보 이용으로 발생한 어떠한
+손해에 대해서도 책임지지 않습니다.</p>
+
+<h2 id="privacy">개인정보처리방침</h2>
+<p>본 사이트는 회원가입을 받지 않으며 이름·연락처 등 개인식별정보를 직접 수집하지 않습니다.</p>
+<h3>쿠키 및 제3자 광고</h3>
+<p>향후 이 사이트에 Google AdSense 등 제3자 광고가 게재될 경우, 해당 광고 제공업체는
+쿠키를 사용해 이용자의 방문 기록을 기반으로 맞춤형 광고를 제공할 수 있습니다. Google은
+광고 쿠키(DoubleClick 등)를 사용하며, 이용자는
+<a href="https://policies.google.com/technologies/ads" target="_blank" rel="noopener">Google 광고 설정</a>에서
+맞춤 광고를 해제할 수 있습니다. 또한
+<a href="https://www.aboutads.info/choices/" target="_blank" rel="noopener">aboutads.info</a>에서
+제3자 쿠키 사용을 관리할 수 있습니다.</p>
+<h3>접속 분석</h3>
+<p>서비스 개선을 위해 방문 통계(페이지뷰 등)를 수집할 수 있으며, 이는 개인을 식별하지
+않는 형태로 처리됩니다.</p>
+
+<h2 id="contact">연락처</h2>
+<p>문의: <a href="mailto:jgl2002@naver.com">jgl2002@naver.com</a></p>
+
+<div class="top" style="margin-top:32px"><a href="/">← 대시보드로 돌아가기</a></div>
+</body>
+</html>

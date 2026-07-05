@@ -1,0 +1,9 @@
+fastapi==0.139.0
+uvicorn[standard]==0.50.0
+pandas==2.3.3
+numpy==2.5.0
+finance-datareader==0.9.202
+python-dotenv==1.2.2
+requests==2.34.2
+lxml==6.1.1
+beautifulsoup4==4.15.0

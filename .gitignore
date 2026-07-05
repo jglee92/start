@@ -1,0 +1,20 @@
+# 파이썬
+.venv/
+__pycache__/
+*.pyc
+
+# 비밀키 (절대 커밋 금지!)
+.env
+.env.example
+
+# 대용량 원본 DB — 배포엔 슬림 DB(screener_deploy.db)만 사용
+data/screener.db
+data/day_all/
+data/m5/
+data/*.csv
+
+# 임시
+scratchpad/
+*.log
+
+# 배포에 포함할 것(참고): data/screener_deploy.db, data/*.json
