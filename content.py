@@ -57,17 +57,89 @@ footer{{margin-top:32px;padding-top:16px;border-top:1px solid #8883;font-size:12
 def _stock_rows(stocks):
     out = ""
     for s in stocks:
+        link = f'/s/{s["code"]}'
         if s.get("in_rank"):
-            out += (f'<tr><td><a href="/">{_esc(s["name"])}</a> '
+            out += (f'<tr><td><a href="{link}">{_esc(s["name"])}</a> '
                     f'<span class="muted">{_esc(s["code"])}</span></td>'
                     f'<td><b>{_fmt(s.get("score"),1)}</b></td><td>{_fmt(s.get("per"))}</td>'
                     f'<td>{_fmt(s.get("pbr"),2)}</td><td>{_fmt(s.get("roe"))}</td>'
                     f'<td class="muted">{_esc(s.get("sector") or "")}</td></tr>')
         else:
-            out += (f'<tr><td>{_esc(s["name"])} <span class="muted">{_esc(s["code"])}</span></td>'
+            out += (f'<tr><td><a href="{link}">{_esc(s["name"])}</a> '
+                    f'<span class="muted">{_esc(s["code"])}</span></td>'
                     f'<td class="muted">–</td><td class="muted">–</td><td class="muted">–</td>'
                     f'<td class="muted">–</td><td class="muted"></td></tr>')
     return out
+
+
+def _others_note(stocks):
+    others = [s for s in stocks if not s.get("in_rank")]
+    if not others:
+        return ""
+    names = ", ".join(f'<a href="/s/{s["code"]}">{_esc(s["name"])}</a>'
+                      for s in others[:40])
+    more = f" 외 {len(others)-40}개" if len(others) > 40 else ""
+    return (f'<p class="muted" style="font-size:12px">데이터 미수집(시총 소형 등) '
+            f'{len(others)}개: {names}{more}</p>')
+
+
+def _spark(prices):
+    if not prices or len(prices) < 2:
+        return '<p class="muted">가격 데이터 없음</p>'
+    xs = [p["close"] for p in prices]
+    mn, mx, W, H, pad = min(xs), max(xs), 640, 130, 6
+    pts = " ".join(
+        f'{pad + i/(len(prices)-1)*(W-2*pad):.1f},'
+        f'{H-pad-(p["close"]-mn)/((mx-mn) or 1)*(H-2*pad):.1f}'
+        for i, p in enumerate(prices))
+    first, last = xs[0], xs[-1]
+    color = "#1a9e63" if last >= first else "#d23b41"
+    pct = (last / first - 1) * 100
+    cls = "pos" if last >= first else "neg"
+    return (f'<svg viewBox="0 0 {W} {H}" preserveAspectRatio="none" '
+            f'style="width:100%;height:130px"><polyline fill="none" stroke="{color}" '
+            f'stroke-width="2" points="{pts}"/></svg>'
+            f'<p class="muted">{prices[0]["date"]} {first:,} → {prices[-1]["date"]} '
+            f'{last:,} (<span class="{cls}">{pct:+.1f}%</span>)</p>')
+
+
+def render_stock_page(code, name, summary, financials, prices, news, themes, canonical):
+    def eok(v):
+        return "–" if v is None else f"{round(v/1e8):,}"
+    head = f'<h1>{_esc(name)} <span class="muted" style="font-size:15px">{_esc(code)}</span></h1>'
+    head += '<p class="muted">가치+퀄리티 팩터 기준 재무·밸류에이션과 관련 뉴스.</p>'
+    kpi = ""
+    if summary:
+        kpi = (f'<p>가치+퀄리티 점수 <b>{_fmt(summary.get("score"))}</b> · '
+               f'PER {_fmt(summary.get("per"))} · PBR {_fmt(summary.get("pbr"),2)} · '
+               f'ROE {_fmt(summary.get("roe"))}% · 영업이익률 {_fmt(summary.get("op_margin"))}% · '
+               f'부채비율 {_fmt(summary.get("debt_ratio"),0)}% · '
+               f'시총 {summary.get("marcap_eok",0):,}억</p>')
+    tbadge = ""
+    if themes:
+        tbadge = '<p>' + "".join(f'<span class="badge">{_esc(t)}</span>'
+                                 for t in themes[:12]) + '</p>'
+    fin_rows = "".join(
+        f'<tr><td>{f["year"]}</td><td>{eok(f.get("revenue"))}</td>'
+        f'<td>{eok(f.get("op_profit"))}</td><td>{eok(f.get("net_income"))}</td>'
+        f'<td>{eok(f.get("equity"))}</td><td>{_fmt(f.get("op_margin"))}</td>'
+        f'<td>{_fmt(f.get("debt_ratio"),0)}</td></tr>' for f in financials)
+    news_html = "".join(
+        f'<p style="margin:8px 0"><a href="{_esc(n["link"])}" target="_blank" '
+        f'rel="noopener">{_esc(n["title"])}</a><br>'
+        f'<span class="muted" style="font-size:12px">{_esc(n.get("source"))} · '
+        f'{_esc(n.get("pub"))}</span></p>' for n in news) or '<p class="muted">뉴스 없음</p>'
+    body = f"""{head}{kpi}{tbadge}
+<h2>주가 (최근)</h2>{_spark(prices)}
+<h2>재무 추이 (DART 사업보고서, 단위 억)</h2>
+<div class="wrap"><table><thead><tr><th>연도</th><th>매출</th><th>영업이익</th>
+<th>순이익</th><th>자본</th><th>영익률%</th><th>부채%</th></tr></thead>
+<tbody>{fin_rows or '<tr><td colspan=7 class="muted">재무 데이터 없음</td></tr>'}</tbody></table></div>
+<h2>관련 뉴스 <span class="muted" style="font-size:13px;font-weight:400">· 구글뉴스</span></h2>
+{news_html}
+<p class="muted" style="margin-top:16px"><a href="/">← 대시보드에서 전체 종목 보기</a></p>"""
+    desc = f"{name}({code}) 재무제표(매출·영업이익·ROE·부채비율), 밸류에이션, 관련 뉴스."
+    return layout(f"{name} ({code}) 재무·밸류에이션·뉴스 | 한국주식", desc, canonical, body)
 
 
 def render_theme_page(name, stocks, perf, canonical):
@@ -98,8 +170,9 @@ def render_theme_page(name, stocks, perf, canonical):
 정렬이며, 지주사·금융주 등은 비율이 왜곡될 수 있어 참고로만 보시기 바랍니다.</p>
 <div class="wrap"><table>
 <thead><tr><th>종목</th><th>팩터점수</th><th>PER</th><th>PBR</th><th>ROE%</th><th>섹터</th></tr></thead>
-<tbody>{_stock_rows(sorted(stocks, key=lambda s:(s.get("in_rank",False), s.get("score") or 0), reverse=True))}</tbody>
+<tbody>{_stock_rows(sorted(ranked, key=lambda s: s.get("score") or 0, reverse=True))}</tbody>
 </table></div>
+{_others_note(stocks)}
 <p class="muted">※ 팩터점수는 시총 3,000억 이상 유니버스 내 백분위 기준. 재무=DART 최신
 사업보고서. 테마 분류는 공개 테마 데이터를 참고했으며, 종목 선별·정렬·분석은 본 사이트의
 자체 팩터 모델에 의한 것입니다.</p>
@@ -118,7 +191,8 @@ def render_weekly(strong, weak, top_value, asof, canonical):
     strong_rows = "".join(theme_li(t) for t in strong)
     weak_rows = "".join(theme_li(t) for t in weak)
     val_rows = "".join(
-        f'<tr><td>{_esc(s["name"])} <span class="muted">{_esc(s["code"])}</span></td>'
+        f'<tr><td><a href="/s/{s["code"]}">{_esc(s["name"])}</a> '
+        f'<span class="muted">{_esc(s["code"])}</span></td>'
         f'<td><b>{_fmt(s["score"])}</b></td><td>{_fmt(s.get("per"))}</td>'
         f'<td>{_fmt(s.get("pbr"),2)}</td><td>{_fmt(s.get("roe"))}</td>'
         f'<td class="muted">{_esc(s.get("sector") or "")}</td></tr>' for s in top_value)

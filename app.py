@@ -256,6 +256,14 @@ def _google_news(query: str, keep_ts: bool = False):
                 items.append({"title": title, "link": it.findtext("link"),
                               "pub": raw[:16], "_ts": ts, "source": srcname})
             items.sort(key=lambda x: x["_ts"], reverse=True)
+            seen, dedup = set(), []          # 중복 제목 제거
+            for it in items:
+                key = "".join((it["title"] or "").split()).lower()[:40]
+                if key in seen:
+                    continue
+                seen.add(key)
+                dedup.append(it)
+            items = dedup
         except Exception:
             items = []
         _news_cache[query] = (now, items)
@@ -350,6 +358,37 @@ def theme_page(no: str):
     stocks = _theme_stocks(theme)
     perf = _theme_perf_map().get(no)
     return render_theme_page(theme["name"], stocks, perf, f"{BASE_URL}/t/{no}")
+
+
+@app.get("/s/{code}", response_class=HTMLResponse)
+def stock_page(code: str):
+    from content import render_stock_page
+    rk = get_ranking()
+    row = next((r for r in rk if r["code"] == code), None)
+    conn = _conn()
+    fins = conn.execute(
+        "SELECT year,revenue,op_profit,net_income,equity,liabilities,"
+        "debt_ratio,op_margin FROM financials WHERE code=? ORDER BY year", (code,)
+    ).fetchall()
+    prices = conn.execute(
+        "SELECT date,close FROM daily_prices WHERE code=? AND close IS NOT NULL "
+        "AND date>=? ORDER BY date", (code, "2025-01-01")).fetchall()
+    conn.close()
+    name = row["name"] if row else _name_of(code)
+    if row is None and not fins:
+        raise HTTPException(404, "종목 없음")
+    summary = None if row is None else {
+        "score": row["score"], "per": _r(row["per"]), "pbr": _r(row["pbr"], 2),
+        "roe": _r(row["roe"]), "op_margin": _r(row["op_margin"]),
+        "debt_ratio": _r(row["debt_ratio"], 0), "marcap_eok": round(row["marcap"] / 1e8)}
+    financials = [{"year": f[0], "revenue": f[1], "op_profit": f[2],
+                   "net_income": f[3], "equity": f[4], "debt_ratio": _r(f[6], 0),
+                   "op_margin": _r(f[7])} for f in fins]
+    prices_l = [{"date": p[0], "close": p[1]} for p in prices[::2]]
+    themes = get_tmap().get("stock_themes", {}).get(code, [])
+    news = _google_news(f"{name} 주식")[:10]
+    return render_stock_page(code, name, summary, financials, prices_l, news,
+                             themes, f"{BASE_URL}/s/{code}")
 
 
 @app.get("/weekly", response_class=HTMLResponse)
