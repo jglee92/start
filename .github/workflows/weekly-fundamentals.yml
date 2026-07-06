@@ -1,0 +1,40 @@
+name: 주간 재무·배당 갱신
+
+on:
+  schedule:
+    # 매주 월요일 UTC 10:30 = KST 19:30 (일일 가격 갱신 이후)
+    - cron: '30 10 * * 1'
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: 의존성 설치
+        run: pip install -r requirements.txt
+
+      - name: 재무·배당 갱신 (배포DB, DART API)
+        env:
+          KR_DB_PATH: data/screener_deploy.db
+          DART_API_KEY: ${{ secrets.DART_API_KEY }}
+        run: python refresh_fundamentals.py
+
+      - name: 캐시(테마·법인코드) 최신본 유지
+        run: echo "corp_map.json / naver_themes.json 은 별도 수동 갱신"
+
+      - name: 변경사항 커밋 + 푸시
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add data/screener_deploy.db
+          git diff --staged --quiet && echo "변경 없음" || \
+            (git commit -m "chore: 주간 재무·배당 갱신 $(date -u +%Y-%m-%d)" && git push)

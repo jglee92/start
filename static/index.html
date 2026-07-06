@@ -344,7 +344,8 @@ async function load(){
 }
 const LEARN_TERMS=[['per','📐','PER(주가수익비율)이란?'],['pbr','🏦','PBR(주가자산비율)이란?'],
   ['roe','📈','ROE(자기자본이익률)란?'],['debt-ratio','🛡️','부채비율, 얼마가 안전할까?'],
-  ['growth-momentum','🌱','성장모멘텀이란?']];
+  ['growth-momentum','🌱','성장모멘텀이란?'],['op-margin','⚙️','영업이익률이란?'],
+  ['dividend-yield','💵','배당수익률이란?'],['psr','🧮','PSR(주가매출비율)이란?']];
 function renderStatbar(asof){
   const el=document.getElementById('statbar'); if(!el)return;
   const kospi=RANK.filter(r=>r.market==='KOSPI').length, kosdaq=RANK.filter(r=>r.market==='KOSDAQ').length;
@@ -740,9 +741,11 @@ async function openStock(code,fromBack){
       <div class="kpi"><div class="l">종합점수</div><div class="v">${s.score}</div></div>
       <div class="kpi"><div class="l">PER</div><div class="v">${fmt(s.per)}</div></div>
       <div class="kpi"><div class="l">PBR</div><div class="v">${fmt(s.pbr,2)}</div></div>
+      <div class="kpi"><div class="l">PSR</div><div class="v">${fmt(s.psr,2)}</div></div>
       <div class="kpi"><div class="l">ROE</div><div class="v">${fmt(s.roe)}%</div></div>
       <div class="kpi"><div class="l">영업이익률</div><div class="v">${fmt(s.op_margin)}%</div></div>
       <div class="kpi"><div class="l">부채비율</div><div class="v">${fmt(s.debt_ratio,0)}%</div></div>
+      <div class="kpi"><div class="l">배당수익률</div><div class="v">${fmt(s.div_yield,2)}%</div></div>
     </div>`;
     html+=dimsHtml(s.dims);
     html+=flagsHtml(s.flags);

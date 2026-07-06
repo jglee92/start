@@ -505,8 +505,9 @@ def stock_page(code: str):
         raise HTTPException(404, "종목 없음")
     summary = None if row is None else {
         "score": row["score"], "per": _r(row["per"]), "pbr": _r(row["pbr"], 2),
-        "roe": _r(row["roe"]), "op_margin": _r(row["op_margin"]),
-        "debt_ratio": _r(row["debt_ratio"], 0), "marcap_eok": round(row["marcap"] / 1e8),
+        "psr": _r(row["psr"], 2), "roe": _r(row["roe"]), "op_margin": _r(row["op_margin"]),
+        "debt_ratio": _r(row["debt_ratio"], 0), "div_yield": _r(row.get("div_yield"), 2),
+        "marcap_eok": round(row["marcap"] / 1e8),
         "dims": row.get("dims"), "flags": row.get("flags") or []}
     financials = [{"year": f[0], "revenue": f[1], "op_profit": f[2],
                    "net_income": f[3], "equity": f[4], "debt_ratio": _r(f[6], 0),
