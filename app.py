@@ -522,6 +522,30 @@ def weekly():
     return render_weekly(strong, weak, top_value, asof, f"{BASE_URL}/weekly")
 
 
+@app.get("/learn", response_class=HTMLResponse)
+def learn_index():
+    from glossary import render_learn_index
+    return render_learn_index(f"{BASE_URL}/learn")
+
+
+@app.get("/learn/{slug}", response_class=HTMLResponse)
+def learn_page(slug: str):
+    from glossary import TERMS, COMPARE_PAIR, render_glossary
+    if slug not in TERMS:
+        raise HTTPException(404, "문서 없음")
+    rk = {r["code"]: r for r in get_ranking()}
+    term = TERMS[slug]
+    compare = []
+    for code, fallback in COMPARE_PAIR:
+        r = rk.get(code)
+        compare.append({
+            "code": code, "name": r["name"] if r else fallback,
+            "value": (r or {}).get(term["metric"]),
+            "score": (r or {}).get("score"),
+        })
+    return render_glossary(slug, compare, f"{BASE_URL}/learn/{slug}")
+
+
 @app.get("/anomaly-report", response_class=HTMLResponse)
 def anomaly_report():
     from content import render_anomaly_report
@@ -576,9 +600,11 @@ def robots():
 def sitemap():
     from datetime import datetime
     today = datetime.now().strftime("%Y-%m-%d")
+    from glossary import TERMS
     urls = [("/", "daily", "1.0"), ("/weekly", "weekly", "0.9"),
-            ("/anomaly-report", "weekly", "0.8"),
+            ("/anomaly-report", "weekly", "0.8"), ("/learn", "monthly", "0.8"),
             ("/themes-index", "weekly", "0.7"), ("/about", "monthly", "0.5")]
+    urls += [(f"/learn/{slug}", "monthly", "0.7") for slug in TERMS]
     parts = [f"<url><loc>{BASE_URL}{p}</loc><lastmod>{today}</lastmod>"
              f"<changefreq>{cf}</changefreq><priority>{pr}</priority></url>"
              for p, cf, pr in urls]

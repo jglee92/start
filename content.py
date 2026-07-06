@@ -219,9 +219,11 @@ def render_stock_page(code, name, summary, financials, prices, news, themes,
     dims_html = ""
     if summary:
         kpi = (f'<p>가치+퀄리티 종합점수 <b>{_fmt(summary.get("score"))}</b> · '
-               f'PER {_fmt(summary.get("per"))} · PBR {_fmt(summary.get("pbr"),2)} · '
-               f'ROE {_fmt(summary.get("roe"))}% · 영업이익률 {_fmt(summary.get("op_margin"))}% · '
-               f'부채비율 {_fmt(summary.get("debt_ratio"),0)}% · '
+               f'<a href="/learn/per">PER</a> {_fmt(summary.get("per"))} · '
+               f'<a href="/learn/pbr">PBR</a> {_fmt(summary.get("pbr"),2)} · '
+               f'<a href="/learn/roe">ROE</a> {_fmt(summary.get("roe"))}% · '
+               f'영업이익률 {_fmt(summary.get("op_margin"))}% · '
+               f'<a href="/learn/debt-ratio">부채비율</a> {_fmt(summary.get("debt_ratio"),0)}% · '
                f'시총 {summary.get("marcap_eok",0):,}억</p>')
         dims_html = _dims_html(summary.get("dims"))
         flags_html = _flags_html(summary.get("flags"))
