@@ -3,15 +3,17 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>한국주식 가치+퀄리티 팩터 스크리너 · 섹터/테마 강세 · 백테스트</title>
-<meta name="description" content="KOSPI·KOSDAQ 종목을 재무제표·자산건전성·밸류에이션·수익성으로 쉽게 보고, 조건검색(스크리너)으로 원하는 종목을 찾는 한국주식 리서치 대시보드.">
-<meta name="keywords" content="한국주식,가치주,퀄리티,팩터투자,PER,PBR,ROE,섹터,테마,백테스트,KOSPI,KOSDAQ,스크리너,조건검색">
+<title>MN_SCAN 머니탐지 · 한국주식 재무제표·건강검진·조건검색 스크리너</title>
+<meta name="description" content="MN_SCAN(머니탐지) — KOSPI·KOSDAQ 종목의 재무제표·자산건전성·밸류에이션·수익성을 쉽게 보고, 기업 건강검진 별점과 이상신호, 조건검색(스크리너)으로 원하는 종목을 찾는 한국주식 리서치 대시보드.">
+<meta name="keywords" content="한국주식,머니탐지,MN_SCAN,가치주,퀄리티,팩터투자,PER,PBR,ROE,섹터,테마,백테스트,KOSPI,KOSDAQ,스크리너,조건검색,공시">
 <meta name="robots" content="index,follow">
 <meta property="og:type" content="website">
-<meta property="og:title" content="한국주식 가치+퀄리티 팩터 스크리너">
-<meta property="og:description" content="재무제표·자산건전성·밸류에이션·수익성 + 조건검색 스크리너. 정직한 백테스트(시점정합·상폐포함·비용반영).">
+<meta property="og:title" content="MN_SCAN 머니탐지 — 한국주식 재무제표·건강검진 스크리너">
+<meta property="og:description" content="재무제표·자산건전성·밸류에이션·수익성 + 조건검색 스크리너 + DART 공시 연결. 정직한 백테스트(시점정합·상폐포함·비용반영).">
 <meta property="og:locale" content="ko_KR">
 <link rel="canonical" href="/">
+<link rel="stylesheet" as="style" crossorigin
+  href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.css">
 <style>
   :root{
     --bg:#0f1216; --panel:#171c23; --panel2:#1e252e; --line:#2a323d;
@@ -23,7 +25,8 @@
   }
   *{box-sizing:border-box}
   body{margin:0;background:var(--bg);color:var(--txt);
-    font-family:-apple-system,"Segoe UI",Roboto,"Malgun Gothic",sans-serif;font-size:14px}
+    font-family:'Pretendard Variable',Pretendard,-apple-system,BlinkMacSystemFont,"Segoe UI",
+    Roboto,"Apple SD Gothic Neo","Malgun Gothic",sans-serif;font-size:14px}
   header{padding:12px 20px;border-bottom:1px solid var(--line);
     display:flex;align-items:center;gap:12px;flex-wrap:wrap}
   header h1{font-size:16px;margin:0;font-weight:700}
@@ -100,6 +103,13 @@
   .pos{color:var(--good)} .neg{color:var(--bad)}
   .mut{color:var(--dim)}
   .stars{color:#e0a500;letter-spacing:1px}
+  .flagitem{margin:6px 0;font-size:13px;line-height:1.5}
+  .about-content h1{font-size:20px;margin-top:4px}
+  .about-content h2{font-size:16px;margin-top:22px;border-top:1px solid var(--line);padding-top:14px;color:var(--txt)}
+  .about-content h3{font-size:14px;color:var(--txt)}
+  .about-content p,.about-content li{font-size:13.5px;line-height:1.7}
+  .about-content code{background:var(--panel2);padding:1px 5px;border-radius:4px}
+  .about-content .top{display:none}
   /* 스크리너 */
   .screener-bar{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:10px}
   @media(max-width:720px){.screener-bar{grid-template-columns:repeat(2,1fr)}}
@@ -144,7 +154,7 @@
 </head>
 <body>
 <header>
-  <h1>💹 한국주식 가치+퀄리티 스크리너</h1>
+  <h1>💹 MN_SCAN <span style="font-weight:400;color:var(--dim);font-size:13px">머니탐지</span></h1>
   <span class="sub" id="asof">로딩…</span>
 </header>
 
@@ -165,10 +175,10 @@
     <div class="nav-title">시장 동향</div>
     <div class="nav-item" data-v="theme">🔥 테마 강세</div>
     <div class="nav-item" data-v="sec">🔄 섹터 로테이션</div>
-    <a class="nav-item" href="/weekly">📰 주간 리포트</a>
+    <div class="nav-item" data-v="weekly">📰 주간 리포트</div>
+    <div class="nav-item" data-v="themesall">📋 테마 전체목록</div>
     <div class="nav-title">정보</div>
-    <a class="nav-item" href="/about">ℹ️ 소개·방법론</a>
-    <a class="nav-item" href="/themes-index">📋 테마 전체목록</a>
+    <div class="nav-item" data-v="about">ℹ️ 소개·방법론</div>
   </aside>
 
   <main class="content">
@@ -194,6 +204,7 @@
       <p class="viewintro" id="viewIntro"></p>
       <div class="toolbar">
         <input type="search" id="q" placeholder="종목명·코드 검색">
+        <select id="mktf"><option value="">전체시장</option><option>KOSPI</option><option>KOSDAQ</option></select>
         <select id="secf"><option value="">전체 섹터</option></select>
         <span class="sub" id="cnt"></span>
       </div>
@@ -220,6 +231,7 @@
         <div class="sfield"><label>배당수익률(%) 이상</label><input type="number" id="f_div" placeholder="예: 2" step="0.1"></div>
         <div class="sfield"><label>시가총액(억) 이상</label><input type="number" id="f_marcap" placeholder="예: 5000"></div>
         <div class="sfield"><label>섹터</label><select id="f_sector"><option value="">전체</option></select></div>
+        <div class="sfield"><label>시장</label><select id="f_market"><option value="">전체</option><option>KOSPI</option><option>KOSDAQ</option></select></div>
       </div>
       <div class="screener-count">조건 만족: <span class="n" id="screenerN">-</span>개</div>
       <div class="tblscroll"><table id="tblScreener"><thead></thead><tbody></tbody></table></div>
@@ -227,6 +239,9 @@
 
     <div id="theme" class="wrap" style="display:none"></div>
     <div id="sec" class="wrap" style="display:none"></div>
+    <div id="view-weekly" class="wrap" style="display:none"></div>
+    <div id="view-themesall" class="wrap" style="display:none"></div>
+    <div id="view-about" class="wrap about-content" style="display:none"></div>
 
     <footer style="margin-top:20px;padding:16px 0;color:var(--dim);font-size:12px;border-top:1px solid var(--line)">
       <a href="/weekly" style="color:var(--accent)">📰 주간 리포트</a> ·
@@ -260,6 +275,7 @@ async function load(){
     secs.forEach(s=>{const o=document.createElement('option');o.value=s;o.textContent=s;sel.appendChild(o);});
   }
   document.getElementById('secf').onchange=renderTable;
+  document.getElementById('mktf').onchange=renderTable;
   loadCards(r.asof);
   renderScreener();
 }
@@ -346,7 +362,9 @@ function renderTable(){
   const cfg=VIEWS[curView]; if(!cfg)return;
   const q=document.getElementById('q').value.trim().toLowerCase();
   const sf=document.getElementById('secf').value;
-  let rows=RANK.filter(r=>(!q||r.name.toLowerCase().includes(q)||r.code.includes(q))&&(!sf||r.sector===sf));
+  const mf=document.getElementById('mktf').value;
+  let rows=RANK.filter(r=>(!q||r.name.toLowerCase().includes(q)||r.code.includes(q))
+    &&(!sf||r.sector===sf)&&(!mf||r.market===mf));
   rows.sort((a,b)=>{let x=a[sortK],y=b[sortK];
     if(x==null)x=sortAsc?1e18:-1e18; if(y==null)y=sortAsc?1e18:-1e18;
     return sortAsc?(x>y?1:-1):(x<y?1:-1);});
@@ -369,22 +387,83 @@ function renderTable(){
 document.getElementById('q').oninput=renderTable;
 
 /* ── 사이드바 전환 ── */
+const ALL_PANELS=['view-home','view-screener','theme','sec','view-table',
+  'view-weekly','view-themesall','view-about'];
 function switchView(v){
   curView=v;
   document.querySelectorAll('.nav-item[data-v]').forEach(n=>n.classList.toggle('active',n.dataset.v===v));
-  const panels={home:'view-home',screener:'view-screener',theme:'theme',sec:'sec'};
-  const tablePanel='view-table';
-  for(const id of ['view-home','view-screener','theme','sec',tablePanel])
-    document.getElementById(id).style.display='none';
+  for(const id of ALL_PANELS)document.getElementById(id).style.display='none';
   if(v==='home'){document.getElementById('view-home').style.display='';return;}
   if(v==='screener'){document.getElementById('view-screener').style.display='';return;}
   if(v==='theme'){document.getElementById('theme').style.display='';loadThemes();return;}
   if(v==='sec'){document.getElementById('sec').style.display='';loadSectors();return;}
+  if(v==='weekly'){document.getElementById('view-weekly').style.display='';loadWeekly();return;}
+  if(v==='themesall'){document.getElementById('view-themesall').style.display='';loadThemesAll();return;}
+  if(v==='about'){document.getElementById('view-about').style.display='';loadAbout();return;}
   if(VIEWS[v]){
-    document.getElementById(tablePanel).style.display='';
+    document.getElementById('view-table').style.display='';
     sortK=VIEWS[v].sort; sortAsc=VIEWS[v].asc;
     renderTable();
   }
+}
+let GROUPS=null;
+async function loadWeekly(){
+  const el=document.getElementById('view-weekly');
+  if(el.dataset.done){return;}
+  el.innerHTML='<span class="mut">불러오는 중…</span>';
+  const t=await fetch('/api/themes').then(x=>x.json());
+  const perf=[...t.rows].sort((a,b)=>(b.ret_1m??-999)-(a.ret_1m??-999));
+  const strong=perf.slice(0,10), weak=perf.slice(-5).reverse();
+  const topValue=RANK.slice(0,15);
+  const trow=x=>`<tr style="cursor:pointer" onclick="openTheme('${x.name.replace(/'/g,"\\'")}')">
+    <td style="text-align:left">${x.name}</td><td class="${sign(x.ret_1m)}">${x.ret_1m==null?'–':(x.ret_1m>=0?'+':'')+x.ret_1m}</td>
+    <td class="${sign(x.ret_3m)}">${x.ret_3m==null?'–':(x.ret_3m>=0?'+':'')+x.ret_3m}</td>
+    <td class="mut">${x.priced}/${x.count}</td></tr>`;
+  let h=`<h3 style="margin-top:0">📰 주간 한국주식 시장 리포트 <span class="mut" style="font-weight:400;font-size:11px">
+    기준일 ${document.getElementById('asof').textContent}</span></h3>
+    <p class="sub">최근 1개월 테마 강세·약세와 가치+퀄리티 상위 종목 정리입니다. 매매 추천이 아닙니다.</p>
+    <h3>🔥 강세 테마 TOP10 (최근 1개월)</h3>
+    <div class="tblscroll"><table><thead><tr><th style="text-align:left">테마</th><th>1개월%</th><th>3개월%</th><th>종목수</th></tr></thead>
+    <tbody>${strong.map(trow).join('')}</tbody></table></div>
+    <h3>❄️ 약세 테마 (최근 1개월)</h3>
+    <div class="tblscroll"><table><thead><tr><th style="text-align:left">테마</th><th>1개월%</th><th>3개월%</th><th>종목수</th></tr></thead>
+    <tbody>${weak.map(trow).join('')}</tbody></table></div>
+    <h3>💎 가치+퀄리티 팩터 상위 종목</h3>
+    <div class="tblscroll"><table><thead><tr><th style="text-align:left">종목</th><th>점수</th><th>PER</th><th>PBR</th><th>ROE%</th></tr></thead>
+    <tbody>${topValue.map(r=>`<tr style="cursor:pointer" onclick="openStock('${r.code}')">
+      <td style="text-align:left">${r.name}</td><td class="score">${r.score}</td>
+      <td>${fmt(r.per)}</td><td>${fmt(r.pbr,2)}</td><td>${fmt(r.roe)}</td></tr>`).join('')}</tbody></table></div>`;
+  el.innerHTML=h; el.dataset.done='1';
+}
+async function loadThemesAll(){
+  const el=document.getElementById('view-themesall');
+  if(el.dataset.done)return;
+  el.innerHTML='<span class="mut">불러오는 중…</span>';
+  if(!GROUPS)GROUPS=await fetch('/api/theme-groups').then(x=>x.json());
+  const flat=[];
+  for(const maj of GROUPS.groups)for(const mid of maj.mids)for(const t of mid.themes)
+    flat.push({...t,major:maj.major,mid:mid.mid});
+  flat.sort((a,b)=>b.count-a.count);
+  let h=`<h3 style="margin-top:0">📋 테마 전체 목록 (${flat.length}개)</h3>
+    <p class="sub">각 테마를 클릭하면 구성 종목과 뉴스를 볼 수 있습니다.</p>
+    <div class="tblscroll"><table><thead><tr><th style="text-align:left">테마</th><th style="text-align:left">그룹</th>
+    <th>1개월%</th><th>종목수</th></tr></thead><tbody>`;
+  for(const t of flat)h+=`<tr style="cursor:pointer" onclick="openTheme('${t.name.replace(/'/g,"\\'")}')">
+    <td style="text-align:left">${t.name}</td><td style="text-align:left" class="mut">${t.major} · ${t.mid}</td>
+    <td class="${sign(t.ret_1m)}">${t.ret_1m==null?'–':(t.ret_1m>=0?'+':'')+t.ret_1m}</td>
+    <td class="mut">${t.count}</td></tr>`;
+  h+='</tbody></table></div>';
+  el.innerHTML=h; el.dataset.done='1';
+}
+async function loadAbout(){
+  const el=document.getElementById('view-about');
+  if(el.dataset.done)return;
+  el.innerHTML='<span class="mut">불러오는 중…</span>';
+  try{
+    const d=await fetch('/api/about').then(x=>x.json());
+    el.innerHTML=d.html;
+  }catch(e){el.innerHTML='<p class="mut">불러오지 못했습니다. <a href="/about">/about 페이지로 이동</a></p>';}
+  el.dataset.done='1';
 }
 document.querySelectorAll('.nav-item[data-v]').forEach(n=>n.onclick=()=>switchView(n.dataset.v));
 
@@ -402,12 +481,13 @@ document.querySelectorAll('.chip').forEach(ch=>ch.onclick=()=>{
   if(p!=='reset'&&PRESETS[p])for(const k in PRESETS[p])document.getElementById(k).value=PRESETS[p][k];
   renderScreener();
 });
-['f_per','f_pbr','f_roe','f_debt','f_growth','f_div','f_marcap','f_sector'].forEach(id=>
+['f_per','f_pbr','f_roe','f_debt','f_growth','f_div','f_marcap','f_sector','f_market'].forEach(id=>
   document.getElementById(id).addEventListener('input',renderScreener));
 function renderScreener(){
   const v=id=>{const x=document.getElementById(id).value; return x===''?null:Number(x);};
   const per=v('f_per'), pbr=v('f_pbr'), roe=v('f_roe'), debt=v('f_debt'),
-        gro=v('f_growth'), div=v('f_div'), mc=v('f_marcap'), sec=document.getElementById('f_sector').value;
+        gro=v('f_growth'), div=v('f_div'), mc=v('f_marcap'), sec=document.getElementById('f_sector').value,
+        mkt=document.getElementById('f_market').value;
   const rows=RANK.filter(r=>
     (per==null||(r.per!=null&&r.per<=per)) &&
     (pbr==null||(r.pbr!=null&&r.pbr<=pbr)) &&
@@ -416,7 +496,7 @@ function renderScreener(){
     (gro==null||(r.rev_growth!=null&&r.rev_growth>=gro)) &&
     (div==null||(r.div_yield!=null&&r.div_yield>=div)) &&
     (mc==null||(r.marcap_eok>=mc)) &&
-    (!sec||r.sector===sec)
+    (!sec||r.sector===sec) && (!mkt||r.market===mkt)
   ).sort((a,b)=>b.score-a.score);
   document.getElementById('screenerN').textContent=rows.length;
   const thead=document.querySelector('#tblScreener thead'), tbody=document.querySelector('#tblScreener tbody');
@@ -467,6 +547,7 @@ async function openStock(code){
       <div class="kpi"><div class="l">부채비율</div><div class="v">${fmt(s.debt_ratio,0)}%</div></div>
     </div>`;
     html+=dimsHtml(s.dims);
+    html+=flagsHtml(s.flags);
     html+=`<details style="margin-top:10px"><summary class="mut" style="cursor:pointer;font-size:12px">
       심화: 팩터 백분위 보기 (0~1, 높을수록 우위)</summary>`;
     for(const k in BRK){const v=s.breakdown[k];
@@ -476,12 +557,30 @@ async function openStock(code){
   }
   html+=`<h3>가격 (최근)</h3>`+spark(d.prices);
   html+=`<h3>재무 추이 (DART 연결/별도, 단위 억)</h3>`+finTable(d.financials);
+  html+=`<h3>📄 공시자료 <span class="mut" style="font-weight:400">· DART 전자공시 원문</span></h3>
+    <div id="disc"><span class="mut">불러오는 중…</span></div>`;
   html+=`<h3>관련 뉴스 <span class="mut" style="font-weight:400">· 구글뉴스</span></h3>
     <div id="news"><span class="mut">뉴스 불러오는 중…</span></div>`;
   document.getElementById('drc').innerHTML=html;
   document.getElementById('dr').classList.add('on');
   document.getElementById('bd').classList.add('on');
   loadNews(d.code);
+  loadDisclosures(d.code);
+}
+function flagsHtml(flags){
+  let h='<h3>🚩 참고할 점 <span class="mut" style="font-weight:400;font-size:11px">규칙기반 참고신호</span></h3>';
+  if(!flags||!flags.length)return h+'<p class="mut" style="font-size:12px">특별한 재무 이상신호는 없습니다.</p>';
+  return h+flags.map(f=>`<div class="flagitem">${f.emoji} <b>${f.label}</b> — ${f.text}</div>`).join('');
+}
+async function loadDisclosures(code){
+  const el=document.getElementById('disc'); if(!el)return;
+  try{
+    const d=await fetch('/api/disclosures/'+code).then(x=>x.json());
+    if(!d.items||!d.items.length){el.innerHTML='<span class="mut">최근 공시 없음(또는 조회 불가)</span>';return;}
+    el.innerHTML=d.items.map(it=>`<div class="news">
+      <a href="${it.link}" target="_blank" rel="noopener">${it.title}</a>
+      <div class="nmeta">${it.date} · ${it.submitter||''}</div></div>`).join('');
+  }catch(e){el.innerHTML='<span class="mut">공시 로드 실패</span>';}
 }
 async function loadNews(code){
   const el=document.getElementById('news'); if(!el)return;
@@ -549,7 +648,8 @@ async function loadThemes(){
   const el=document.getElementById('theme');
   if(el.dataset.done)return;
   el.innerHTML='<span class="mut">테마 그룹 계산 중… (최초 수초)</span>';
-  const g=await fetch('/api/theme-groups').then(x=>x.json());
+  if(!GROUPS)GROUPS=await fetch('/api/theme-groups').then(x=>x.json());
+  const g=GROUPS;
   let h=`<div class="sub" style="margin-bottom:10px">대그룹 › 중그룹 › 개별 테마. 최근 1개월/3개월
     <b>구성종목 시총상위 10개 동일가중 주가등락</b>. 중그룹을 펼쳐 개별 테마·종목을 보세요.</div>`;
   for(const maj of g.groups){

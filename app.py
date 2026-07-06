@@ -82,7 +82,7 @@ def api_ranking():
         "op_profit_eok": round(r["op_profit"] / 1e8) if r.get("op_profit") else None,
         "div_yield": _r(r.get("div_yield"), 2),
         "rev_growth": _r(r.get("rev_growth")),
-        "dims": r.get("dims"),
+        "dims": r.get("dims"), "flags": r.get("flags") or [],
     } for r in rk]
     return {"asof": asof, "count": len(slim), "rows": slim}
 
@@ -114,6 +114,7 @@ def api_stock(code: str):
             "op_margin": _r(row["op_margin"]), "debt_ratio": _r(row["debt_ratio"], 0),
             "div_yield": _r(row.get("div_yield"), 2), "rev_growth": _r(row.get("rev_growth")),
             "breakdown": row["breakdown"], "dims": row.get("dims"),
+            "flags": row.get("flags") or [],
         },
         "financials": [{
             "year": f[0], "revenue": f[1], "op_profit": f[2], "net_income": f[3],
@@ -296,6 +297,36 @@ def _google_news(query: str, keep_ts: bool = False):
     return [{k: v for k, v in x.items() if k != "_ts"} for x in items]
 
 
+_disc_cache = {}   # code -> (ts, items)
+_dart_singleton = {}
+
+
+def _get_dart():
+    if "c" not in _dart_singleton:
+        from dart_client import DartClient
+        d = DartClient(os.getenv("DART_API_KEY", ""))
+        d.corp_map()
+        _dart_singleton["c"] = d
+    return _dart_singleton["c"]
+
+
+@app.get("/api/disclosures/{code}")
+def api_disclosures(code: str):
+    """DART 공식 공시목록 API(크롤링 아님). 6시간 캐시."""
+    now = time.time()
+    hit = _disc_cache.get(code)
+    if hit and now - hit[0] < 21600:
+        return hit[1]
+    try:
+        d = _get_dart()
+        items = d.get_disclosures(code, count=8)
+        out = {"code": code, "items": items}
+    except Exception as e:
+        out = {"code": code, "items": [], "error": str(e)}
+    _disc_cache[code] = (now, out)
+    return out
+
+
 @app.get("/api/news/{code}")
 def api_news(code: str):
     rk = get_ranking()
@@ -405,15 +436,16 @@ def stock_page(code: str):
         "score": row["score"], "per": _r(row["per"]), "pbr": _r(row["pbr"], 2),
         "roe": _r(row["roe"]), "op_margin": _r(row["op_margin"]),
         "debt_ratio": _r(row["debt_ratio"], 0), "marcap_eok": round(row["marcap"] / 1e8),
-        "dims": row.get("dims")}
+        "dims": row.get("dims"), "flags": row.get("flags") or []}
     financials = [{"year": f[0], "revenue": f[1], "op_profit": f[2],
                    "net_income": f[3], "equity": f[4], "debt_ratio": _r(f[6], 0),
                    "op_margin": _r(f[7])} for f in fins]
     prices_l = [{"date": p[0], "close": p[1]} for p in prices[::2]]
     themes = get_tmap().get("stock_themes", {}).get(code, [])
     news = _google_news(f"{name} 주식")[:10]
+    disclosures = api_disclosures(code).get("items", [])
     return render_stock_page(code, name, summary, financials, prices_l, news,
-                             themes, f"{BASE_URL}/s/{code}")
+                             themes, disclosures, f"{BASE_URL}/s/{code}")
 
 
 @app.get("/weekly", response_class=HTMLResponse)
@@ -450,6 +482,16 @@ def themes_index():
     return layout("한국주식 테마 전체 목록 — 관련주 가치·퀄리티 분석",
                   "266개 시장 테마별 관련주를 가치+퀄리티 팩터로 분석한 목록.",
                   f"{BASE_URL}/themes-index", body)
+
+
+@app.get("/api/about")
+def api_about():
+    """about.html의 <body> 내용만 추출(SPA 인라인 표시용)."""
+    import re
+    html = _page("about.html")
+    m = re.search(r"<body>(.*)</body>", html, re.S)
+    frag = m.group(1) if m else html
+    return {"html": frag}
 
 
 @app.get("/robots.txt", response_class=PlainTextResponse)

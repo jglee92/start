@@ -113,11 +113,46 @@ def _safety_text(r, sec):
 
 
 def _growth_text(r, sec):
-    g = r.get("rev_growth")
+    g, g2 = r.get("rev_growth"), r.get("rev_growth_prev")
     if g is None:
         return "전년 대비 비교 가능한 재무 데이터가 부족합니다."
     dir_ = "증가" if g >= 0 else "감소"
-    return f"전년 대비 매출이 {abs(g):.1f}% {dir_}했습니다.{_cmp(g, sec.get('growth'), '%')}"
+    txt = f"전년 대비 매출이 {abs(g):.1f}% {dir_}했습니다.{_cmp(g, sec.get('growth'), '%')}"
+    if g2 is not None:
+        if g > 0 and g2 > 0:
+            trend = "가속" if g >= g2 else "둔화(그러나 2년 연속 성장)"
+            txt += f" 그 전년에도 {g2:+.1f}%로, 성장이 {trend} 흐름입니다."
+        elif g > 0 and g2 <= 0:
+            txt += f" 직전 2년째 역성장(전년 {g2:+.1f}%)에서 최근 성장으로 전환됐습니다."
+        elif g <= 0 and g2 > 0:
+            txt += f" 그 전년({g2:+.1f}%)엔 성장했으나 최근 둔화됐습니다."
+        else:
+            txt += f" 2년 연속 역성장({g2:+.1f}% → {g:+.1f}%)입니다."
+    return txt
+
+
+def anomaly_flags(r, pf):
+    """재무 이상신호(참고용, 회계부정 진단 아님) — 이미 확보한 다년치 데이터로만 판단."""
+    flags = []
+    ni, op, dr = r.get("net_income"), r.get("op_profit"), r.get("debt_ratio")
+    g, g2 = r.get("rev_growth"), r.get("rev_growth_prev")
+
+    if pf and pf.get("net_income") is not None and ni is not None:
+        if pf["net_income"] > 0 and ni <= 0:
+            flags.append({"emoji": "🔴", "label": "적자 전환",
+                         "text": "전년 흑자에서 올해 적자로 전환됐습니다."})
+    if op is not None and ni is not None and op < 0 and ni > 0:
+        flags.append({"emoji": "🟡", "label": "영업외 손익 의존",
+                     "text": "영업이익은 적자이나 순이익은 흑자입니다. "
+                             "본업 외 손익(자산매각·평가이익 등)에 기댄 결과일 수 있습니다."})
+    if pf and pf.get("debt_ratio") is not None and dr is not None and (dr - pf["debt_ratio"]) >= 50:
+        flags.append({"emoji": "🟡", "label": "부채비율 급증",
+                     "text": f"부채비율이 전년 {pf['debt_ratio']:.0f}%에서 {dr:.0f}%로 "
+                             f"{dr-pf['debt_ratio']:.0f}%p 급증했습니다."})
+    if g is not None and g2 is not None and g < 0 and g2 < 0:
+        flags.append({"emoji": "🟡", "label": "매출 2년 연속 감소",
+                     "text": "최근 2개 회계연도 모두 매출이 전년보다 감소했습니다."})
+    return flags
 
 
 def _overall_text(r, dims):

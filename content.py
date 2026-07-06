@@ -25,14 +25,17 @@ def _fmt(v, nd=1):
 def layout(title, desc, canonical, body, extra_nav=""):
     return f"""<!doctype html><html lang="ko"><head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
-<title>{_esc(title)}</title>
+<title>MN_SCAN 머니탐지 · {_esc(title)}</title>
 <meta name="description" content="{_esc(desc)}">
 <link rel="canonical" href="{_esc(canonical)}">
 <meta property="og:type" content="article"><meta property="og:title" content="{_esc(title)}">
 <meta property="og:description" content="{_esc(desc)}"><meta property="og:locale" content="ko_KR">
+<link rel="stylesheet" as="style" crossorigin
+  href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.css">
 <style>
 body{{max-width:900px;margin:0 auto;padding:20px 18px 60px;line-height:1.7;
- font-family:-apple-system,"Segoe UI",Roboto,"Malgun Gothic",sans-serif;color:#1a2028;background:#fff}}
+ font-family:'Pretendard Variable',Pretendard,-apple-system,"Segoe UI",Roboto,
+ "Apple SD Gothic Neo","Malgun Gothic",sans-serif;color:#1a2028;background:#fff}}
 @media (prefers-color-scheme:dark){{body{{background:#0f1216;color:#e6ebf1}}a{{color:#4f9dff}}
  th{{color:#93a1b0}} tr:hover{{background:#171c23}} .muted{{color:#93a1b0}}}}
 a{{color:#1f6fe0;text-decoration:none}}a:hover{{text-decoration:underline}}
@@ -137,7 +140,32 @@ def _dims_html(dims):
             + (f'<p class="muted">{_esc(overall)}</p>' if overall else ""))
 
 
-def render_stock_page(code, name, summary, financials, prices, news, themes, canonical):
+def _flags_html(flags):
+    if flags is None:
+        return ""
+    if not flags:
+        return ('<h2>🚩 참고할 점</h2><p class="muted">규칙 기반으로 확인한 특별한 '
+                '재무 이상신호는 없습니다. (회계부정 진단이 아닌 참고 신호입니다)</p>')
+    items = "".join(f'<p style="margin:6px 0">{f["emoji"]} <b>{_esc(f["label"])}</b> — '
+                    f'{_esc(f["text"])}</p>' for f in flags)
+    return (f'<h2>🚩 참고할 점 <span class="muted" style="font-size:13px;font-weight:400">'
+            f'· 규칙 기반 참고 신호, 회계부정 진단 아님</span></h2>{items}')
+
+
+def _disclosures_html(items):
+    if not items:
+        return '<h2>📄 공시자료</h2><p class="muted">최근 공시 데이터를 불러올 수 없습니다.</p>'
+    rows = "".join(
+        f'<p style="margin:6px 0"><a href="{_esc(d["link"])}" target="_blank" '
+        f'rel="noopener">{_esc(d["title"])}</a> '
+        f'<span class="muted" style="font-size:12px">{_esc(d.get("date"))} · '
+        f'{_esc(d.get("submitter"))}</span></p>' for d in items)
+    return (f'<h2>📄 공시자료 <span class="muted" style="font-size:13px;font-weight:400">'
+            f'· DART 전자공시 원문</span></h2>{rows}')
+
+
+def render_stock_page(code, name, summary, financials, prices, news, themes,
+                      disclosures, canonical):
     def eok(v):
         return "–" if v is None else f"{round(v/1e8):,}"
     head = f'<h1>{_esc(name)} <span class="muted" style="font-size:15px">{_esc(code)}</span></h1>'
@@ -151,6 +179,9 @@ def render_stock_page(code, name, summary, financials, prices, news, themes, can
                f'부채비율 {_fmt(summary.get("debt_ratio"),0)}% · '
                f'시총 {summary.get("marcap_eok",0):,}억</p>')
         dims_html = _dims_html(summary.get("dims"))
+        flags_html = _flags_html(summary.get("flags"))
+    else:
+        flags_html = ""
     tbadge = ""
     if themes:
         tbadge = '<p>' + "".join(f'<span class="badge">{_esc(t)}</span>'
@@ -165,13 +196,16 @@ def render_stock_page(code, name, summary, financials, prices, news, themes, can
         f'rel="noopener">{_esc(n["title"])}</a><br>'
         f'<span class="muted" style="font-size:12px">{_esc(n.get("source"))} · '
         f'{_esc(n.get("pub"))}</span></p>' for n in news) or '<p class="muted">뉴스 없음</p>'
+    disc_html = _disclosures_html(disclosures)
     body = f"""{head}{kpi}{tbadge}
 {dims_html}
+{flags_html}
 <h2>주가 (최근)</h2>{_spark(prices)}
 <h2>재무 추이 (DART 사업보고서, 단위 억)</h2>
 <div class="wrap"><table><thead><tr><th>연도</th><th>매출</th><th>영업이익</th>
 <th>순이익</th><th>자본</th><th>영익률%</th><th>부채%</th></tr></thead>
 <tbody>{fin_rows or '<tr><td colspan=7 class="muted">재무 데이터 없음</td></tr>'}</tbody></table></div>
+{disc_html}
 <h2>관련 뉴스 <span class="muted" style="font-size:13px;font-weight:400">· 구글뉴스</span></h2>
 {news_html}
 <p class="muted" style="margin-top:16px"><a href="/">← 대시보드에서 전체 종목 보기</a></p>"""

@@ -39,14 +39,15 @@ def _latest_financials(conn, code):
 
 
 def _prior_financials(conn, code, before_year):
-    """직전 연도 재무(성장률 계산용). 연속연도가 아니어도 그 다음으로 최신인 것."""
+    """직전 연도 재무(성장률·이상신호 계산용). 연속연도가 아니어도 다음으로 최신인 것."""
     r = conn.execute(
-        "SELECT year,revenue,op_profit,net_income FROM financials "
+        "SELECT year,revenue,op_profit,net_income,debt_ratio FROM financials "
         "WHERE code=? AND year<? ORDER BY year DESC LIMIT 1",
         (code, before_year)).fetchone()
     if not r:
         return None
-    return {"year": r[0], "revenue": r[1], "op_profit": r[2], "net_income": r[3]}
+    return {"year": r[0], "revenue": r[1], "op_profit": r[2], "net_income": r[3],
+            "debt_ratio": r[4]}
 
 
 def _growth_pct(cur, prev):
@@ -86,7 +87,9 @@ def compute_ranking(conn, master=None, asof=None):
         dps = db.get_dividend(conn, r.code, fin["year"])
         div_yield = (dps / p[0] * 100) if dps else None
         pf = _prior_financials(conn, r.code, fin["year"])
+        pf2 = _prior_financials(conn, r.code, pf["year"]) if pf else None
         rev_growth = _growth_pct(rev, pf["revenue"]) if pf else None
+        rev_growth_prev = _growth_pct(pf["revenue"], pf2["revenue"]) if (pf and pf2) else None
         op_growth = _growth_pct(op, pf["op_profit"]) if pf else None
         rows.append({
             "code": r.code, "name": r.name, "market": r.market,
@@ -96,6 +99,7 @@ def compute_ranking(conn, master=None, asof=None):
             "fiscal_year": fin["year"], "fin": fin,
             "revenue": rev, "op_profit": op, "net_income": ni,
             "div_yield": div_yield, "rev_growth": rev_growth, "op_growth": op_growth,
+            "rev_growth_prev": rev_growth_prev, "_pf": pf,
             "per": (marcap / ni) if ni else None,
             "pbr": (marcap / eq) if eq else None,
             "psr": (marcap / rev) if rev else None,
@@ -137,10 +141,11 @@ def compute_ranking(conn, master=None, asof=None):
     rows.sort(key=lambda r: r["score"], reverse=True)
     for i, r in enumerate(rows, 1):
         r["rank"] = i
-    from factor.interpret import dimension_grades, sector_averages
+    from factor.interpret import dimension_grades, sector_averages, anomaly_flags
     sec_avg = sector_averages(rows)
     for r in rows:
         r["dims"] = dimension_grades(r, sec_avg)
+        r["flags"] = anomaly_flags(r, r.pop("_pf", None))
     return rows
 
 

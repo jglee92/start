@@ -125,6 +125,35 @@ class DartClient:
                     return v
         return 0.0    # 배당 항목 조회됐으나 현금배당 없음
 
+    def get_disclosures(self, stock_code: str, count: int = 8) -> list:
+        """최근 공시 목록. DART 공식 OpenAPI(list.json) 사용 — 크롤링 아님, 합법 공식 API.
+        반환 항목의 rcept_no로 원문(dsaf001/main.do?rcpNo=...) 링크 생성."""
+        corp = self.corp_code(stock_code)
+        if not corp:
+            return []
+        try:
+            r = requests.get(f"{BASE}/list.json", params={
+                "crtfc_key": self.key, "corp_code": corp,
+                "page_no": "1", "page_count": str(count)}, timeout=15)
+            js = r.json()
+        except Exception:
+            return []
+        if js.get("status") == "020":
+            raise DartError("DART 사용한도(20,000/일) 초과.")
+        if js.get("status") != "000":
+            return []
+        out = []
+        for row in js.get("list", []):
+            rn = row.get("rcept_no")
+            if not rn:
+                continue
+            out.append({
+                "title": row.get("report_nm"), "date": row.get("rcept_dt"),
+                "submitter": row.get("flr_nm"),
+                "link": f"https://dart.fss.or.kr/dsaf001/main.do?rcpNo={rn}",
+            })
+        return out
+
     def _fetch_acnt(self, corp: str, year: int) -> Optional[list]:
         r = requests.get(f"{BASE}/fnlttSinglAcnt.json", params={
             "crtfc_key": self.key, "corp_code": corp,
