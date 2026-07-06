@@ -522,6 +522,20 @@ def weekly():
     return render_weekly(strong, weak, top_value, asof, f"{BASE_URL}/weekly")
 
 
+@app.get("/anomaly-report", response_class=HTMLResponse)
+def anomaly_report():
+    from content import render_anomaly_report
+    rk = get_ranking()
+    asof = rk[0]["price_date"] if rk else ""
+    grouped: dict[str, list] = {}
+    for r in rk:
+        for f in (r.get("flags") or []):
+            grouped.setdefault(f["label"], []).append({
+                "code": r["code"], "name": r["name"],
+                "text": f["text"], "emoji": f["emoji"]})
+    return render_anomaly_report(grouped, asof, f"{BASE_URL}/anomaly-report")
+
+
 @app.get("/themes-index", response_class=HTMLResponse)
 def themes_index():
     from content import layout
@@ -563,6 +577,7 @@ def sitemap():
     from datetime import datetime
     today = datetime.now().strftime("%Y-%m-%d")
     urls = [("/", "daily", "1.0"), ("/weekly", "weekly", "0.9"),
+            ("/anomaly-report", "weekly", "0.8"),
             ("/themes-index", "weekly", "0.7"), ("/about", "monthly", "0.5")]
     parts = [f"<url><loc>{BASE_URL}{p}</loc><lastmod>{today}</lastmod>"
              f"<changefreq>{cf}</changefreq><priority>{pr}</priority></url>"

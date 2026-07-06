@@ -300,6 +300,51 @@ def render_theme_page(name, stocks, perf, canonical):
     return layout(f"{name} 관련주 — 가치·퀄리티 분석 | 한국주식 팩터", desc, canonical, body)
 
 
+_FLAG_EXPLAIN = {
+    "적자 전환": "전년에는 순이익이 흑자였는데 올해는 적자로 바뀐 경우입니다. "
+                "일시적 요인(자산매각 손실, 구조조정 등)인지 본업 악화인지 재무제표를 "
+                "직접 확인해볼 필요가 있습니다.",
+    "영업외 손익 의존": "본업(영업활동)에서는 손실이 났지만 자산매각·투자수익 등"
+                     "영업외 요인 덕에 최종 순이익은 흑자로 나온 경우입니다. "
+                     "본업 경쟁력과 별개로 순이익만 보면 실제보다 좋아 보일 수 있습니다.",
+    "부채비율 급증": "1년 사이 부채비율이 50%p 이상 급격히 늘었습니다. 대규모 투자·차입,"
+                  " 인수합병, 실적 악화로 인한 자본 감소 등 원인을 확인해볼 필요가 있습니다.",
+    "매출 2년 연속 감소": "최근 2개 회계연도 모두 매출이 전년보다 줄었습니다. "
+                      "업종 전반의 불황인지, 개별 기업의 경쟁력 약화인지 살펴볼 필요가 있습니다.",
+}
+
+
+def render_anomaly_report(grouped, asof, canonical):
+    """flags(이상신호)가 감지된 종목을 유형별로 모은 리포트."""
+    total = sum(len(v) for v in grouped.values())
+    sections = ""
+    for label, items in grouped.items():
+        rows = "".join(
+            f'<tr><td style="text-align:left"><a href="/s/{_esc(s["code"])}">{_esc(s["name"])}</a> '
+            f'<span class="muted">{_esc(s["code"])}</span></td>'
+            f'<td style="text-align:left">{_esc(s["text"])}</td></tr>' for s in items)
+        sections += (f'<h2>{items[0]["emoji"]} {_esc(label)} <span class="muted" '
+                    f'style="font-size:13px;font-weight:400">· {len(items)}개 종목</span></h2>'
+                    f'<p>{_esc(_FLAG_EXPLAIN.get(label, ""))}</p>'
+                    f'<div class="wrap"><table><thead><tr><th style="text-align:left">종목</th>'
+                    f'<th style="text-align:left">내용</th></tr></thead>'
+                    f'<tbody>{rows}</tbody></table></div>')
+    if not sections:
+        sections = '<p class="muted">현재 이상신호가 감지된 종목이 없습니다.</p>'
+    body = f"""
+<h1>이상신호 리포트 <span class="muted" style="font-size:14px">({_esc(asof)} 기준)</span></h1>
+<p>재무 데이터에서 <b>규칙 기반으로 감지된 참고 신호</b>를 모았습니다. 적자 전환, 부채비율
+급증, 영업외 손익 의존, 매출 2년 연속 감소 — 4가지 유형을 자동으로 스캔합니다.
+<b>회계부정을 진단하는 도구가 아니며</b>, "한번 확인해볼 만한 종목"을 걸러주는 참고 신호입니다.
+매수·매도 추천이 아닙니다.</p>
+<p class="muted">전체 {total}건 감지 (시총 3,000억 이상 유니버스 기준)</p>
+{sections}
+"""
+    desc = f"{asof} 기준 적자전환·부채비율급증·영업외손익의존·매출감소 등 재무 이상신호가 감지된 한국 상장기업 리포트."
+    return layout(f"이상신호 리포트 ({asof}) — 적자전환·부채급증 감지 기업",
+                  desc, canonical, body)
+
+
 def render_weekly(strong, weak, top_value, asof, canonical):
     def theme_li(t):
         cls = "pos" if (t["ret_1m"] or 0) >= 0 else "neg"
