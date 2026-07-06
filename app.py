@@ -188,7 +188,7 @@ def api_theme(name: str):
     stocks.sort(key=lambda s: (s["in_rank"], s.get("score", 0)), reverse=True)
     merged = []
     for s in stocks[:3]:
-        for it in _google_news(f"{s['name']} 주식", keep_ts=True)[:5]:
+        for it in _google_news(f"{s['name']} 주식", keep_ts=True, stock_name=s['name'])[:5]:
             it["stock"] = s["name"]
             merged.append(it)
     seen, news = set(), []
@@ -253,9 +253,28 @@ def api_refresh():
 
 _news_cache = {}   # query -> (ts, items)
 
+# 저품질/무관 소스 차단(블로그·커뮤니티성 집계 사이트). 필요시 추가.
+_SOURCE_BLOCKLIST = {"주달", "가치투자연구소", "텐인텐", "네이버포스트", "네이버블로그",
+                     "다음블로그", "티스토리", "브런치"}
+_SOURCE_BLOCK_KEYWORDS = ("블로그", "카페", "커뮤니티")
 
-def _google_news(query: str, keep_ts: bool = False):
-    """구글뉴스 RSS(키 불필요). 30분 캐시. 최근순 정렬된 items 반환."""
+
+def _is_blocked_source(src: str) -> bool:
+    if not src:
+        return False
+    s = src.strip()
+    if s in _SOURCE_BLOCKLIST:
+        return True
+    return any(k in s for k in _SOURCE_BLOCK_KEYWORDS)
+
+
+def _norm(s: str) -> str:
+    return "".join((s or "").split()).lower()
+
+
+def _google_news(query: str, keep_ts: bool = False, stock_name: str | None = None):
+    """구글뉴스 RSS(키 불필요). 30분 캐시. 최근순 정렬 + 저품질소스 차단.
+    stock_name 지정 시 제목에 그 기업명이 없는 기사는 제외(무관 기사 방지)."""
     now = time.time()
     hit = _news_cache.get(query)
     if hit and now - hit[0] < 1800:
@@ -273,6 +292,8 @@ def _google_news(query: str, keep_ts: bool = False):
                 srcname = src.text if src is not None else ""
                 if srcname and title.endswith(" - " + srcname):
                     title = title[: -(len(srcname) + 3)]
+                if _is_blocked_source(srcname):
+                    continue
                 raw = it.findtext("pubDate") or ""
                 try:
                     ts = parsedate_to_datetime(raw).timestamp()
@@ -283,7 +304,7 @@ def _google_news(query: str, keep_ts: bool = False):
             items.sort(key=lambda x: x["_ts"], reverse=True)
             seen, dedup = set(), []          # 중복 제목 제거
             for it in items:
-                key = "".join((it["title"] or "").split()).lower()[:40]
+                key = _norm(it["title"])[:40]
                 if key in seen:
                     continue
                 seen.add(key)
@@ -292,6 +313,9 @@ def _google_news(query: str, keep_ts: bool = False):
         except Exception:
             items = []
         _news_cache[query] = (now, items)
+    if stock_name:
+        core = _norm(stock_name)
+        items = [x for x in items if core and core in _norm(x["title"])]
     if keep_ts:
         return [dict(x) for x in items]
     return [{k: v for k, v in x.items() if k != "_ts"} for x in items]
@@ -332,7 +356,8 @@ def api_news(code: str):
     rk = get_ranking()
     row = next((r for r in rk if r["code"] == code), None)
     name = row["name"] if row else code
-    return {"code": code, "name": name, "items": _google_news(f"{name} 주식")[:10]}
+    return {"code": code, "name": name,
+            "items": _google_news(f"{name} 주식", stock_name=name)[:10]}
 
 
 @app.get("/api/sector/{name}")
@@ -347,7 +372,7 @@ def api_sector(name: str):
     # 상위 3종목 뉴스 병합
     merged = []
     for s in stocks[:3]:
-        for it in _google_news(f"{s['name']} 주식", keep_ts=True)[:5]:
+        for it in _google_news(f"{s['name']} 주식", keep_ts=True, stock_name=s['name'])[:5]:
             it["stock"] = s["name"]
             merged.append(it)
     seen, news = set(), []
@@ -442,7 +467,7 @@ def stock_page(code: str):
                    "op_margin": _r(f[7])} for f in fins]
     prices_l = [{"date": p[0], "close": p[1]} for p in prices[::2]]
     themes = get_tmap().get("stock_themes", {}).get(code, [])
-    news = _google_news(f"{name} 주식")[:10]
+    news = _google_news(f"{name} 주식", stock_name=name)[:10]
     disclosures = api_disclosures(code).get("items", [])
     return render_stock_page(code, name, summary, financials, prices_l, news,
                              themes, disclosures, f"{BASE_URL}/s/{code}")

@@ -78,8 +78,9 @@ def load_theme_map():
 
 
 def _perf_context(conn, tmap, master):
-    """모든 테마 구성종목의 최근 수익률·시총 맵 계산 (한 번만)."""
+    """모든 테마 구성종목의 최근 수익률·시총·시장(KOSPI/KOSDAQ) 맵 계산 (한 번만)."""
     shares = {str(r.code).zfill(6): r.shares for r in master.itertuples(index=False)}
+    mkt = {str(r.code).zfill(6): r.market for r in master.itertuples(index=False)}
     needed = set()
     for t in tmap["themes"].values():
         needed.update(t["codes"])
@@ -95,12 +96,16 @@ def _perf_context(conn, tmap, master):
                   (cl[0] / cl[63] - 1) if len(cl) >= 64 and cl[63] else None)
         if shares.get(c):
             marcap[c] = shares[c] * cl[0]
-    return ret, marcap
+    return ret, marcap, mkt
 
 
-def _perf_for(codes, ret, marcap, top_n=10):
-    """codes 중 가격 있는 것을 시총 상위 top_n 골라 동일가중 수익률."""
-    priced = [c for c in set(codes) if c in ret]
+def _perf_for(codes, ret, marcap, top_n=10, market_map=None, market=None):
+    """codes 중 가격 있는 것을 시총 상위 top_n 골라 동일가중 수익률.
+    market 지정 시 해당 시장(KOSPI/KOSDAQ) 종목만 대상으로 한다."""
+    pool = set(codes)
+    if market and market_map is not None:
+        pool = {c for c in pool if market_map.get(c) == market}
+    priced = [c for c in pool if c in ret]
     priced.sort(key=lambda c: marcap.get(c, 0), reverse=True)
     top = priced[:top_n]
     r1s = [ret[c][0] for c in top if ret[c][0] is not None]
@@ -109,6 +114,22 @@ def _perf_for(codes, ret, marcap, top_n=10):
         "priced": len(priced), "used": len(r1s),
         "ret_1m": round(sum(r1s) / len(r1s) * 100, 1) if r1s else None,
         "ret_3m": round(sum(r3s) / len(r3s) * 100, 1) if r3s else None,
+    }
+
+
+def _perf_all(codes, ret, marcap, mkt, top_n=10):
+    """전체/코스피만/코스닥만 3버전을 함께 계산.
+    같은 '시총 상위 10개'라도 코스피 대형주가 섞이면 코스닥의 격한 움직임이
+    가려지므로, 시장별로 따로 top_n을 뽑아야 각 시장 특성이 드러난다."""
+    base = _perf_for(codes, ret, marcap, top_n)
+    kospi = _perf_for(codes, ret, marcap, top_n, mkt, "KOSPI")
+    kosdaq = _perf_for(codes, ret, marcap, top_n, mkt, "KOSDAQ")
+    return {
+        **base,
+        "ret_1m_kospi": kospi["ret_1m"], "ret_3m_kospi": kospi["ret_3m"],
+        "used_kospi": kospi["used"],
+        "ret_1m_kosdaq": kosdaq["ret_1m"], "ret_3m_kosdaq": kosdaq["ret_3m"],
+        "used_kosdaq": kosdaq["used"],
     }
 
 
@@ -122,32 +143,33 @@ def _ctx(conn, tmap, master):
 
 
 def compute_theme_perf(conn, tmap=None, master=None, top_n=10):
-    """테마(소그룹)별 시총상위 top_n 동일가중 수익률."""
-    tmap, master, (ret, marcap) = _ctx(conn, tmap, master)
+    """테마(소그룹)별 시총상위 top_n 동일가중 수익률 (전체/코스피/코스닥)."""
+    tmap, master, (ret, marcap, mkt) = _ctx(conn, tmap, master)
     out = []
     for no, t in tmap["themes"].items():
-        p = _perf_for(t["codes"], ret, marcap, top_n)
+        p = _perf_all(t["codes"], ret, marcap, mkt, top_n)
         out.append({"no": no, "name": t["name"], "count": len(t["codes"]), **p})
     return out
 
 
 def compute_group_hierarchy(conn, tmap=None, master=None, top_n=10):
-    """대그룹 → 중그룹 → 소그룹(테마) 3단계 + 각 레벨 시총상위 top_n 수익률."""
+    """대그룹 → 중그룹 → 소그룹(테마) 3단계 + 각 레벨 시총상위 top_n 수익률
+    (전체/코스피/코스닥 3버전)."""
     from factor.theme_groups import classify
-    tmap, master, (ret, marcap) = _ctx(conn, tmap, master)
+    tmap, master, (ret, marcap, mkt) = _ctx(conn, tmap, master)
     # 소그룹(테마) 단위 정보 + 그룹 태깅
     mids = {}          # (major,mid) -> {codes:set, themes:[...]}
     for no, t in tmap["themes"].items():
         major, mid = classify(t["name"])
         m = mids.setdefault((major, mid), {"codes": set(), "themes": []})
         m["codes"].update(t["codes"])
-        tp = _perf_for(t["codes"], ret, marcap, top_n)
+        tp = _perf_all(t["codes"], ret, marcap, mkt, top_n)
         m["themes"].append({"no": no, "name": t["name"],
                             "count": len(t["codes"]), **tp})
     # 대그룹 집계
     majors = {}
     for (major, mid), m in mids.items():
-        mid_perf = _perf_for(m["codes"], ret, marcap, top_n)
+        mid_perf = _perf_all(m["codes"], ret, marcap, mkt, top_n)
         m["themes"].sort(key=lambda x: (x["ret_1m"] is not None, x["ret_1m"]),
                          reverse=True)
         maj = majors.setdefault(major, {"codes": set(), "mids": []})
@@ -156,7 +178,7 @@ def compute_group_hierarchy(conn, tmap=None, master=None, top_n=10):
                             "theme_count": len(m["themes"]), "themes": m["themes"]})
     out = []
     for major, maj in majors.items():
-        maj_perf = _perf_for(maj["codes"], ret, marcap, top_n)
+        maj_perf = _perf_all(maj["codes"], ret, marcap, mkt, top_n)
         maj["mids"].sort(key=lambda x: (x["ret_1m"] is not None, x["ret_1m"]),
                          reverse=True)
         out.append({"major": major, **maj_perf, "mids": maj["mids"]})

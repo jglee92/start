@@ -33,27 +33,27 @@ def layout(title, desc, canonical, body, extra_nav=""):
 <link rel="stylesheet" as="style" crossorigin
   href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.css">
 <style>
-body{{max-width:900px;margin:0 auto;padding:20px 18px 60px;line-height:1.7;
+body{{max-width:900px;margin:0 auto;padding:20px 18px 60px;line-height:1.75;font-size:15.5px;
  font-family:'Pretendard Variable',Pretendard,-apple-system,"Segoe UI",Roboto,
- "Apple SD Gothic Neo","Malgun Gothic",sans-serif;color:#1a2028;background:#fff}}
-@media (prefers-color-scheme:dark){{body{{background:#0f1216;color:#e6ebf1}}a{{color:#4f9dff}}
- th{{color:#93a1b0}} tr:hover{{background:#171c23}} .muted{{color:#93a1b0}}}}
-a{{color:#1f6fe0;text-decoration:none}}a:hover{{text-decoration:underline}}
-h1{{font-size:23px}}h2{{font-size:18px;margin-top:28px}}
-nav{{font-size:13px;margin-bottom:14px}}
-table{{border-collapse:collapse;width:100%;font-size:13px;margin:10px 0}}
-th,td{{padding:7px 9px;border-bottom:1px solid #8883;text-align:right;white-space:nowrap}}
+ "Apple SD Gothic Neo","Malgun Gothic",sans-serif;color:#12161c;background:#fff}}
+@media (prefers-color-scheme:dark){{body{{background:#0f1216;color:#f1f4f8}}a{{color:#6fb0ff}}
+ th{{color:#aab6c2}} tr:hover{{background:#171c23}} .muted{{color:#aab6c2}}}}
+a{{color:#1a63cf;text-decoration:none;font-weight:600}}a:hover{{text-decoration:underline}}
+h1{{font-size:24px}}h2{{font-size:19px;margin-top:28px}}
+nav{{font-size:14px;margin-bottom:14px}}
+table{{border-collapse:collapse;width:100%;font-size:14.5px;margin:10px 0}}
+th,td{{padding:8px 10px;border-bottom:1px solid #8883;text-align:right;white-space:nowrap}}
 th:first-child,td:first-child{{text-align:left}}
-.wrap{{overflow-x:auto}} .muted{{color:#5e6b79}} .pos{{color:#1a9e63}} .neg{{color:#d23b41}}
-.badge{{display:inline-block;padding:1px 8px;border-radius:10px;background:#8881;font-size:12px;margin:2px 3px 0 0}}
+.wrap{{overflow-x:auto}} .muted{{color:#4a5563}} .pos{{color:#178a56}} .neg{{color:#c8333a}}
+.badge{{display:inline-block;padding:1px 8px;border-radius:10px;background:#8881;font-size:12.5px;margin:2px 3px 0 0}}
 .dimgrid{{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin:10px 0}}
 @media(max-width:560px){{.dimgrid{{grid-template-columns:1fr}}}}
 .dimcard{{border:1px solid #8883;border-radius:10px;padding:12px 14px;background:#8880.06}}
-.dimhead{{font-weight:700;font-size:14px;display:flex;justify-content:space-between}}
+.dimhead{{font-weight:700;font-size:14.5px;display:flex;justify-content:space-between}}
 .dimstars{{color:#e0a500;letter-spacing:1px;font-size:13px}}
-.dimlabel{{font-size:12px;color:#5e6b79;margin:2px 0 4px}}
-.dimtext{{font-size:13px;margin:0;line-height:1.55}}
-footer{{margin-top:32px;padding-top:16px;border-top:1px solid #8883;font-size:12px;color:#888}}
+.dimlabel{{font-size:12.5px;color:#4a5563;margin:2px 0 4px}}
+.dimtext{{font-size:13.5px;margin:0;line-height:1.6}}
+footer{{margin-top:32px;padding-top:16px;border-top:1px solid #8883;font-size:13px;color:#5a6472}}
 </style></head><body>
 <nav><a href="/">← 대시보드</a> · <a href="/weekly">주간 리포트</a> · <a href="/themes-index">테마 전체</a> · <a href="/about">소개·면책</a>{extra_nav}</nav>
 {body}
