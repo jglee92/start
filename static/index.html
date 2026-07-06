@@ -66,8 +66,25 @@
   .hero .lead{font-size:16px;margin:0 0 6px}
   .hero .why{color:var(--dim);font-size:14.5px;max-width:820px;margin:0;line-height:1.7}
   .hero .why a{color:var(--accent);text-decoration:none;white-space:nowrap}
-  .cards-row{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;padding:10px 0 4px}
-  @media(max-width:720px){.cards-row{grid-template-columns:1fr}}
+  .statbar{display:flex;gap:10px;flex-wrap:wrap;margin-top:14px}
+  .stat{background:var(--panel);border:1px solid var(--line);border-radius:10px;
+    padding:10px 16px;min-width:110px}
+  .stat .l{font-size:11px;color:var(--dim)} .stat .v{font-size:19px;font-weight:700;margin-top:2px}
+  .quicknav{display:flex;gap:16px;flex-wrap:wrap;margin-top:10px}
+  .qgroup{background:var(--panel);border:1px solid var(--line);border-radius:12px;
+    padding:12px;display:flex;flex-direction:column;gap:6px;min-width:150px;flex:1}
+  .qtitle{font-size:11px;color:var(--dim);text-transform:uppercase;letter-spacing:.03em;
+    font-weight:700;margin-bottom:2px}
+  .qtile{display:flex;align-items:center;gap:8px;padding:9px 10px;border-radius:9px;
+    cursor:pointer;font-size:14px;font-weight:600;border:1px solid transparent}
+  .qtile:hover{background:var(--panel2);border-color:var(--line)}
+  .qtile .qi{font-size:18px}
+  .qtile.cta{background:var(--accent);color:#fff;flex-direction:column;align-items:flex-start;
+    justify-content:center;gap:2px;min-height:56px}
+  .qtile.cta:hover{opacity:.92;border-color:transparent}
+  .qtile.cta .qsub{font-size:11px;font-weight:400;opacity:.85}
+  @media(max-width:720px){.quicknav{flex-direction:column}.qgroup{min-width:0}}
+  .cards-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px;padding:10px 0 4px}
   .scard{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:14px 16px}
   .scard h3{margin:0 0 8px;font-size:12px;color:var(--dim);text-transform:none;border:none;padding:0}
   .scard .row{display:flex;justify-content:space-between;gap:8px;padding:3px 0;font-size:13px;cursor:pointer}
@@ -202,6 +219,39 @@
           검증해 유니버스 대비 <b>연 +3%p 초과</b>를 확인했습니다.
           <a href="/about">→ 왜 이렇게 만들었나 · 방법론 · 검증결과</a></p>
       </section>
+
+      <div class="statbar" id="statbar"></div>
+
+      <h3 style="margin-top:22px">🚀 바로가기</h3>
+      <div class="quicknav" id="quicknav">
+        <div class="qgroup">
+          <div class="qtitle">기본 지표</div>
+          <div class="qtile" onclick="switchView('price')"><span class="qi">📊</span>시세</div>
+          <div class="qtile" onclick="switchView('fin')"><span class="qi">🧾</span>재무제표</div>
+          <div class="qtile" onclick="switchView('safety')"><span class="qi">🛡️</span>자산건전성</div>
+          <div class="qtile" onclick="switchView('div')"><span class="qi">💵</span>배당</div>
+        </div>
+        <div class="qgroup">
+          <div class="qtitle">심화 분석</div>
+          <div class="qtile" onclick="switchView('value')"><span class="qi">💰</span>밸류에이션</div>
+          <div class="qtile" onclick="switchView('profit')"><span class="qi">📈</span>수익성</div>
+          <div class="qtile" onclick="switchView('score')"><span class="qi">🎯</span>종합점수</div>
+        </div>
+        <div class="qgroup">
+          <div class="qtitle">시장 동향</div>
+          <div class="qtile" onclick="switchView('theme')"><span class="qi">🔥</span>테마 강세</div>
+          <div class="qtile" onclick="switchView('sec')"><span class="qi">🔄</span>섹터 로테이션</div>
+          <div class="qtile" onclick="switchView('weekly')"><span class="qi">📰</span>주간 리포트</div>
+          <div class="qtile" onclick="switchView('anomaly')"><span class="qi">🚩</span>이상신호</div>
+        </div>
+        <div class="qgroup">
+          <div class="qtitle">직접 찾기</div>
+          <div class="qtile cta" onclick="switchView('screener')"><span class="qi">🔍</span>조건검색<br><span class="qsub">스크리너</span></div>
+          <div class="qtile" onclick="location.href='/learn'"><span class="qi">📚</span>용어해설</div>
+        </div>
+      </div>
+
+      <h3 style="margin-top:22px">오늘의 하이라이트</h3>
       <div class="cards-row" id="cards"></div>
     </div>
 
@@ -288,18 +338,44 @@ async function load(){
   loadCards(r.asof);
   renderScreener();
 }
+const LEARN_TERMS=[['per','📐','PER(주가수익비율)이란?'],['pbr','🏦','PBR(주가자산비율)이란?'],
+  ['roe','📈','ROE(자기자본이익률)란?'],['debt-ratio','🛡️','부채비율, 얼마가 안전할까?'],
+  ['growth-momentum','🌱','성장모멘텀이란?']];
+function renderStatbar(asof){
+  const el=document.getElementById('statbar'); if(!el)return;
+  const kospi=RANK.filter(r=>r.market==='KOSPI').length, kosdaq=RANK.filter(r=>r.market==='KOSDAQ').length;
+  const anomN=RANK.reduce((a,r)=>a+((r.flags||[]).length>0?1:0),0);
+  el.innerHTML=`
+    <div class="stat"><div class="l">기준일</div><div class="v" style="font-size:14px">${asof||'-'}</div></div>
+    <div class="stat"><div class="l">분석 종목</div><div class="v">${RANK.length}</div></div>
+    <div class="stat"><div class="l">KOSPI · KOSDAQ</div><div class="v" style="font-size:14px">${kospi} · ${kosdaq}</div></div>
+    <div class="stat" style="cursor:pointer" onclick="switchView('anomaly')">
+      <div class="l">🚩 이상신호 발견</div><div class="v">${anomN}개 종목</div></div>`;
+}
 async function loadCards(asof){
   const el=document.getElementById('cards'); if(!el)return;
+  renderStatbar(asof);
   const val=RANK.slice(0,5).map(r=>`<div class="row" onclick="openStock('${r.code}')">
     <span class="nm">${r.name}</span><span class="score">${r.score}</span></div>`).join('');
-  const mkt=`<div class="row"><span class="nm">기준일</span><span>${asof||'-'}</span></div>
-    <div class="row"><span class="nm">분석 종목수</span><span>${RANK.length}</span></div>
-    <div class="row" onclick="switchView('weekly')"><span class="nm" style="color:var(--accent)">📰 주간 리포트 보기</span><span>→</span></div>
-    <div class="row" onclick="switchView('screener')"><span class="nm" style="color:var(--accent)">🔍 조건검색 스크리너</span><span>→</span></div>`;
+  const safe=[...RANK].filter(r=>r.debt_ratio!=null).sort((a,b)=>a.debt_ratio-b.debt_ratio).slice(0,5)
+    .map(r=>`<div class="row" onclick="openStock('${r.code}')">
+    <span class="nm">${r.name}</span><span class="mut">${r.debt_ratio.toFixed(0)}%</span></div>`).join('');
+  const anomalies=RANK.filter(r=>(r.flags||[]).length>0).slice(0,5);
+  const anomHtml=anomalies.length
+    ? anomalies.map(r=>`<div class="row" onclick="openStock('${r.code}')">
+        <span class="nm">${r.flags[0].emoji} ${r.name}</span><span class="mut" style="font-size:11px">${r.flags[0].label}</span></div>`).join('')
+    : '<span class="mut" style="font-size:12px">현재 감지된 이상신호 없음</span>';
+  const term=LEARN_TERMS[new Date(asof||Date.now()).getDate()%LEARN_TERMS.length];
+  const learnHtml=`<div class="row" onclick="location.href='/learn/${term[0]}'">
+    <span class="nm">${term[1]} ${term[2]}</span><span>→</span></div>
+    <div class="row" onclick="location.href='/learn'"><span class="nm mut">용어해설 전체 보기</span><span>→</span></div>`;
   el.innerHTML=`
-    <div class="scard"><h3>💎 저평가 우량주 TOP5 (가치+퀄리티)</h3>${val}</div>
+    <div class="scard"><h3>💎 저평가 우량주 TOP5 <span class="mut" style="font-weight:400">가치+퀄리티</span></h3>${val}</div>
     <div class="scard" id="cardThemes"><h3>🔥 최근 1개월 강세 테마 TOP3</h3><span class="mut" style="font-size:12px">불러오는 중…</span></div>
-    <div class="scard"><h3>ℹ️ 개요</h3>${mkt}</div>`;
+    <div class="scard"><h3>🛡️ 부채비율 낮은 안전주 TOP5</h3>${safe}</div>
+    <div class="scard" style="cursor:pointer" onclick="switchView('anomaly')">
+      <h3>🚩 이상신호 발견 종목</h3>${anomHtml}</div>
+    <div class="scard"><h3>📚 오늘의 용어</h3>${learnHtml}</div>`;
   try{
     const t=await fetch('/api/themes').then(x=>x.json());
     const top=t.rows.slice(0,3).map(x=>`<div class="row" onclick="openTheme('${x.no}')">
