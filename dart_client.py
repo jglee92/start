@@ -13,7 +13,7 @@ import io
 import json
 import zipfile
 import xml.etree.ElementTree as ET
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import Optional
 
 import requests
@@ -125,16 +125,21 @@ class DartClient:
                     return v
         return 0.0    # 배당 항목 조회됐으나 현금배당 없음
 
-    def get_disclosures(self, stock_code: str, count: int = 8) -> list:
+    def get_disclosures(self, stock_code: str, count: int = 8, days: int = 365) -> list:
         """최근 공시 목록. DART 공식 OpenAPI(list.json) 사용 — 크롤링 아님, 합법 공식 API.
+        bgn_de/end_de 미지정 시 기본 조회기간이 매우 짧아(당일 근처) 명시적으로 지정한다.
         반환 항목의 rcept_no로 원문(dsaf001/main.do?rcpNo=...) 링크 생성."""
         corp = self.corp_code(stock_code)
         if not corp:
             return []
+        end = datetime.now()
+        begin = end - timedelta(days=days)
         try:
             r = requests.get(f"{BASE}/list.json", params={
                 "crtfc_key": self.key, "corp_code": corp,
-                "page_no": "1", "page_count": str(count)}, timeout=15)
+                "bgn_de": begin.strftime("%Y%m%d"), "end_de": end.strftime("%Y%m%d"),
+                "page_no": "1", "page_count": str(count), "sort": "date",
+                "sort_mth": "desc"}, timeout=15)
             js = r.json()
         except Exception:
             return []
