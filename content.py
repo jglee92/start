@@ -351,6 +351,36 @@ def render_anomaly_report(grouped, asof, canonical):
                   desc, canonical, body)
 
 
+def _movers_rows(movers):
+    if not movers:
+        return '<tr><td colspan="4" class="muted">데이터 부족</td></tr>'
+    rows = []
+    for m in movers:
+        cls = "pos" if m["rank_change"] > 0 else "neg"
+        arrow = "▲" if m["rank_change"] > 0 else "▼"
+        sc_cls = "pos" if m["score_change"] >= 0 else "neg"
+        rows.append(f'<tr><td style="text-align:left"><a href="/s/{_esc(m["code"])}">{_esc(m["name"])}</a></td>'
+                    f'<td>{m["rank"]}위</td><td class="{cls}">{arrow}{abs(m["rank_change"])}</td>'
+                    f'<td class="{sc_cls}">{m["score_change"]:+.1f}</td></tr>')
+    return "".join(rows)
+
+
+def _movers_section(movers_up, movers_down, period_label):
+    if not movers_up and not movers_down:
+        return ""
+    return f"""
+<h2>📊 종합점수 순위 변동 ({period_label} 대비)</h2>
+<p class="muted">{period_label} 전 가격을 기준으로 다시 계산한 점수와 비교했습니다(재무제표는 최신 값을 그대로 사용).
+가격이 올라 밸류에이션 매력이 줄면 순위가 내려가고, 내려서 저평가 매력이 커지면 순위가 오릅니다.</p>
+<h3>🔼 순위 상승 TOP{len(movers_up)}</h3>
+<div class="wrap"><table><thead><tr><th style="text-align:left">종목</th><th>현재순위</th>
+<th>변동</th><th>점수변동</th></tr></thead><tbody>{_movers_rows(movers_up)}</tbody></table></div>
+<h3>🔽 순위 하락 TOP{len(movers_down)}</h3>
+<div class="wrap"><table><thead><tr><th style="text-align:left">종목</th><th>현재순위</th>
+<th>변동</th><th>점수변동</th></tr></thead><tbody>{_movers_rows(movers_down)}</tbody></table></div>
+"""
+
+
 _DIM_LABELS = [("value", "💰", "밸류에이션"), ("profit", "📈", "수익성"),
               ("safety", "🛡️", "안정성"), ("growth", "🌱", "성장성")]
 
@@ -365,7 +395,7 @@ def _dim_leader_table(rows, dim_key):
     return trs or '<tr><td colspan=2 class="muted">데이터 부족</td></tr>'
 
 
-def render_monthly_health(rows, anomaly_count, asof, canonical):
+def render_monthly_health(rows, anomaly_count, asof, canonical, movers_up=None, movers_down=None):
     """이번 달 건강점수 랭킹 — 종합점수 TOP20 + 4차원별 최고 TOP5."""
     top20 = sorted(rows, key=lambda r: r.get("score") or 0, reverse=True)[:20]
     top_rows = "".join(
@@ -391,7 +421,7 @@ def render_monthly_health(rows, anomaly_count, asof, canonical):
 
 <h2>차원별 최고 기업</h2>
 {dim_sections}
-
+{_movers_section(movers_up, movers_down, "한 달")}
 <h2>🚩 참고: 이상신호</h2>
 <p>이번 달 재무 이상신호(적자전환·부채급증 등)가 감지된 종목은 <b>{anomaly_count}개</b>입니다.
 <a href="/anomaly-report">→ 이상신호 리포트 전체 보기</a></p>
@@ -401,7 +431,7 @@ def render_monthly_health(rows, anomaly_count, asof, canonical):
                   desc, canonical, body)
 
 
-def render_weekly(strong, weak, top_value, asof, canonical):
+def render_weekly(strong, weak, top_value, asof, canonical, movers_up=None, movers_down=None):
     def theme_li(t):
         cls = "pos" if (t["ret_1m"] or 0) >= 0 else "neg"
         return (f'<tr><td><a href="/t/{t["no"]}">{_esc(t["name"])}</a></td>'
@@ -435,6 +465,7 @@ def render_weekly(strong, weak, top_value, asof, canonical):
 <p class="muted">저평가(가치) + 우량(퀄리티) 종합점수 상위. 시총 3,000억 이상.</p>
 <div class="wrap"><table><thead><tr><th>종목</th><th>점수</th><th>PER</th><th>PBR</th><th>ROE%</th><th>섹터</th></tr></thead>
 <tbody>{val_rows}</tbody></table></div>
+{_movers_section(movers_up, movers_down, "일주일")}
 <p class="muted">데이터: FinanceDataReader·DART·공개 테마/뉴스 피드. 분석·정렬은 자체 팩터 모델.</p>
 """
     desc = (f"{asof} 기준 한국주식 주간 리포트 — 최근 1개월 강세/약세 테마와 "

@@ -76,6 +76,43 @@ def get_asof():
     return _cache["asof"]
 
 
+def get_ranking_asof(days_ago: int):
+    """days_ago일 전 가격 기준으로 재계산한 랭킹(재무는 항상 최신). 순위 변동 비교용."""
+    key = f"rk_{days_ago}d"
+    if _cache.get(key) is None:
+        from datetime import date, timedelta
+        asof = get_asof()
+        ref = (date.fromisoformat(asof) - timedelta(days=days_ago)).isoformat()
+        conn = _conn()
+        if _cache["master"] is None:
+            _cache["master"] = build_master()
+        _cache[key] = compute_ranking(conn, master=_cache["master"], ref_date=ref)
+        conn.close()
+    return _cache[key]
+
+
+def _rank_movers(rk_now, rk_past, top_n=8):
+    """현재 랭킹과 과거(가격만 되돌린) 랭킹을 비교한 순위 상승/하락 상위 top_n.
+    재무는 최신 그대로 쓰므로 순수 가격 변동에 의한 밸류에이션 변화가 원인."""
+    past_rank = {r["code"]: r["rank"] for r in rk_past}
+    past_score = {r["code"]: r["score"] for r in rk_past}
+    diffs = []
+    for r in rk_now:
+        pr = past_rank.get(r["code"])
+        if pr is None:
+            continue
+        diffs.append({
+            "code": r["code"], "name": r["name"], "rank": r["rank"], "prev_rank": pr,
+            "rank_change": pr - r["rank"], "score": r["score"],
+            "score_change": round(r["score"] - past_score[r["code"]], 1),
+        })
+    up = sorted([d for d in diffs if d["rank_change"] > 0],
+                key=lambda d: d["rank_change"], reverse=True)[:top_n]
+    down = sorted([d for d in diffs if d["rank_change"] < 0],
+                  key=lambda d: d["rank_change"])[:top_n]
+    return up, down
+
+
 @app.get("/api/ranking")
 def api_ranking():
     rk = get_ranking()
@@ -298,6 +335,8 @@ def api_refresh():
     _cache["theme_perf"] = None
     _cache["theme_groups"] = None
     _cache["asof"] = None
+    for k in [k for k in _cache if k.startswith("rk_")]:
+        _cache[k] = None
     rk = get_ranking()
     return {"ok": True, "count": len(rk), "asof": get_asof()}
 
@@ -540,8 +579,7 @@ def stock_page(code: str):
                              themes, disclosures, period_returns, f"{BASE_URL}/s/{code}")
 
 
-@app.get("/weekly", response_class=HTMLResponse)
-def weekly():
+def _weekly_ctx():
     from content import render_weekly
     perf = [t for t in _theme_perf_map().values() if t["priced"] >= 5
             and t["ret_1m"] is not None]
@@ -552,7 +590,29 @@ def weekly():
     top_value = [{"code": r["code"], "name": r["name"], "score": r["score"],
                   "per": _r(r["per"]), "pbr": _r(r["pbr"], 2), "roe": _r(r["roe"]),
                   "sector": r.get("sector")} for r in rk[:15]]
-    return render_weekly(strong, weak, top_value, asof, f"{BASE_URL}/weekly")
+    movers_up, movers_down = _rank_movers(rk, get_ranking_asof(7))
+    return render_weekly, strong, weak, top_value, asof, movers_up, movers_down
+
+
+@app.get("/weekly", response_class=HTMLResponse)
+def weekly():
+    render_weekly, strong, weak, top_value, asof, movers_up, movers_down = _weekly_ctx()
+    return render_weekly(strong, weak, top_value, asof, f"{BASE_URL}/weekly", movers_up, movers_down)
+
+
+@app.get("/api/weekly")
+def api_weekly():
+    render_weekly, strong, weak, top_value, asof, movers_up, movers_down = _weekly_ctx()
+    html = render_weekly(strong, weak, top_value, asof, f"{BASE_URL}/weekly", movers_up, movers_down)
+    return {"html": _extract_body(html)}
+
+
+@app.get("/api/weekly-movers")
+def api_weekly_movers():
+    """SPA 주간 패널(테마 세그먼트 토글 유지용)에 순위변동만 slim JSON으로 제공."""
+    rk = get_ranking()
+    movers_up, movers_down = _rank_movers(rk, get_ranking_asof(7))
+    return {"up": movers_up, "down": movers_down, "asof": get_asof()}
 
 
 @app.get("/learn", response_class=HTMLResponse)
@@ -634,7 +694,8 @@ def monthly_health():
     from content import render_monthly_health
     rk = get_ranking()
     asof = get_asof()
-    return render_monthly_health(rk, _anomaly_count(rk), asof, f"{BASE_URL}/monthly")
+    movers_up, movers_down = _rank_movers(rk, get_ranking_asof(30))
+    return render_monthly_health(rk, _anomaly_count(rk), asof, f"{BASE_URL}/monthly", movers_up, movers_down)
 
 
 @app.get("/api/monthly")
@@ -642,7 +703,8 @@ def api_monthly_health():
     from content import render_monthly_health
     rk = get_ranking()
     asof = get_asof()
-    html = render_monthly_health(rk, _anomaly_count(rk), asof, f"{BASE_URL}/monthly")
+    movers_up, movers_down = _rank_movers(rk, get_ranking_asof(30))
+    html = render_monthly_health(rk, _anomaly_count(rk), asof, f"{BASE_URL}/monthly", movers_up, movers_down)
     return {"html": _extract_body(html)}
 
 

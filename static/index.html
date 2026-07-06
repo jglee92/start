@@ -519,9 +519,33 @@ function switchView(v){
 let GROUPS=null;
 async function loadWeekly(){
   if(!THEME_PERF)THEME_PERF=await fetch('/api/themes').then(x=>x.json());
+  if(!WEEKLY_MOVERS)WEEKLY_MOVERS=await fetch('/api/weekly-movers').then(x=>x.json());
   renderWeeklyPanel();
 }
 let THEME_PERF=null;
+let WEEKLY_MOVERS=null;
+function moversRowsHtml(list){
+  if(!list||!list.length)return '<tr><td colspan="4" class="mut">데이터 부족</td></tr>';
+  return list.map(m=>{
+    const rc=m.rank_change, sc=m.score_change;
+    return `<tr style="cursor:pointer" onclick="openStock('${m.code}')">
+    <td style="text-align:left">${m.name}</td><td>${m.rank}위</td>
+    <td class="${rc>0?'pos':'neg'}">${rc>0?'▲':'▼'}${Math.abs(rc)}</td>
+    <td class="${sc>=0?'pos':'neg'}">${sc>=0?'+':''}${sc}</td></tr>`;
+  }).join('');
+}
+function moversSectionHtml(mv, periodLabel){
+  if(!mv)return '';
+  return `<h3>📊 종합점수 순위 변동 (${periodLabel} 대비)</h3>
+    <p class="sub" style="margin-top:0">${periodLabel} 전 가격 기준으로 다시 계산한 점수와 비교했습니다
+    (재무제표는 최신 값 그대로). 매매 추천이 아닙니다.</p>
+    <h4 style="margin-bottom:4px">🔼 순위 상승 TOP${mv.up.length}</h4>
+    <div class="tblscroll"><table><thead><tr><th style="text-align:left">종목</th><th>현재순위</th>
+    <th>변동</th><th>점수변동</th></tr></thead><tbody>${moversRowsHtml(mv.up)}</tbody></table></div>
+    <h4 style="margin-bottom:4px">🔽 순위 하락 TOP${mv.down.length}</h4>
+    <div class="tblscroll"><table><thead><tr><th style="text-align:left">종목</th><th>현재순위</th>
+    <th>변동</th><th>점수변동</th></tr></thead><tbody>${moversRowsHtml(mv.down)}</tbody></table></div>`;
+}
 function renderWeeklyPanel(){
   const el=document.getElementById('view-weekly');
   const perf=[...THEME_PERF.rows].sort((a,b)=>(tval(b,'ret_1m')??-999)-(tval(a,'ret_1m')??-999));
@@ -547,7 +571,8 @@ function renderWeeklyPanel(){
     <div class="tblscroll"><table><thead><tr><th style="text-align:left">종목</th><th>점수</th><th>PER</th><th>PBR</th><th>ROE%</th></tr></thead>
     <tbody>${topValue.map(r=>`<tr style="cursor:pointer" onclick="openStock('${r.code}')">
       <td style="text-align:left">${r.name}</td><td class="score">${r.score}</td>
-      <td>${fmt(r.per)}</td><td>${fmt(r.pbr,2)}</td><td>${fmt(r.roe)}</td></tr>`).join('')}</tbody></table></div>`;
+      <td>${fmt(r.per)}</td><td>${fmt(r.pbr,2)}</td><td>${fmt(r.roe)}</td></tr>`).join('')}</tbody></table></div>
+    ${moversSectionHtml(WEEKLY_MOVERS,'일주일')}`;
   el.innerHTML=h; el.dataset.done='1';
 }
 /* ── 테마 시장구분(전체/코스피/코스닥) 토글 ── */

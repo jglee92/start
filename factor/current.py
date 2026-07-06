@@ -19,6 +19,16 @@ def _latest_close(conn, code):
     return (r[0], r[1]) if r else None
 
 
+def _close_at(conn, code, ref_date):
+    """ref_date 이하 최근 종가. ref_date가 None이면 진짜 최신가(_latest_close와 동일)."""
+    if ref_date is None:
+        return _latest_close(conn, code)
+    r = conn.execute(
+        "SELECT close,date FROM daily_prices WHERE code=? AND close IS NOT NULL "
+        "AND date<=? ORDER BY date DESC LIMIT 1", (code, ref_date)).fetchone()
+    return (r[0], r[1]) if r else None
+
+
 def _prev_close(conn, code, before_date):
     r = conn.execute(
         "SELECT close FROM daily_prices WHERE code=? AND close IS NOT NULL "
@@ -56,8 +66,10 @@ def _growth_pct(cur, prev):
     return (cur / prev - 1) * 100
 
 
-def compute_ranking(conn, master=None, asof=None):
-    """현재 유니버스의 가치+퀄리티 점수 랭킹."""
+def compute_ranking(conn, master=None, asof=None, ref_date=None):
+    """현재 유니버스의 가치+퀄리티 점수 랭킹.
+    ref_date를 주면 그 날짜 이하 최근 종가로 점수를 재계산(재무는 항상 최신 그대로) —
+    주간/월간 리포트에서 '전주·전월 대비 순위 변동'을 근사하는 용도."""
     if master is None:
         master = build_master()
     if asof is None:
@@ -69,7 +81,7 @@ def compute_ranking(conn, master=None, asof=None):
     for r in elig.itertuples(index=False):
         if r.shares is None:
             continue
-        p = _latest_close(conn, r.code)
+        p = _close_at(conn, r.code, ref_date)
         if not p:
             continue
         marcap = r.shares * p[0]
