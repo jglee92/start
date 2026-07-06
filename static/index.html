@@ -582,7 +582,7 @@ async function openStock(code){
         <div class="bar"><i style="width:${v==null?0:v*100}%"></i></div></div>`;}
     html+=`</details>`;
   }
-  html+=`<h3>가격 (최근)</h3>`+spark(d.prices);
+  html+=`<h3>가격 (최근)</h3>`+spark(d.prices)+periodPillsHtml(d.period_returns);
   html+=`<h3>재무 추이 (DART 연결/별도, 단위 억)</h3>`+finTable(d.financials);
   html+=`<h3>📄 공시자료 <span class="mut" style="font-weight:400">· DART 전자공시 원문</span></h3>
     <div id="disc"><span class="mut">불러오는 중…</span></div>`;
@@ -646,15 +646,34 @@ async function openSector(name){
   document.getElementById('drc').innerHTML=html;
 }
 
+const PERIOD_LABELS=[['wow','1주'],['mom','1개월'],['qoq','3개월'],['yoy','1년']];
+function periodPillsHtml(pr){
+  if(!pr)return '';
+  let cells='';
+  for(const [k,label] of PERIOD_LABELS){const v=pr[k];
+    cells+=`<div style="text-align:center;flex:1"><div class="mut" style="font-size:11px">${label}</div>
+      <div class="${sign(v)}" style="font-weight:700">${v==null?'–':(v>=0?'+':'')+v+'%'}</div></div>`;}
+  return `<div style="display:flex;gap:4px;margin:6px 0 2px;padding:10px 4px;border:1px solid var(--line);border-radius:8px">${cells}</div>`;
+}
 function spark(ps){
   if(!ps||ps.length<2)return '<div class="mut">가격 데이터 없음</div>';
-  const xs=ps.map(p=>p.close),mn=Math.min(...xs),mx=Math.max(...xs),W=500,H=120,pad=6;
-  const pts=ps.map((p,i)=>{const x=pad+i/(ps.length-1)*(W-2*pad);
-    const y=H-pad-(p.close-mn)/((mx-mn)||1)*(H-2*pad);return `${x.toFixed(1)},${y.toFixed(1)}`;}).join(' ');
-  const last=xs[xs.length-1],first=xs[0],cls=last>=first?'var(--good)':'var(--bad)';
-  return `<svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none">
-    <polyline fill="none" stroke="${cls}" stroke-width="2" points="${pts}"/></svg>
-    <div class="sub">${ps[0].date} ${first.toLocaleString()} → ${ps[ps.length-1].date} ${last.toLocaleString()}
+  const n=ps.length, xs=ps.map(p=>p.close), mn=Math.min(...xs), mx=Math.max(...xs);
+  const W=640,H=170,padL=56,padR=8,padT=10,padB=22,plotW=W-padL-padR,plotH=H-padT-padB;
+  const px=i=>padL+i/(n-1)*plotW, py=v=>padT+plotH-(v-mn)/((mx-mn)||1)*plotH;
+  const pts=ps.map((p,i)=>`${px(i).toFixed(1)},${py(p.close).toFixed(1)}`).join(' ');
+  const last=xs[n-1],first=xs[0];
+  const cls=last>=first?'var(--good)':'var(--bad)';
+  let grid='';
+  for(const frac of [0,0.5,1]){const v=mn+(mx-mn)*frac,y=py(v);
+    grid+=`<line x1="${padL}" y1="${y.toFixed(1)}" x2="${W-padR}" y2="${y.toFixed(1)}" stroke="var(--line)" stroke-width="1"/>
+      <text x="${padL-6}" y="${(y+3).toFixed(1)}" font-size="10" fill="var(--dim)" text-anchor="end">${Math.round(v).toLocaleString()}</text>`;}
+  let xlabels='';
+  for(const frac of [0,1/3,2/3,1]){const idx=Math.min(n-1,Math.round(frac*(n-1))),d=ps[idx].date;
+    const lbl=d.length>=7?`${d.slice(2,4)}.${d.slice(5,7)}`:d;
+    xlabels+=`<text x="${px(idx).toFixed(1)}" y="${H-4}" font-size="10" fill="var(--dim)" text-anchor="middle">${lbl}</text>`;}
+  return `<svg viewBox="0 0 ${W} ${H}" style="width:100%;height:170px">
+    ${grid}<polyline fill="none" stroke="${cls}" stroke-width="2" points="${pts}"/>${xlabels}</svg>
+    <div class="sub">${ps[0].date} ${first.toLocaleString()} → ${ps[n-1].date} ${last.toLocaleString()}
     (<span class="${last>=first?'pos':'neg'}">${((last/first-1)*100).toFixed(1)}%</span>)</div>`;
 }
 function finTable(f){

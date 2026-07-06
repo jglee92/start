@@ -18,7 +18,8 @@ HERE = os.path.dirname(__file__)
 DATA = os.path.join(HERE, "data")
 SRC = os.path.join(DATA, "screener.db")
 DST = os.path.join(DATA, "screener_deploy.db")
-PRICE_CUTOFF = "2025-01-01"   # 이 날짜 이후 가격만 배포 DB에 포함(차트·테마성과·랭킹용)
+PRICE_CUTOFF = "2024-04-01"   # 이 날짜 이후 가격만 배포 DB에 포함(차트·테마성과·랭킹용)
+# ↑ YoY(전년동기대비) 계산엔 최소 1년+여유가 필요해 2025-01-01→2024-04-01로 확장.
 
 
 def precompute_rotation():

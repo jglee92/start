@@ -87,6 +87,26 @@ def api_ranking():
     return {"asof": asof, "count": len(slim), "rows": slim}
 
 
+def _period_returns(conn, code):
+    """WoW/MoM/QoQ/YoY 가격 변동률(%). 달력일 기준 '그 날짜 이하 최근 종가'로 비교."""
+    from datetime import datetime, timedelta
+    latest = conn.execute(
+        "SELECT close,date FROM daily_prices WHERE code=? AND close IS NOT NULL "
+        "ORDER BY date DESC LIMIT 1", (code,)).fetchone()
+    if not latest:
+        return {}
+    close, date = latest
+    d0 = datetime.strptime(date, "%Y-%m-%d")
+    out = {}
+    for key, days in (("wow", 7), ("mom", 30), ("qoq", 91), ("yoy", 365)):
+        target = (d0 - timedelta(days=days)).strftime("%Y-%m-%d")
+        r = conn.execute(
+            "SELECT close FROM daily_prices WHERE code=? AND close IS NOT NULL "
+            "AND date<=? ORDER BY date DESC LIMIT 1", (code, target)).fetchone()
+        out[key] = round((close / r[0] - 1) * 100, 1) if r and r[0] else None
+    return out
+
+
 @app.get("/api/stock/{code}")
 def api_stock(code: str):
     rk = get_ranking()
@@ -99,13 +119,14 @@ def api_stock(code: str):
     prices = conn.execute(
         "SELECT date,close FROM daily_prices WHERE code=? AND close IS NOT NULL "
         "AND date>=? ORDER BY date", (code, "2023-01-01")).fetchall()
+    period_returns = _period_returns(conn, code)
     conn.close()
     if row is None and not fins:
         raise HTTPException(404, "종목 없음")
     name = row["name"] if row else code
     themes = _stock_theme_pairs(code)
     return {
-        "code": code, "name": name, "themes": themes,
+        "code": code, "name": name, "themes": themes, "period_returns": period_returns,
         "summary": None if row is None else {
             "rank": row["rank"], "score": row["score"], "market": row["market"],
             "price": row["price"], "marcap_eok": round(row["marcap"] / 1e8),
@@ -464,7 +485,8 @@ def stock_page(code: str):
     ).fetchall()
     prices = conn.execute(
         "SELECT date,close FROM daily_prices WHERE code=? AND close IS NOT NULL "
-        "AND date>=? ORDER BY date", (code, "2025-01-01")).fetchall()
+        "AND date>=? ORDER BY date", (code, "2024-04-01")).fetchall()
+    period_returns = _period_returns(conn, code)
     conn.close()
     name = row["name"] if row else _name_of(code)
     if row is None and not fins:
@@ -482,7 +504,7 @@ def stock_page(code: str):
     news = _google_news(f"{name} 주식", stock_name=name)[:10]
     disclosures = api_disclosures(code).get("items", [])
     return render_stock_page(code, name, summary, financials, prices_l, news,
-                             themes, disclosures, f"{BASE_URL}/s/{code}")
+                             themes, disclosures, period_returns, f"{BASE_URL}/s/{code}")
 
 
 @app.get("/weekly", response_class=HTMLResponse)

@@ -97,20 +97,65 @@ def _spark(prices):
     if not prices or len(prices) < 2:
         return '<p class="muted">가격 데이터 없음</p>'
     xs = [p["close"] for p in prices]
-    mn, mx, W, H, pad = min(xs), max(xs), 640, 130, 6
-    pts = " ".join(
-        f'{pad + i/(len(prices)-1)*(W-2*pad):.1f},'
-        f'{H-pad-(p["close"]-mn)/((mx-mn) or 1)*(H-2*pad):.1f}'
-        for i, p in enumerate(prices))
+    n = len(prices)
+    mn, mx = min(xs), max(xs)
+    W, H = 640, 170
+    padL, padR, padT, padB = 56, 8, 10, 22   # y축 라벨·x축 라벨 공간
+    plotW, plotH = W - padL - padR, H - padT - padB
+
+    def px(i):
+        return padL + i / (n - 1) * plotW
+
+    def py(v):
+        return padT + plotH - (v - mn) / ((mx - mn) or 1) * plotH
+
+    pts = " ".join(f'{px(i):.1f},{py(p["close"]):.1f}' for i, p in enumerate(prices))
     first, last = xs[0], xs[-1]
-    color = "#1a9e63" if last >= first else "#d23b41"
+    color = "#178a56" if last >= first else "#c8333a"
     pct = (last / first - 1) * 100
     cls = "pos" if last >= first else "neg"
-    return (f'<svg viewBox="0 0 {W} {H}" preserveAspectRatio="none" '
-            f'style="width:100%;height:130px"><polyline fill="none" stroke="{color}" '
-            f'stroke-width="2" points="{pts}"/></svg>'
-            f'<p class="muted">{prices[0]["date"]} {first:,} → {prices[-1]["date"]} '
-            f'{last:,} (<span class="{cls}">{pct:+.1f}%</span>)</p>')
+
+    # y축: 최저/중간/최고 3줄 그리드+라벨
+    grid = ""
+    for frac in (0.0, 0.5, 1.0):
+        v = mn + (mx - mn) * frac
+        y = py(v)
+        grid += (f'<line x1="{padL}" y1="{y:.1f}" x2="{W-padR}" y2="{y:.1f}" '
+                f'stroke="#8883" stroke-width="1"/>'
+                f'<text x="{padL-6}" y="{y+3:.1f}" font-size="10" fill="#8a95a1" '
+                f'text-anchor="end">{v:,.0f}</text>')
+    # x축: 4개 지점 날짜 라벨(YY.MM)
+    xlabels = ""
+    for frac in (0.0, 1 / 3, 2 / 3, 1.0):
+        idx = min(n - 1, round(frac * (n - 1)))
+        d = prices[idx]["date"]
+        lbl = f"{d[2:4]}.{d[5:7]}" if len(d) >= 7 else d
+        xlabels += (f'<text x="{px(idx):.1f}" y="{H-4}" font-size="10" fill="#8a95a1" '
+                   f'text-anchor="middle">{lbl}</text>')
+
+    return (f'<svg viewBox="0 0 {W} {H}" style="width:100%;height:170px">'
+            f'{grid}<polyline fill="none" stroke="{color}" stroke-width="2" points="{pts}"/>'
+            f'{xlabels}</svg>'
+            f'<p class="muted">{prices[0]["date"]} {first:,.0f} → {prices[-1]["date"]} '
+            f'{last:,.0f} (<span class="{cls}">{pct:+.1f}%</span>)</p>')
+
+
+_PERIOD_LABELS = [("wow", "1주"), ("mom", "1개월"), ("qoq", "3개월"), ("yoy", "1년")]
+
+
+def _period_pills_html(pr):
+    if not pr:
+        return ""
+    cells = ""
+    for key, label in _PERIOD_LABELS:
+        v = pr.get(key)
+        cls = "pos" if (v or 0) >= 0 else "neg"
+        cells += (f'<div style="text-align:center;flex:1"><div class="muted" '
+                  f'style="font-size:11px">{label}</div>'
+                  f'<div class="{cls}" style="font-weight:700">'
+                  f'{"–" if v is None else f"{v:+.1f}%"}</div></div>')
+    return (f'<div style="display:flex;gap:4px;margin:6px 0 2px;padding:10px 4px;'
+            f'border:1px solid #8883;border-radius:8px">{cells}</div>')
 
 
 _DIM_META = {"value": ("💰", "밸류에이션"), "profit": ("📈", "수익성"),
@@ -165,7 +210,7 @@ def _disclosures_html(items):
 
 
 def render_stock_page(code, name, summary, financials, prices, news, themes,
-                      disclosures, canonical):
+                      disclosures, period_returns, canonical):
     def eok(v):
         return "–" if v is None else f"{round(v/1e8):,}"
     head = f'<h1>{_esc(name)} <span class="muted" style="font-size:15px">{_esc(code)}</span></h1>'
@@ -202,7 +247,7 @@ def render_stock_page(code, name, summary, financials, prices, news, themes,
     body = f"""{head}{kpi}{tbadge}
 {dims_html}
 {flags_html}
-<h2>주가 (최근)</h2>{_spark(prices)}
+<h2>주가 (최근)</h2>{_spark(prices)}{_period_pills_html(period_returns)}
 <h2>재무 추이 (DART 사업보고서, 단위 억)</h2>
 <div class="wrap"><table><thead><tr><th>연도</th><th>매출</th><th>영업이익</th>
 <th>순이익</th><th>자본</th><th>영익률%</th><th>부채%</th></tr></thead>
