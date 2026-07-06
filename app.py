@@ -103,7 +103,7 @@ def api_stock(code: str):
     if row is None and not fins:
         raise HTTPException(404, "종목 없음")
     name = row["name"] if row else code
-    themes = get_tmap().get("stock_themes", {}).get(code, [])
+    themes = _stock_theme_pairs(code)
     return {
         "code": code, "name": name, "themes": themes,
         "summary": None if row is None else {
@@ -166,13 +166,18 @@ def api_theme_groups():
     return {"groups": _cache["theme_groups"]}
 
 
-@app.get("/api/theme/{name}")
-def api_theme(name: str):
-    """테마 구성종목(현재 랭킹 데이터 결합) + 상위 종목 뉴스 통합."""
+@app.get("/api/theme/{ident}")
+def api_theme(ident: str):
+    """테마 구성종목(현재 랭킹 데이터 결합) + 상위 종목 뉴스 통합.
+    ident 는 테마번호(no) 우선, 못 찾으면 이름으로 폴백. 테마명에 '/' 등 특수문자가
+    있으면 URL 경로 매칭이 깨지므로 번호(no) 사용을 권장(프론트도 no로 호출)."""
     tmap = get_tmap()
-    theme = next((t for t in tmap["themes"].values() if t["name"] == name), None)
+    theme = tmap["themes"].get(ident)
+    if not theme:
+        theme = next((t for t in tmap["themes"].values() if t["name"] == ident), None)
     if not theme:
         raise HTTPException(404, "테마 없음")
+    name = theme["name"]
     rk = {r["code"]: r for r in get_ranking()}
     stocks = []
     for c in theme["codes"]:
@@ -198,6 +203,13 @@ def api_theme(name: str):
         seen.add(it["title"])
         news.append({k: v for k, v in it.items() if k != "_ts"})
     return {"theme": name, "count": len(stocks), "stocks": stocks, "news": news[:12]}
+
+
+def _stock_theme_pairs(code):
+    """code가 속한 테마의 [{no,name}] 목록. no로 안전하게 링크(이름에 '/' 등 특수문자 가능)."""
+    tmap = get_tmap()
+    return [{"no": no, "name": t["name"]} for no, t in tmap["themes"].items()
+            if code in t["codes"]]
 
 
 def _name_of(code):
@@ -466,7 +478,7 @@ def stock_page(code: str):
                    "net_income": f[3], "equity": f[4], "debt_ratio": _r(f[6], 0),
                    "op_margin": _r(f[7])} for f in fins]
     prices_l = [{"date": p[0], "close": p[1]} for p in prices[::2]]
-    themes = get_tmap().get("stock_themes", {}).get(code, [])
+    themes = _stock_theme_pairs(code)
     news = _google_news(f"{name} 주식", stock_name=name)[:10]
     disclosures = api_disclosures(code).get("items", [])
     return render_stock_page(code, name, summary, financials, prices_l, news,

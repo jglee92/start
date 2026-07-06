@@ -184,8 +184,10 @@ def render_stock_page(code, name, summary, financials, prices, news, themes,
         flags_html = ""
     tbadge = ""
     if themes:
-        tbadge = '<p>' + "".join(f'<span class="badge">{_esc(t)}</span>'
-                                 for t in themes[:12]) + '</p>'
+        tbadge = '<p>' + "".join(
+            f'<a href="/t/{_esc(t["no"])}" style="text-decoration:none">'
+            f'<span class="badge">{_esc(t["name"])}</span></a>' for t in themes[:12]
+        ) + '</p>'
     fin_rows = "".join(
         f'<tr><td>{f["year"]}</td><td>{eok(f.get("revenue"))}</td>'
         f'<td>{eok(f.get("op_profit"))}</td><td>{eok(f.get("net_income"))}</td>'

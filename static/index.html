@@ -289,7 +289,7 @@ async function loadCards(asof){
     <span class="nm">${r.name}</span><span class="score">${r.score}</span></div>`).join('');
   const mkt=`<div class="row"><span class="nm">기준일</span><span>${asof||'-'}</span></div>
     <div class="row"><span class="nm">분석 종목수</span><span>${RANK.length}</span></div>
-    <div class="row" onclick="location.href='/weekly'"><span class="nm" style="color:var(--accent)">📰 주간 리포트 보기</span><span>→</span></div>
+    <div class="row" onclick="switchView('weekly')"><span class="nm" style="color:var(--accent)">📰 주간 리포트 보기</span><span>→</span></div>
     <div class="row" onclick="switchView('screener')"><span class="nm" style="color:var(--accent)">🔍 조건검색 스크리너</span><span>→</span></div>`;
   el.innerHTML=`
     <div class="scard"><h3>💎 저평가 우량주 TOP5 (가치+퀄리티)</h3>${val}</div>
@@ -297,7 +297,7 @@ async function loadCards(asof){
     <div class="scard"><h3>ℹ️ 개요</h3>${mkt}</div>`;
   try{
     const t=await fetch('/api/themes').then(x=>x.json());
-    const top=t.rows.slice(0,3).map(x=>`<div class="row" onclick="openTheme('${x.name.replace(/'/g,"\\'")}')">
+    const top=t.rows.slice(0,3).map(x=>`<div class="row" onclick="openTheme('${x.no}')">
       <span class="nm">${x.name}</span><span class="${(x.ret_1m||0)>=0?'pos':'neg'}">${x.ret_1m>=0?'+':''}${x.ret_1m}%</span></div>`).join('');
     document.getElementById('cardThemes').innerHTML=`<h3>🔥 최근 1개월 강세 테마 TOP3 <span class="mut" style="font-weight:400">구성종목 평균 주가등락</span></h3>${top}`;
   }catch(e){}
@@ -412,27 +412,32 @@ function switchView(v){
 }
 let GROUPS=null;
 async function loadWeekly(){
+  if(!THEME_PERF)THEME_PERF=await fetch('/api/themes').then(x=>x.json());
+  renderWeeklyPanel();
+}
+let THEME_PERF=null;
+function renderWeeklyPanel(){
   const el=document.getElementById('view-weekly');
-  if(el.dataset.done){return;}
-  el.innerHTML='<span class="mut">불러오는 중…</span>';
-  const t=await fetch('/api/themes').then(x=>x.json());
-  const perf=[...t.rows].sort((a,b)=>(b.ret_1m??-999)-(a.ret_1m??-999));
+  const perf=[...THEME_PERF.rows].sort((a,b)=>(tval(b,'ret_1m')??-999)-(tval(a,'ret_1m')??-999));
   const strong=perf.slice(0,10), weak=perf.slice(-5).reverse();
   const topValue=RANK.slice(0,15);
-  const trow=x=>`<tr style="cursor:pointer" onclick="openTheme('${x.name.replace(/'/g,"\\'")}')">
-    <td style="text-align:left">${x.name}</td><td class="${sign(x.ret_1m)}">${x.ret_1m==null?'–':(x.ret_1m>=0?'+':'')+x.ret_1m}</td>
-    <td class="${sign(x.ret_3m)}">${x.ret_3m==null?'–':(x.ret_3m>=0?'+':'')+x.ret_3m}</td>
-    <td class="mut">${x.priced}/${x.count}</td></tr>`;
+  const trow=x=>{const v1=tval(x,'ret_1m'), v3=tval(x,'ret_3m');
+    return `<tr style="cursor:pointer" onclick="openTheme('${x.no}')">
+    <td style="text-align:left">${x.name}</td><td class="${sign(v1)}">${v1==null?'–':(v1>=0?'+':'')+v1}</td>
+    <td class="${sign(v3)}">${v3==null?'–':(v3>=0?'+':'')+v3}</td>
+    <td class="mut">${x.priced}/${x.count}</td></tr>`;};
   let h=`<h3 style="margin-top:0">📰 주간 한국주식 시장 리포트 <span class="mut" style="font-weight:400;font-size:11px">
     기준일 ${document.getElementById('asof').textContent}</span></h3>
-    <p class="sub">최근 1개월 테마 강세·약세와 가치+퀄리티 상위 종목 정리입니다. 매매 추천이 아닙니다.</p>
+    ${themeSegHtml()}
+    <p class="sub" style="margin-top:8px">최근 1개월 테마 강세·약세와 가치+퀄리티 상위 종목 정리입니다.
+    코스피/코스닥 선택 시 해당 시장 종목만으로 다시 계산합니다. 매매 추천이 아닙니다.</p>
     <h3>🔥 강세 테마 TOP10 (최근 1개월)</h3>
     <div class="tblscroll"><table><thead><tr><th style="text-align:left">테마</th><th>1개월%</th><th>3개월%</th><th>종목수</th></tr></thead>
     <tbody>${strong.map(trow).join('')}</tbody></table></div>
     <h3>❄️ 약세 테마 (최근 1개월)</h3>
     <div class="tblscroll"><table><thead><tr><th style="text-align:left">테마</th><th>1개월%</th><th>3개월%</th><th>종목수</th></tr></thead>
     <tbody>${weak.map(trow).join('')}</tbody></table></div>
-    <h3>💎 가치+퀄리티 팩터 상위 종목</h3>
+    <h3>💎 가치+퀄리티 팩터 상위 종목 <span class="mut" style="font-weight:400;font-size:11px">전체 시장 기준</span></h3>
     <div class="tblscroll"><table><thead><tr><th style="text-align:left">종목</th><th>점수</th><th>PER</th><th>PBR</th><th>ROE%</th></tr></thead>
     <tbody>${topValue.map(r=>`<tr style="cursor:pointer" onclick="openStock('${r.code}')">
       <td style="text-align:left">${r.name}</td><td class="score">${r.score}</td>
@@ -451,6 +456,7 @@ function setThemeMkt(k){
   themeMkt=k;
   if(curView==='theme')renderThemesPanel();
   else if(curView==='themesall')renderThemesAllPanel();
+  else if(curView==='weekly')renderWeeklyPanel();
 }
 async function loadThemesAll(){
   if(!GROUPS)GROUPS=await fetch('/api/theme-groups').then(x=>x.json());
@@ -469,7 +475,7 @@ function renderThemesAllPanel(){
     <div class="tblscroll"><table><thead><tr><th style="text-align:left">테마</th><th style="text-align:left">그룹</th>
     <th>1개월%</th><th>종목수</th></tr></thead><tbody>`;
   for(const t of flat){const v=tval(t,'ret_1m');
-    h+=`<tr style="cursor:pointer" onclick="openTheme('${t.name.replace(/'/g,"\\'")}')">
+    h+=`<tr style="cursor:pointer" onclick="openTheme('${t.no}')">
     <td style="text-align:left">${t.name}</td><td style="text-align:left" class="mut">${t.major} · ${t.mid}</td>
     <td class="${sign(v)}">${v==null?'–':(v>=0?'+':'')+v}</td>
     <td class="mut">${t.count}</td></tr>`;}
@@ -556,7 +562,7 @@ async function openStock(code){
   if(s)html+=`<div class="sub">랭킹 #${s.rank} · ${s.market} · 시총 ${s.marcap_eok.toLocaleString()}억 · 현재가 ${s.price.toLocaleString()}</div>`;
   if(d.themes&&d.themes.length){
     html+=`<div style="margin-top:8px">`+d.themes.map(t=>
-      `<span class="badge" style="cursor:pointer;margin:2px 3px 0 0" onclick="openTheme('${t.replace(/'/g,"\\'")}')">${t}</span>`).join('')+`</div>`;
+      `<span class="badge" style="cursor:pointer;margin:2px 3px 0 0" onclick="openTheme('${t.no}')">${t.name}</span>`).join('')+`</div>`;
   }
   if(s){
     html+=`<div class="kpis">
@@ -688,7 +694,7 @@ function renderThemesPanel(){
     const midSorted=[...maj.mids].sort((a,b)=>(tval(b,'ret_1m')??-999)-(tval(a,'ret_1m')??-999));
     for(const mid of midSorted){
       const themesSorted=[...mid.themes].sort((a,b)=>(tval(b,'ret_1m')??-999)-(tval(a,'ret_1m')??-999));
-      const themes=themesSorted.map(t=>`<div class="trow" onclick="openTheme('${t.name.replace(/'/g,"\\'")}')">
+      const themes=themesSorted.map(t=>`<div class="trow" onclick="openTheme('${t.no}')">
         <span class="nm">· ${t.name}</span><span>${rpill(tval(t,'ret_1m'))}</span></div>`).join('');
       h+=`<details class="midbox"><summary>
         <span class="nm">${mid.mid} <span class="mut" style="font-size:11px">${mid.theme_count}테마</span></span>
@@ -700,10 +706,10 @@ function renderThemesPanel(){
     수익률은 각 그룹 구성종목 중 시총 상위 10개 기준(소형주 편차 축소). 애매한 테마는 '기타'.</div>`;
   el.innerHTML=h; el.dataset.done='1';
 }
-async function openTheme(name){
-  document.getElementById('drc').innerHTML=`<h2>${name}</h2><span class="mut">불러오는 중…</span>`;
+async function openTheme(no){
+  document.getElementById('drc').innerHTML=`<span class="mut">불러오는 중…</span>`;
   document.getElementById('dr').classList.add('on');document.getElementById('bd').classList.add('on');
-  const d=await fetch('/api/theme/'+encodeURIComponent(name)).then(x=>x.json());
+  const d=await fetch('/api/theme/'+encodeURIComponent(no)).then(x=>x.json());
   let html=`<h2>${d.theme} <span class="mut" style="font-size:13px">· ${d.count}종목</span></h2>`;
   html+=`<h3>구성 종목 <span class="mut" style="font-weight:400">· 랭킹 포함 우선</span></h3>
     <div class="tblscroll"><table><thead><tr><th style="text-align:left">종목</th>
