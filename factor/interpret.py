@@ -146,9 +146,10 @@ def anomaly_flags(r, pf):
                      "text": "영업이익은 적자이나 순이익은 흑자입니다. "
                              "본업 외 손익(자산매각·평가이익 등)에 기댄 결과일 수 있습니다."})
     if pf and pf.get("debt_ratio") is not None and dr is not None and (dr - pf["debt_ratio"]) >= 50:
+        dr_r, pf_r = round(dr), round(pf["debt_ratio"])   # 표시값 기준으로 차이도 계산(반올림 불일치 방지)
         flags.append({"emoji": "🟡", "label": "부채비율 급증",
-                     "text": f"부채비율이 전년 {pf['debt_ratio']:.0f}%에서 {dr:.0f}%로 "
-                             f"{dr-pf['debt_ratio']:.0f}%p 급증했습니다."})
+                     "text": f"부채비율이 전년 {pf_r:.0f}%에서 {dr_r:.0f}%로 "
+                             f"{dr_r-pf_r:.0f}%p 급증했습니다."})
     if g is not None and g2 is not None and g < 0 and g2 < 0:
         flags.append({"emoji": "🟡", "label": "매출 2년 연속 감소",
                      "text": "최근 2개 회계연도 모두 매출이 전년보다 감소했습니다."})
