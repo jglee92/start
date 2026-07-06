@@ -77,16 +77,9 @@ def load_theme_map():
         return json.load(f)
 
 
-def compute_theme_perf(conn, tmap=None, master=None, top_n=10):
-    """테마별 최근 1개월(~21거래일)·3개월(~63거래일) 수익률.
-    편차 축소를 위해 각 테마의 '시총 상위 top_n 종목'만 동일가중으로 계산."""
-    if tmap is None:
-        tmap = load_theme_map()
-    if master is None:
-        from factor.universe import build_master
-        master = build_master()
+def _perf_context(conn, tmap, master):
+    """모든 테마 구성종목의 최근 수익률·시총 맵 계산 (한 번만)."""
     shares = {str(r.code).zfill(6): r.shares for r in master.itertuples(index=False)}
-
     needed = set()
     for t in tmap["themes"].values():
         needed.update(t["codes"])
@@ -98,26 +91,76 @@ def compute_theme_perf(conn, tmap=None, master=None, top_n=10):
         cl = [r[0] for r in rows]
         if not cl:
             continue
-        r1 = (cl[0] / cl[21] - 1) if len(cl) >= 22 and cl[21] else None
-        r3 = (cl[0] / cl[63] - 1) if len(cl) >= 64 and cl[63] else None
-        ret[c] = (r1, r3)
-        sh = shares.get(c)
-        if sh:
-            marcap[c] = sh * cl[0]
+        ret[c] = ((cl[0] / cl[21] - 1) if len(cl) >= 22 and cl[21] else None,
+                  (cl[0] / cl[63] - 1) if len(cl) >= 64 and cl[63] else None)
+        if shares.get(c):
+            marcap[c] = shares[c] * cl[0]
+    return ret, marcap
+
+
+def _perf_for(codes, ret, marcap, top_n=10):
+    """codes 중 가격 있는 것을 시총 상위 top_n 골라 동일가중 수익률."""
+    priced = [c for c in set(codes) if c in ret]
+    priced.sort(key=lambda c: marcap.get(c, 0), reverse=True)
+    top = priced[:top_n]
+    r1s = [ret[c][0] for c in top if ret[c][0] is not None]
+    r3s = [ret[c][1] for c in top if ret[c][1] is not None]
+    return {
+        "priced": len(priced), "used": len(r1s),
+        "ret_1m": round(sum(r1s) / len(r1s) * 100, 1) if r1s else None,
+        "ret_3m": round(sum(r3s) / len(r3s) * 100, 1) if r3s else None,
+    }
+
+
+def _ctx(conn, tmap, master):
+    if tmap is None:
+        tmap = load_theme_map()
+    if master is None:
+        from factor.universe import build_master
+        master = build_master()
+    return tmap, master, _perf_context(conn, tmap, master)
+
+
+def compute_theme_perf(conn, tmap=None, master=None, top_n=10):
+    """테마(소그룹)별 시총상위 top_n 동일가중 수익률."""
+    tmap, master, (ret, marcap) = _ctx(conn, tmap, master)
     out = []
     for no, t in tmap["themes"].items():
-        # 가격 있는 구성종목을 시총 상위로 정렬 → top_n
-        priced = [c for c in t["codes"] if c in ret]
-        priced.sort(key=lambda c: marcap.get(c, 0), reverse=True)
-        top = priced[:top_n]
-        r1s = [ret[c][0] for c in top if ret[c][0] is not None]
-        r3s = [ret[c][1] for c in top if ret[c][1] is not None]
-        out.append({
-            "no": no, "name": t["name"], "count": len(t["codes"]),
-            "priced": len(priced), "used": len(r1s),
-            "ret_1m": round(sum(r1s) / len(r1s) * 100, 1) if r1s else None,
-            "ret_3m": round(sum(r3s) / len(r3s) * 100, 1) if r3s else None,
-        })
+        p = _perf_for(t["codes"], ret, marcap, top_n)
+        out.append({"no": no, "name": t["name"], "count": len(t["codes"]), **p})
+    return out
+
+
+def compute_group_hierarchy(conn, tmap=None, master=None, top_n=10):
+    """대그룹 → 중그룹 → 소그룹(테마) 3단계 + 각 레벨 시총상위 top_n 수익률."""
+    from factor.theme_groups import classify
+    tmap, master, (ret, marcap) = _ctx(conn, tmap, master)
+    # 소그룹(테마) 단위 정보 + 그룹 태깅
+    mids = {}          # (major,mid) -> {codes:set, themes:[...]}
+    for no, t in tmap["themes"].items():
+        major, mid = classify(t["name"])
+        m = mids.setdefault((major, mid), {"codes": set(), "themes": []})
+        m["codes"].update(t["codes"])
+        tp = _perf_for(t["codes"], ret, marcap, top_n)
+        m["themes"].append({"no": no, "name": t["name"],
+                            "count": len(t["codes"]), **tp})
+    # 대그룹 집계
+    majors = {}
+    for (major, mid), m in mids.items():
+        mid_perf = _perf_for(m["codes"], ret, marcap, top_n)
+        m["themes"].sort(key=lambda x: (x["ret_1m"] is not None, x["ret_1m"]),
+                         reverse=True)
+        maj = majors.setdefault(major, {"codes": set(), "mids": []})
+        maj["codes"].update(m["codes"])
+        maj["mids"].append({"mid": mid, **mid_perf,
+                            "theme_count": len(m["themes"]), "themes": m["themes"]})
+    out = []
+    for major, maj in majors.items():
+        maj_perf = _perf_for(maj["codes"], ret, marcap, top_n)
+        maj["mids"].sort(key=lambda x: (x["ret_1m"] is not None, x["ret_1m"]),
+                         reverse=True)
+        out.append({"major": major, **maj_perf, "mids": maj["mids"]})
+    out.sort(key=lambda x: (x["ret_1m"] is not None, x["ret_1m"]), reverse=True)
     return out
 
 

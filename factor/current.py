@@ -19,6 +19,13 @@ def _latest_close(conn, code):
     return (r[0], r[1]) if r else None
 
 
+def _prev_close(conn, code, before_date):
+    r = conn.execute(
+        "SELECT close FROM daily_prices WHERE code=? AND close IS NOT NULL "
+        "AND date<? ORDER BY date DESC LIMIT 1", (code, before_date)).fetchone()
+    return r[0] if r else None
+
+
 def _latest_financials(conn, code):
     r = conn.execute(
         "SELECT year,revenue,op_profit,net_income,assets,liabilities,equity,"
@@ -29,6 +36,23 @@ def _latest_financials(conn, code):
     keys = ["year", "revenue", "op_profit", "net_income", "assets",
             "liabilities", "equity", "debt_ratio", "op_margin"]
     return dict(zip(keys, r))
+
+
+def _prior_financials(conn, code, before_year):
+    """직전 연도 재무(성장률 계산용). 연속연도가 아니어도 그 다음으로 최신인 것."""
+    r = conn.execute(
+        "SELECT year,revenue,op_profit,net_income FROM financials "
+        "WHERE code=? AND year<? ORDER BY year DESC LIMIT 1",
+        (code, before_year)).fetchone()
+    if not r:
+        return None
+    return {"year": r[0], "revenue": r[1], "op_profit": r[2], "net_income": r[3]}
+
+
+def _growth_pct(cur, prev):
+    if cur is None or prev is None or prev <= 0:
+        return None
+    return (cur / prev - 1) * 100
 
 
 def compute_ranking(conn, master=None, asof=None):
@@ -53,16 +77,25 @@ def compute_ranking(conn, master=None, asof=None):
         fin = _latest_financials(conn, r.code)
         if not fin:
             continue
-        ni, eq, rev = fin["net_income"], fin["equity"], fin["revenue"]
+        ni, eq, rev, op = fin["net_income"], fin["equity"], fin["revenue"], fin["op_profit"]
         om, dr = fin["op_margin"], fin["debt_ratio"]
         if cfg.EXCLUDE_NEGATIVE_EARNINGS and (ni is None or ni <= 0):
             continue
+        prev = _prev_close(conn, r.code, p[1])
+        chg_pct = ((p[0] / prev - 1) * 100) if prev else None
+        dps = db.get_dividend(conn, r.code, fin["year"])
+        div_yield = (dps / p[0] * 100) if dps else None
+        pf = _prior_financials(conn, r.code, fin["year"])
+        rev_growth = _growth_pct(rev, pf["revenue"]) if pf else None
+        op_growth = _growth_pct(op, pf["op_profit"]) if pf else None
         rows.append({
             "code": r.code, "name": r.name, "market": r.market,
             "sector": classify(getattr(r, "industry", None)),
             "industry": getattr(r, "industry", None),
-            "price": p[0], "price_date": p[1], "marcap": marcap,
+            "price": p[0], "price_date": p[1], "chg_pct": chg_pct, "marcap": marcap,
             "fiscal_year": fin["year"], "fin": fin,
+            "revenue": rev, "op_profit": op, "net_income": ni,
+            "div_yield": div_yield, "rev_growth": rev_growth, "op_growth": op_growth,
             "per": (marcap / ni) if ni else None,
             "pbr": (marcap / eq) if eq else None,
             "psr": (marcap / rev) if rev else None,
@@ -74,14 +107,17 @@ def compute_ranking(conn, master=None, asof=None):
             "_roe": (ni / eq) if (ni is not None and eq) else None,
             "_opm": om,
             "_lowdebt": (-dr) if dr is not None else None,
+            "_growth": rev_growth,
         })
     if not rows:
         return []
 
+    # 백테스트로 검증된 종합점수(6팩터)는 그대로 유지 — growth는 여기 섞지 않음
     factors = [("_ey", cfg.W_EARNINGS_YIELD), ("_by", cfg.W_BOOK_YIELD),
                ("_sy", cfg.W_SALES_YIELD), ("_roe", cfg.W_ROE),
                ("_opm", cfg.W_OP_MARGIN), ("_lowdebt", cfg.W_LOW_DEBT)]
     ranks = {k: pct_rank([r[k] for r in rows]) for k, _ in factors}
+    growth_ranks = pct_rank([r["_growth"] for r in rows])   # 표시용 별도 백분위
     for i, r in enumerate(rows):
         s, wsum, valid = 0.0, 0.0, 0
         breakdown = {}
@@ -94,12 +130,17 @@ def compute_ranking(conn, master=None, asof=None):
                 valid += 1
         r["valid"] = valid
         r["score"] = round((s / wsum) * 100, 1) if wsum else 0.0
+        breakdown["_growth"] = growth_ranks[i]
         r["breakdown"] = {k: (round(v, 2) if v is not None else None)
                           for k, v in breakdown.items()}
     rows = [r for r in rows if r["valid"] >= cfg.MIN_VALID_FACTORS]
     rows.sort(key=lambda r: r["score"], reverse=True)
     for i, r in enumerate(rows, 1):
         r["rank"] = i
+    from factor.interpret import dimension_grades, sector_averages
+    sec_avg = sector_averages(rows)
+    for r in rows:
+        r["dims"] = dimension_grades(r, sec_avg)
     return rows
 
 

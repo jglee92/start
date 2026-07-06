@@ -43,6 +43,13 @@ th,td{{padding:7px 9px;border-bottom:1px solid #8883;text-align:right;white-spac
 th:first-child,td:first-child{{text-align:left}}
 .wrap{{overflow-x:auto}} .muted{{color:#5e6b79}} .pos{{color:#1a9e63}} .neg{{color:#d23b41}}
 .badge{{display:inline-block;padding:1px 8px;border-radius:10px;background:#8881;font-size:12px;margin:2px 3px 0 0}}
+.dimgrid{{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin:10px 0}}
+@media(max-width:560px){{.dimgrid{{grid-template-columns:1fr}}}}
+.dimcard{{border:1px solid #8883;border-radius:10px;padding:12px 14px;background:#8880.06}}
+.dimhead{{font-weight:700;font-size:14px;display:flex;justify-content:space-between}}
+.dimstars{{color:#e0a500;letter-spacing:1px;font-size:13px}}
+.dimlabel{{font-size:12px;color:#5e6b79;margin:2px 0 4px}}
+.dimtext{{font-size:13px;margin:0;line-height:1.55}}
 footer{{margin-top:32px;padding-top:16px;border-top:1px solid #8883;font-size:12px;color:#888}}
 </style></head><body>
 <nav><a href="/">← 대시보드</a> · <a href="/weekly">주간 리포트</a> · <a href="/themes-index">테마 전체</a> · <a href="/about">소개·면책</a>{extra_nav}</nav>
@@ -103,18 +110,47 @@ def _spark(prices):
             f'{last:,} (<span class="{cls}">{pct:+.1f}%</span>)</p>')
 
 
+_DIM_META = {"value": ("💰", "밸류에이션"), "profit": ("📈", "수익성"),
+             "safety": ("🛡️", "안정성"), "growth": ("🌱", "성장성")}
+
+
+def _stars_html(n):
+    if n is None:
+        return '<span class="muted">–</span>'
+    return "★" * n + '<span class="muted">' + "☆" * (5 - n) + "</span>"
+
+
+def _dims_html(dims):
+    if not dims:
+        return ""
+    cards = ""
+    for key, (emoji, label) in _DIM_META.items():
+        d = dims.get(key) or {}
+        cards += (f'<div class="dimcard"><div class="dimhead">{emoji} {label} '
+                  f'<span class="dimstars">{_stars_html(d.get("stars"))}</span></div>'
+                  f'<div class="dimlabel">{_esc(d.get("label"))}</div>'
+                  f'<p class="dimtext">{_esc(d.get("text"))}</p></div>')
+    overall = dims.get("overall_text") or ""
+    return (f'<h2>기업 건강검진 <span class="muted" style="font-size:13px;font-weight:400">'
+            f'· 같은 업종·시총 내 상대 평가</span></h2>'
+            f'<div class="dimgrid">{cards}</div>'
+            + (f'<p class="muted">{_esc(overall)}</p>' if overall else ""))
+
+
 def render_stock_page(code, name, summary, financials, prices, news, themes, canonical):
     def eok(v):
         return "–" if v is None else f"{round(v/1e8):,}"
     head = f'<h1>{_esc(name)} <span class="muted" style="font-size:15px">{_esc(code)}</span></h1>'
-    head += '<p class="muted">가치+퀄리티 팩터 기준 재무·밸류에이션과 관련 뉴스.</p>'
+    head += '<p class="muted">재무제표·건강검진 점수·밸류에이션과 관련 뉴스를 한 페이지에서.</p>'
     kpi = ""
+    dims_html = ""
     if summary:
-        kpi = (f'<p>가치+퀄리티 점수 <b>{_fmt(summary.get("score"))}</b> · '
+        kpi = (f'<p>가치+퀄리티 종합점수 <b>{_fmt(summary.get("score"))}</b> · '
                f'PER {_fmt(summary.get("per"))} · PBR {_fmt(summary.get("pbr"),2)} · '
                f'ROE {_fmt(summary.get("roe"))}% · 영업이익률 {_fmt(summary.get("op_margin"))}% · '
                f'부채비율 {_fmt(summary.get("debt_ratio"),0)}% · '
                f'시총 {summary.get("marcap_eok",0):,}억</p>')
+        dims_html = _dims_html(summary.get("dims"))
     tbadge = ""
     if themes:
         tbadge = '<p>' + "".join(f'<span class="badge">{_esc(t)}</span>'
@@ -130,6 +166,7 @@ def render_stock_page(code, name, summary, financials, prices, news, themes, can
         f'<span class="muted" style="font-size:12px">{_esc(n.get("source"))} · '
         f'{_esc(n.get("pub"))}</span></p>' for n in news) or '<p class="muted">뉴스 없음</p>'
     body = f"""{head}{kpi}{tbadge}
+{dims_html}
 <h2>주가 (최근)</h2>{_spark(prices)}
 <h2>재무 추이 (DART 사업보고서, 단위 억)</h2>
 <div class="wrap"><table><thead><tr><th>연도</th><th>매출</th><th>영업이익</th>

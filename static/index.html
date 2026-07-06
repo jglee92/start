@@ -48,6 +48,17 @@
   .scard .row{display:flex;justify-content:space-between;gap:8px;padding:3px 0;font-size:13px;cursor:pointer}
   .scard .row:hover{color:var(--accent)}
   .scard .nm{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .midbox{border:1px solid var(--line);border-radius:8px;margin:5px 0;background:var(--panel2)}
+  .midbox summary{display:flex;justify-content:space-between;align-items:center;gap:10px;
+    padding:9px 12px;cursor:pointer;list-style:none;font-size:13.5px}
+  .midbox summary::-webkit-details-marker{display:none}
+  .midbox summary:before{content:"▸";color:var(--dim);margin-right:2px}
+  .midbox[open] summary:before{content:"▾"}
+  .midbox .themes{padding:2px 12px 10px 26px}
+  .trow{display:flex;justify-content:space-between;align-items:center;gap:8px;
+    padding:4px 0;font-size:13px;cursor:pointer;border-top:1px solid var(--line)}
+  .trow:hover{color:var(--accent)}
+  .nm{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
   .tabs{display:flex;gap:6px;padding:0 22px;margin-top:12px}
   .tab{padding:8px 16px;border:1px solid var(--line);border-bottom:none;
     border-radius:8px 8px 0 0;cursor:pointer;background:var(--panel2);color:var(--dim)}
@@ -92,6 +103,12 @@
   .card{background:var(--panel2);border:1px solid var(--line);border-radius:8px;padding:12px}
   .card .t{color:var(--dim);font-size:12px}.card .n{font-size:20px;font-weight:700;margin-top:3px}
   svg{display:block;width:100%;height:120px}
+  .dimgrid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:8px 0}
+  .dimcard{border:1px solid var(--line);border-radius:9px;padding:10px 12px;background:var(--panel2)}
+  .dimhead{font-weight:700;font-size:13px;display:flex;justify-content:space-between;align-items:center}
+  .dimstars{color:#e0a500;letter-spacing:1px;font-size:12px}
+  .dimlabel{font-size:11px;color:var(--dim);margin:2px 0 3px}
+  .dimtext{font-size:12px;margin:0;line-height:1.5}
   .news{padding:8px 0;border-bottom:1px solid var(--line)}
   .news a{color:var(--accent);text-decoration:none;font-size:13px;line-height:1.4}
   .news a:hover{text-decoration:underline}
@@ -230,6 +247,20 @@ document.querySelectorAll('#tbl th').forEach(th=>th.onclick=()=>{
 document.getElementById('q').oninput=render;
 
 const BRK={_ey:'이익수익률',_by:'장부수익률',_sy:'매출수익률',_roe:'ROE',_opm:'영업이익률',_lowdebt:'저부채'};
+const DIM_META={value:['💰','밸류에이션'],profit:['📈','수익성'],safety:['🛡️','안정성'],growth:['🌱','성장성']};
+function starsHtml(n){if(n==null)return '<span class="mut">–</span>';
+  return '★'.repeat(n)+'<span class="mut">'+'☆'.repeat(5-n)+'</span>';}
+function dimsHtml(dims){
+  if(!dims)return '';
+  let h='<h3>🩺 기업 건강검진 <span class="mut" style="font-weight:400;font-size:11px">업종·시총 내 상대평가</span></h3><div class="dimgrid">';
+  for(const k in DIM_META){const [emoji,label]=DIM_META[k];const d=dims[k]||{};
+    h+=`<div class="dimcard"><div class="dimhead">${emoji} ${label}
+      <span class="dimstars">${starsHtml(d.stars)}</span></div>
+      <div class="dimlabel">${d.label||''}</div><p class="dimtext">${d.text||''}</p></div>`;}
+  h+='</div>';
+  if(dims.overall_text)h+=`<p class="mut" style="font-size:12px">${dims.overall_text}</p>`;
+  return h;
+}
 async function openStock(code){
   const d=await fetch('/api/stock/'+code).then(x=>x.json());
   const s=d.summary;
@@ -250,10 +281,13 @@ async function openStock(code){
       <div class="kpi"><div class="l">영업이익률</div><div class="v">${fmt(s.op_margin)}%</div></div>
       <div class="kpi"><div class="l">부채비율</div><div class="v">${fmt(s.debt_ratio,0)}%</div></div>
     </div>`;
-    html+=`<h3>팩터 백분위 (0~1, 높을수록 우위)</h3>`;
+    html+=dimsHtml(s.dims);
+    html+=`<details style="margin-top:10px"><summary class="mut" style="cursor:pointer;font-size:12px">
+      심화: 팩터 백분위 보기 (0~1, 높을수록 우위)</summary>`;
     for(const k in BRK){const v=s.breakdown[k];
       html+=`<div class="brk">${BRK[k]} <span class="mut">${v==null?'–':v}</span>
         <div class="bar"><i style="width:${v==null?0:v*100}%"></i></div></div>`;}
+    html+=`</details>`;
   }
   html+=`<h3>가격 (2023~)</h3>`+spark(d.prices);
   html+=`<h3>재무 추이 (DART 연결/별도, 단위 억)</h3>`+finTable(d.financials);
@@ -334,36 +368,30 @@ document.querySelectorAll('.tab').forEach(t=>t.onclick=()=>{
   if(on==='sec')loadSectors();
   if(on==='theme')loadThemes();
 });
-let THEMES=[], tSort='ret_1m';
+const rpill=(v)=>`<span style="display:inline-block;min-width:52px;text-align:right;
+  padding:1px 7px;border-radius:6px;background:${heatColor(v)}">${v==null?'·':(v>=0?'+':'')+v}%</span>`;
 async function loadThemes(){
   const el=document.getElementById('theme');
-  if(!el.dataset.done){
-    el.innerHTML='<span class="mut">테마 성과 계산 중… (최초 수초)</span>';
-    const t=await fetch('/api/themes').then(x=>x.json());
-    THEMES=t.rows; el.dataset.done='1';
+  if(el.dataset.done)return;
+  el.innerHTML='<span class="mut">테마 그룹 계산 중… (최초 수초)</span>';
+  const g=await fetch('/api/theme-groups').then(x=>x.json());
+  let h=`<div class="sub" style="margin-bottom:10px">대그룹 › 중그룹 › 개별 테마. 최근 1개월/3개월
+    <b>구성종목 시총상위 10개 동일가중 주가등락</b>. 중그룹을 펼쳐 개별 테마·종목을 보세요.</div>`;
+  for(const maj of g.groups){
+    h+=`<div style="margin:14px 0 4px;font-weight:700;font-size:15px">${maj.major}
+      <span style="font-weight:400;font-size:12px" class="mut">1M ${rpill(maj.ret_1m)} · 3M ${rpill(maj.ret_3m)}</span></div>`;
+    for(const mid of maj.mids){
+      const themes=mid.themes.map(t=>`<div class="trow" onclick="openTheme('${t.name.replace(/'/g,"\\'")}')">
+        <span class="nm">· ${t.name}</span><span>${rpill(t.ret_1m)}</span></div>`).join('');
+      h+=`<details class="midbox"><summary>
+        <span class="nm">${mid.mid} <span class="mut" style="font-size:11px">${mid.theme_count}테마</span></span>
+        <span>1M ${rpill(mid.ret_1m)} · 3M ${rpill(mid.ret_3m)}</span></summary>
+        <div class="themes">${themes}</div></details>`;
+    }
   }
-  renderThemes();
-}
-function renderThemes(){
-  const el=document.getElementById('theme');
-  const rows=[...THEMES].sort((a,b)=>{let x=a[tSort],y=b[tSort];
-    if(x==null)x=-1e9;if(y==null)y=-1e9;return y-x;});
-  let h=`<div class="sub" style="margin-bottom:8px">네이버 금융 테마 · 구성종목 동일가중 수익률(캐시 가격). 정렬:
-    <b>${tSort==='ret_1m'?'1개월':'3개월'}</b> · 테마 클릭 → 종목·뉴스</div>`;
-  h+='<div class="tblscroll"><table><thead><tr><th style="text-align:left">테마</th>'
-    +`<th data-ts="ret_1m" style="cursor:pointer">1개월%</th>`
-    +`<th data-ts="ret_3m" style="cursor:pointer">3개월%</th><th>종목수</th></tr></thead><tbody>`;
-  for(const r of rows.slice(0,80)){
-    h+=`<tr style="cursor:pointer" onclick="openTheme('${r.name.replace(/'/g,"\\'")}')">
-      <td style="text-align:left">${r.name}</td>
-      <td style="background:${heatColor(r.ret_1m)}">${r.ret_1m==null?'·':(r.ret_1m>=0?'+':'')+r.ret_1m}</td>
-      <td style="background:${heatColor(r.ret_3m)}">${r.ret_3m==null?'·':(r.ret_3m>=0?'+':'')+r.ret_3m}</td>
-      <td class="mut">${r.priced}/${r.count}</td></tr>`;
-  }
-  h+='</tbody></table></div>';
-  h+=`<div class="warn" style="margin-top:12px">네이버 금융 테마 자동수집(개인 리서치용). 종목수 = 가격보유/전체. 소형주 다수는 가격 미보유로 제외될 수 있음.</div>`;
-  el.innerHTML=h;
-  el.querySelectorAll('th[data-ts]').forEach(th=>th.onclick=()=>{tSort=th.dataset.ts;renderThemes();});
+  h+=`<div class="warn" style="margin-top:14px">네이버 금융 테마를 대/중 그룹으로 자동 분류(개인 리서치용).
+    수익률은 각 그룹 구성종목 중 시총 상위 10개 기준(소형주 편차 축소). 애매한 테마는 '기타'.</div>`;
+  el.innerHTML=h; el.dataset.done='1';
 }
 async function openTheme(name){
   document.getElementById('drc').innerHTML=`<h2>${name}</h2><span class="mut">불러오는 중…</span>`;

@@ -77,6 +77,12 @@ def api_ranking():
         "debt_ratio": _r(r["debt_ratio"], 0),
         "marcap_eok": round(r["marcap"] / 1e8),
         "fiscal_year": r["fiscal_year"],
+        "price": r.get("price"), "chg_pct": _r(r.get("chg_pct"), 2),
+        "revenue_eok": round(r["revenue"] / 1e8) if r.get("revenue") else None,
+        "op_profit_eok": round(r["op_profit"] / 1e8) if r.get("op_profit") else None,
+        "div_yield": _r(r.get("div_yield"), 2),
+        "rev_growth": _r(r.get("rev_growth")),
+        "dims": r.get("dims"),
     } for r in rk]
     return {"asof": asof, "count": len(slim), "rows": slim}
 
@@ -106,7 +112,8 @@ def api_stock(code: str):
             "per": _r(row["per"]), "pbr": _r(row["pbr"], 2),
             "psr": _r(row["psr"], 2), "roe": _r(row["roe"]),
             "op_margin": _r(row["op_margin"]), "debt_ratio": _r(row["debt_ratio"], 0),
-            "breakdown": row["breakdown"],
+            "div_yield": _r(row.get("div_yield"), 2), "rev_growth": _r(row.get("rev_growth")),
+            "breakdown": row["breakdown"], "dims": row.get("dims"),
         },
         "financials": [{
             "year": f[0], "revenue": f[1], "op_profit": f[2], "net_income": f[3],
@@ -142,6 +149,20 @@ def api_themes():
             if r.get("used", 0) >= 3 and r["count"] >= 8]
     rows.sort(key=lambda r: (r["ret_1m"] is not None, r["ret_1m"]), reverse=True)
     return {"count": len(rows), "rows": rows}
+
+
+@app.get("/api/theme-groups")
+def api_theme_groups():
+    """대그룹→중그룹→소그룹(테마) 3단계 + 최근 수익률."""
+    if _cache.get("theme_groups") is None:
+        from factor.themes import compute_group_hierarchy
+        conn = _conn()
+        if _cache["master"] is None:
+            _cache["master"] = build_master()
+        _cache["theme_groups"] = compute_group_hierarchy(
+            conn, get_tmap(), master=_cache["master"])
+        conn.close()
+    return {"groups": _cache["theme_groups"]}
 
 
 @app.get("/api/theme/{name}")
@@ -224,6 +245,7 @@ def api_refresh():
     _cache["master"] = None
     _cache["sectors"] = None
     _cache["theme_perf"] = None
+    _cache["theme_groups"] = None
     rk = get_ranking()
     return {"ok": True, "count": len(rk), "asof": rk[0]["price_date"] if rk else None}
 
@@ -382,7 +404,8 @@ def stock_page(code: str):
     summary = None if row is None else {
         "score": row["score"], "per": _r(row["per"]), "pbr": _r(row["pbr"], 2),
         "roe": _r(row["roe"]), "op_margin": _r(row["op_margin"]),
-        "debt_ratio": _r(row["debt_ratio"], 0), "marcap_eok": round(row["marcap"] / 1e8)}
+        "debt_ratio": _r(row["debt_ratio"], 0), "marcap_eok": round(row["marcap"] / 1e8),
+        "dims": row.get("dims")}
     financials = [{"year": f[0], "revenue": f[1], "op_profit": f[2],
                    "net_income": f[3], "equity": f[4], "debt_ratio": _r(f[6], 0),
                    "op_margin": _r(f[7])} for f in fins]
