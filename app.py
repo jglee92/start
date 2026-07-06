@@ -65,10 +65,21 @@ def get_ranking():
     return _cache["ranking"]
 
 
+def get_asof():
+    """전체 데이터의 실제 최신 가격일. (특정 1위 종목의 마지막 거래일이 아니라
+    daily_prices 전체의 MAX(date) — 개별 종목의 데이터 공백에 영향받지 않음)"""
+    if _cache.get("asof") is None:
+        conn = _conn()
+        row = conn.execute("SELECT MAX(date) FROM daily_prices").fetchone()
+        conn.close()
+        _cache["asof"] = row[0] if row else None
+    return _cache["asof"]
+
+
 @app.get("/api/ranking")
 def api_ranking():
     rk = get_ranking()
-    asof = rk[0]["price_date"] if rk else None
+    asof = get_asof()
     slim = [{
         "rank": r["rank"], "code": r["code"], "name": r["name"],
         "market": r["market"], "sector": r.get("sector"), "score": r["score"],
@@ -280,8 +291,9 @@ def api_refresh():
     _cache["sectors"] = None
     _cache["theme_perf"] = None
     _cache["theme_groups"] = None
+    _cache["asof"] = None
     rk = get_ranking()
-    return {"ok": True, "count": len(rk), "asof": rk[0]["price_date"] if rk else None}
+    return {"ok": True, "count": len(rk), "asof": get_asof()}
 
 
 _news_cache = {}   # query -> (ts, items)
@@ -515,7 +527,7 @@ def weekly():
     perf.sort(key=lambda t: t["ret_1m"], reverse=True)
     strong, weak = perf[:10], perf[-5:][::-1]
     rk = get_ranking()
-    asof = rk[0]["price_date"] if rk else ""
+    asof = get_asof()
     top_value = [{"code": r["code"], "name": r["name"], "score": r["score"],
                   "per": _r(r["per"]), "pbr": _r(r["pbr"], 2), "roe": _r(r["roe"]),
                   "sector": r.get("sector")} for r in rk[:15]]
@@ -530,19 +542,10 @@ def learn_index():
 
 @app.get("/learn/{slug}", response_class=HTMLResponse)
 def learn_page(slug: str):
-    from glossary import TERMS, COMPARE_PAIR, render_glossary
+    from glossary import TERMS, render_glossary
     if slug not in TERMS:
         raise HTTPException(404, "문서 없음")
-    rk = {r["code"]: r for r in get_ranking()}
-    term = TERMS[slug]
-    compare = []
-    for code, fallback in COMPARE_PAIR:
-        r = rk.get(code)
-        compare.append({
-            "code": code, "name": r["name"] if r else fallback,
-            "value": (r or {}).get(term["metric"]),
-            "score": (r or {}).get("score"),
-        })
+    compare = _learn_compare(TERMS[slug])
     return render_glossary(slug, compare, f"{BASE_URL}/learn/{slug}")
 
 
@@ -550,7 +553,7 @@ def learn_page(slug: str):
 def anomaly_report():
     from content import render_anomaly_report
     rk = get_ranking()
-    asof = rk[0]["price_date"] if rk else ""
+    asof = get_asof()
     grouped: dict[str, list] = {}
     for r in rk:
         for f in (r.get("flags") or []):
@@ -582,13 +585,46 @@ def themes_index():
 
 
 @app.get("/api/about")
+def _extract_body(html: str) -> str:
+    """전체 HTML 문서에서 <body> 내용만 추출(SPA 인라인 표시용 공용 헬퍼)."""
+    import re
+    m = re.search(r"<body>(.*)</body>", html, re.S)
+    return m.group(1) if m else html
+
+
 def api_about():
     """about.html의 <body> 내용만 추출(SPA 인라인 표시용)."""
-    import re
-    html = _page("about.html")
-    m = re.search(r"<body>(.*)</body>", html, re.S)
-    frag = m.group(1) if m else html
-    return {"html": frag}
+    return {"html": _extract_body(_page("about.html"))}
+
+
+def _learn_compare(term):
+    from glossary import COMPARE_PAIR
+    rk = {r["code"]: r for r in get_ranking()}
+    compare = []
+    for code, fallback in COMPARE_PAIR:
+        r = rk.get(code)
+        compare.append({
+            "code": code, "name": r["name"] if r else fallback,
+            "value": (r or {}).get(term["metric"]),
+            "score": (r or {}).get("score"),
+        })
+    return compare
+
+
+@app.get("/api/learn")
+def api_learn_index():
+    from glossary import render_learn_index
+    return {"html": _extract_body(render_learn_index(f"{BASE_URL}/learn"))}
+
+
+@app.get("/api/learn/{slug}")
+def api_learn_term(slug: str):
+    from glossary import TERMS, render_glossary
+    if slug not in TERMS:
+        raise HTTPException(404, "문서 없음")
+    compare = _learn_compare(TERMS[slug])
+    html = render_glossary(slug, compare, f"{BASE_URL}/learn/{slug}")
+    return {"html": _extract_body(html)}
 
 
 @app.get("/robots.txt", response_class=PlainTextResponse)
