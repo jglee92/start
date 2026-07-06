@@ -151,6 +151,9 @@
   .drawer.on{transform:translateX(0)}
   .drawer h2{margin:0 0 2px;font-size:17px}
   .x{position:absolute;top:14px;right:16px;cursor:pointer;color:var(--dim);font-size:20px;border:none;background:none}
+  .backbtn{display:block;margin:0 0 10px;padding:5px 12px;border:1px solid var(--line);
+    border-radius:7px;background:var(--panel2);color:var(--txt);cursor:pointer;font-size:12.5px}
+  .backbtn:hover{border-color:var(--accent);color:var(--accent)}
   .kpis{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:14px 0}
   .kpi{background:var(--panel2);border:1px solid var(--line);border-radius:8px;padding:9px 11px}
   .kpi .l{color:var(--dim);font-size:11px} .kpi .v{font-size:16px;font-weight:700;margin-top:2px}
@@ -670,10 +673,27 @@ function dimsHtml(dims){
   if(dims.overall_text)h+=`<p class="mut" style="font-size:12px">${dims.overall_text}</p>`;
   return h;
 }
-async function openStock(code){
+let drawerHistory=[], drawerCurrent=null;
+function backHtml(){
+  return drawerHistory.length
+    ? `<button class="backbtn" onclick="drawerBack()">← 뒤로</button>` : '';
+}
+function drawerBack(){
+  const prev=drawerHistory.pop();
+  if(!prev){closeDrawer();return;}
+  if(prev.type==='theme')openTheme(prev.id,true);
+  else if(prev.type==='stock')openStock(prev.id,true);
+  else if(prev.type==='sector')openSector(prev.id,true);
+}
+async function openStock(code,fromBack){
+  if(!fromBack&&drawerCurrent)drawerHistory.push(drawerCurrent);
+  drawerCurrent={type:'stock',id:code};
+  document.getElementById('drc').innerHTML=`${backHtml()}<span class="mut">불러오는 중…</span>`;
+  document.getElementById('dr').classList.add('on');
+  document.getElementById('bd').classList.add('on');
   const d=await fetch('/api/stock/'+code).then(x=>x.json());
   const s=d.summary;
-  let html=`<h2>${d.name} <span class="code">${d.code}</span></h2>`;
+  let html=backHtml()+`<h2>${d.name} <span class="code">${d.code}</span></h2>`;
   if(s)html+=`<div class="sub">랭킹 #${s.rank} · ${s.market} · 시총 ${s.marcap_eok.toLocaleString()}억 · 현재가 ${s.price.toLocaleString()}</div>`;
   if(d.themes&&d.themes.length){
     html+=`<div style="margin-top:8px">`+d.themes.map(t=>
@@ -735,15 +755,18 @@ async function loadNews(code){
   }catch(e){el.innerHTML='<span class="mut">뉴스 로드 실패</span>';}
 }
 function closeDrawer(){document.getElementById('dr').classList.remove('on');
-  document.getElementById('bd').classList.remove('on');}
+  document.getElementById('bd').classList.remove('on');
+  drawerHistory=[];drawerCurrent=null;}
 document.getElementById('bd').onclick=closeDrawer;
 
-async function openSector(name){
-  document.getElementById('drc').innerHTML=`<h2>${name}</h2><span class="mut">불러오는 중…</span>`;
+async function openSector(name,fromBack){
+  if(!fromBack&&drawerCurrent)drawerHistory.push(drawerCurrent);
+  drawerCurrent={type:'sector',id:name};
+  document.getElementById('drc').innerHTML=`${backHtml()}<h2>${name}</h2><span class="mut">불러오는 중…</span>`;
   document.getElementById('dr').classList.add('on');
   document.getElementById('bd').classList.add('on');
   const d=await fetch('/api/sector/'+encodeURIComponent(name)).then(x=>x.json());
-  let html=`<h2>${d.sector} <span class="mut" style="font-size:13px">· ${d.count}종목</span></h2>`;
+  let html=backHtml()+`<h2>${d.sector} <span class="mut" style="font-size:13px">· ${d.count}종목</span></h2>`;
   html+=`<h3>구성 종목 (가치+퀄리티 점수순, 상위 40)</h3>
     <div class="tblscroll"><table><thead><tr><th style="text-align:left">종목</th>
     <th>점수</th><th>PER</th><th>PBR</th><th>ROE%</th><th>시총억</th></tr></thead><tbody>`;
@@ -840,11 +863,13 @@ function renderThemesPanel(){
     수익률은 각 그룹 구성종목 중 시총 상위 10개 기준(소형주 편차 축소). 애매한 테마는 '기타'.</div>`;
   el.innerHTML=h; el.dataset.done='1';
 }
-async function openTheme(no){
-  document.getElementById('drc').innerHTML=`<span class="mut">불러오는 중…</span>`;
+async function openTheme(no,fromBack){
+  if(!fromBack&&drawerCurrent)drawerHistory.push(drawerCurrent);
+  drawerCurrent={type:'theme',id:no};
+  document.getElementById('drc').innerHTML=`${backHtml()}<span class="mut">불러오는 중…</span>`;
   document.getElementById('dr').classList.add('on');document.getElementById('bd').classList.add('on');
   const d=await fetch('/api/theme/'+encodeURIComponent(no)).then(x=>x.json());
-  let html=`<h2>${d.theme} <span class="mut" style="font-size:13px">· ${d.count}종목</span></h2>`;
+  let html=backHtml()+`<h2>${d.theme} <span class="mut" style="font-size:13px">· ${d.count}종목</span></h2>`;
   html+=`<h3>구성 종목 <span class="mut" style="font-weight:400">· 랭킹 포함 우선</span></h3>
     <div class="tblscroll"><table><thead><tr><th style="text-align:left">종목</th>
     <th>점수</th><th>PER</th><th>PBR</th><th>ROE%</th></tr></thead><tbody>`;
