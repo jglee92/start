@@ -71,7 +71,7 @@
   .statbar{display:flex;gap:10px;flex-wrap:wrap;margin-top:14px}
   .stat{background:var(--panel);border:1px solid var(--line);border-radius:10px;
     padding:10px 16px;min-width:110px}
-  .stat .l{font-size:11px;color:var(--dim)} .stat .v{font-size:19px;font-weight:700;margin-top:2px}
+  .stat .l{font-size:11px;color:var(--dim)} .stat .v{font-size:17px;font-weight:700;margin-top:2px;white-space:nowrap}
   .quicknav{display:flex;gap:16px;flex-wrap:wrap;margin-top:10px}
   .qgroup{background:var(--panel);border:1px solid var(--line);border-radius:12px;
     padding:12px;display:flex;flex-direction:column;gap:6px;min-width:150px;flex:1}
@@ -366,9 +366,9 @@ function renderStatbar(asof){
   const kospi=RANK.filter(r=>r.market==='KOSPI').length, kosdaq=RANK.filter(r=>r.market==='KOSDAQ').length;
   const anomN=RANK.reduce((a,r)=>a+((r.flags||[]).length>0?1:0),0);
   el.innerHTML=`
-    <div class="stat"><div class="l">기준일</div><div class="v" style="font-size:14px">${asof||'-'}</div></div>
+    <div class="stat"><div class="l">기준일</div><div class="v">${asof||'-'}</div></div>
     <div class="stat"><div class="l">분석 종목</div><div class="v">${RANK.length}</div></div>
-    <div class="stat"><div class="l">KOSPI · KOSDAQ</div><div class="v" style="font-size:14px">${kospi} · ${kosdaq}</div></div>
+    <div class="stat"><div class="l">KOSPI · KOSDAQ</div><div class="v">${kospi} · ${kosdaq}</div></div>
     <div class="stat" style="cursor:pointer" onclick="switchView('anomaly')">
       <div class="l">🚩 이상신호 발견</div><div class="v">${anomN}개 종목</div></div>`;
 }
