@@ -201,6 +201,7 @@
     <div class="nav-title">시장 동향</div>
     <div class="nav-item" data-v="theme">🔥 테마 강세</div>
     <div class="nav-item" data-v="sec">🔄 섹터 로테이션</div>
+    <div class="nav-title">리포트</div>
     <div class="nav-item" data-v="weekly">📰 주간 리포트</div>
     <div class="nav-item" data-v="monthly">🎯 월간 건강랭킹</div>
     <div class="nav-item" data-v="sectorreport">📊 업종 밸류리포트</div>
@@ -224,7 +225,7 @@
         <p class="why">단기 급등 매매는 거래비용을 못 넘는다는 걸 데이터로 확인하고, 학술적으로 견고한
           <b>저회전 가치+퀄리티</b>로 방향을 잡았습니다. 시점정합·상장폐지 포함·비용반영으로 정직하게
           검증해 유니버스 대비 <b>연 +3%p 초과</b>를 확인했습니다.
-          <a href="/about">→ 왜 이렇게 만들었나 · 방법론 · 검증결과</a></p>
+          <a href="/about" onclick="return spaNav(event,'about')">→ 왜 이렇게 만들었나 · 방법론 · 검증결과</a></p>
       </section>
 
       <div class="statbar" id="statbar"></div>
@@ -248,6 +249,9 @@
           <div class="qtitle">시장 동향</div>
           <div class="qtile" onclick="switchView('theme')"><span class="qi">🔥</span>테마 강세</div>
           <div class="qtile" onclick="switchView('sec')"><span class="qi">🔄</span>섹터 로테이션</div>
+        </div>
+        <div class="qgroup">
+          <div class="qtitle">리포트</div>
           <div class="qtile" onclick="switchView('weekly')"><span class="qi">📰</span>주간 리포트</div>
           <div class="qtile" onclick="switchView('monthly')"><span class="qi">🎯</span>월간 건강랭킹</div>
           <div class="qtile" onclick="switchView('sectorreport')"><span class="qi">📊</span>업종 밸류리포트</div>
@@ -320,9 +324,9 @@
       <a href="/learn" onclick="return spaNav(event,'learn')" style="color:var(--accent)">📚 투자 용어 해설</a> ·
       <a href="/themes-index" onclick="return spaNav(event,'themesall')" style="color:var(--accent)">테마 전체</a> ·
       <a href="/about" onclick="return spaNav(event,'about')" style="color:var(--accent)">소개·배경·방법론</a> ·
-      <a href="/about#backtest" style="color:var(--accent)">백테스트 검증</a> ·
-      <a href="/about#disclaimer" style="color:var(--accent)">면책조항</a> ·
-      <a href="/about#privacy" style="color:var(--accent)">개인정보</a><br>
+      <a href="/about#backtest" onclick="return spaNav(event,'about','backtest')" style="color:var(--accent)">백테스트 검증</a> ·
+      <a href="/about#disclaimer" onclick="return spaNav(event,'about','disclaimer')" style="color:var(--accent)">면책조항</a> ·
+      <a href="/about#privacy" onclick="return spaNav(event,'about','privacy')" style="color:var(--accent)">개인정보</a><br>
       본 사이트는 정보 제공·교육용이며 투자 자문·매수 추천이 아닙니다. 과거 성과는 미래를 보장하지 않습니다.
     </footer>
   </main>
@@ -381,9 +385,9 @@ async function loadCards(asof){
         <span class="nm">${r.flags[0].emoji} ${r.name}</span><span class="mut" style="font-size:11px">${r.flags[0].label}</span></div>`).join('')
     : '<span class="mut" style="font-size:12px">현재 감지된 이상신호 없음</span>';
   const term=LEARN_TERMS[new Date(asof||Date.now()).getDate()%LEARN_TERMS.length];
-  const learnHtml=`<div class="row" onclick="location.href='/learn/${term[0]}'">
+  const learnHtml=`<div class="row" onclick="gotoLearnTerm('${term[0]}')">
     <span class="nm">${term[1]} ${term[2]}</span><span>→</span></div>
-    <div class="row" onclick="location.href='/learn'"><span class="nm mut">용어해설 전체 보기</span><span>→</span></div>`;
+    <div class="row" onclick="switchView('learn')"><span class="nm mut">용어해설 전체 보기</span><span>→</span></div>`;
   el.innerHTML=`
     <div class="scard"><h3>💎 저평가 우량주 TOP5 <span class="mut" style="font-weight:400">가치+퀄리티</span></h3>${val}</div>
     <div class="scard" id="cardThemes"><h3>🔥 최근 1개월 강세 테마 TOP3</h3><span class="mut" style="font-size:12px">불러오는 중…</span></div>
@@ -618,13 +622,15 @@ function renderAnomalyPanel(){
 }
 async function loadAbout(){
   const el=document.getElementById('view-about');
-  if(el.dataset.done)return;
+  if(el.dataset.done){wireInlineLinks(el);scrollToPending();return;}
   el.innerHTML='<span class="mut">불러오는 중…</span>';
   try{
     const d=await fetch('/api/about').then(x=>x.json());
     el.innerHTML=d.html;
-  }catch(e){el.innerHTML='<p class="mut">불러오지 못했습니다. <a href="/about">/about 페이지로 이동</a></p>';}
+    wireInlineLinks(el);
+  }catch(e){el.innerHTML='<p class="mut">불러오지 못했습니다. <a href="/about">/about 페이지로 이동</a></p>';return;}
   el.dataset.done='1';
+  scrollToPending();
 }
 let LEARN_INDEX_HTML=null;
 const SITE_NAV_MAP={'/':'home','/weekly':'weekly','/themes-index':'themesall',
@@ -632,8 +638,12 @@ const SITE_NAV_MAP={'/':'home','/weekly':'weekly','/themes-index':'themesall',
   '/monthly':'monthly','/sector-report':'sectorreport'};
 function wireInlineLinks(el){
   el.querySelectorAll('a[href]').forEach(a=>{
-    const v=SITE_NAV_MAP[a.getAttribute('href')];
-    if(v)a.onclick=(e)=>{e.preventDefault();closeDrawer();switchView(v);};
+    const href=a.getAttribute('href');
+    const hashIdx=href.indexOf('#');
+    const base=hashIdx>=0?href.slice(0,hashIdx):href;
+    const hash=hashIdx>=0?href.slice(hashIdx+1):null;
+    const v=SITE_NAV_MAP[base];
+    if(v)a.onclick=(e)=>{e.preventDefault();closeDrawer();pendingScrollId=hash||null;switchView(v);};
   });
   el.querySelectorAll('a[href^="/learn/"]').forEach(a=>{
     const slug=a.getAttribute('href').split('/').filter(Boolean).pop();
@@ -704,10 +714,24 @@ async function openLearnTerm(slug){
     wireInlineLinks(el);
   }catch(e){ el.innerHTML='<p class="mut">불러오지 못했습니다.</p>'; }
 }
+function showPanel(panelId,navKey){
+  document.querySelectorAll('.nav-item[data-v]').forEach(n=>n.classList.toggle('active',n.dataset.v===navKey));
+  for(const id of ALL_PANELS)document.getElementById(id).style.display='none';
+  document.getElementById(panelId).style.display='';
+  curView=navKey;
+}
+function gotoLearnTerm(slug){ showPanel('view-learn','learn'); openLearnTerm(slug); }
 document.querySelectorAll('.nav-item[data-v]').forEach(n=>n.onclick=()=>switchView(n.dataset.v));
-function spaNav(ev,view){
+let pendingScrollId=null;
+function scrollToPending(){
+  if(!pendingScrollId)return;
+  const id=pendingScrollId; pendingScrollId=null;
+  const t=document.getElementById(id);
+  if(t)setTimeout(()=>t.scrollIntoView({behavior:'smooth',block:'start'}),30);
+}
+function spaNav(ev,view,hash){
   if(ev.metaKey||ev.ctrlKey||ev.shiftKey||ev.altKey||ev.button===1)return true;
-  ev.preventDefault();switchView(view);return false;
+  ev.preventDefault();closeDrawer();pendingScrollId=hash||null;switchView(view);return false;
 }
 
 /* ── 스크리너 ── */
