@@ -34,3 +34,17 @@ def classify(industry) -> str:
         if any(k in n for k in kws):
             return sector
     return "기타"
+
+
+# 밸류에이션 리포트 URL용 슬러그(한글·특수문자 라우팅 문제 방지, /t/{no} 사례와 동일한 이유)
+SLUGS = {
+    "반도체·전자": "semiconductor", "IT·소프트웨어": "it-software",
+    "통신장비": "telecom-equipment", "바이오·제약": "biotech-pharma",
+    "자동차": "automotive", "2차전지·전기장비": "battery-electrical",
+    "화학·소재": "chemicals-materials", "철강·금속": "steel-metals",
+    "기계·장비": "machinery", "건설·부동산": "construction-realestate",
+    "금융": "finance", "운송·물류": "transport-logistics",
+    "미디어·엔터": "media-entertainment", "유통·소비재": "retail-consumer",
+    "에너지·유틸리티": "energy-utilities", "서비스·기타": "services-other",
+}
+SLUG_TO_SECTOR = {v: k for k, v in SLUGS.items()}

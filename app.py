@@ -550,6 +550,47 @@ def learn_page(slug: str):
     return render_glossary(slug, compare, f"{BASE_URL}/learn/{slug}")
 
 
+@app.get("/sector-report", response_class=HTMLResponse)
+def sector_report_index():
+    from sector_report import render_sector_index
+    return render_sector_index(f"{BASE_URL}/sector-report")
+
+
+@app.get("/sector-report/{slug}", response_class=HTMLResponse)
+def sector_report_detail(slug: str):
+    from sector_report import (compute_market_avg, compute_sector_stats,
+                               render_sector_report, SLUG_TO_SECTOR)
+    sector_name = SLUG_TO_SECTOR.get(slug)
+    if not sector_name:
+        raise HTTPException(404, "업종 없음")
+    rk = get_ranking()
+    stats = compute_sector_stats(rk, sector_name)
+    market_avg = compute_market_avg(rk)
+    return render_sector_report(sector_name, stats, market_avg,
+                                f"{BASE_URL}/sector-report/{slug}")
+
+
+@app.get("/api/sector-report")
+def api_sector_report_index():
+    from sector_report import render_sector_index
+    return {"html": _extract_body(render_sector_index(f"{BASE_URL}/sector-report"))}
+
+
+@app.get("/api/sector-report/{slug}")
+def api_sector_report_detail(slug: str):
+    from sector_report import (compute_market_avg, compute_sector_stats,
+                               render_sector_report, SLUG_TO_SECTOR)
+    sector_name = SLUG_TO_SECTOR.get(slug)
+    if not sector_name:
+        raise HTTPException(404, "업종 없음")
+    rk = get_ranking()
+    stats = compute_sector_stats(rk, sector_name)
+    market_avg = compute_market_avg(rk)
+    html = render_sector_report(sector_name, stats, market_avg,
+                                f"{BASE_URL}/sector-report/{slug}")
+    return {"html": _extract_body(html)}
+
+
 @app.get("/anomaly-report", response_class=HTMLResponse)
 def anomaly_report():
     from content import render_anomaly_report
@@ -562,6 +603,27 @@ def anomaly_report():
                 "code": r["code"], "name": r["name"],
                 "text": f["text"], "emoji": f["emoji"]})
     return render_anomaly_report(grouped, asof, f"{BASE_URL}/anomaly-report")
+
+
+def _anomaly_count(rk):
+    return sum(1 for r in rk if r.get("flags"))
+
+
+@app.get("/monthly", response_class=HTMLResponse)
+def monthly_health():
+    from content import render_monthly_health
+    rk = get_ranking()
+    asof = get_asof()
+    return render_monthly_health(rk, _anomaly_count(rk), asof, f"{BASE_URL}/monthly")
+
+
+@app.get("/api/monthly")
+def api_monthly_health():
+    from content import render_monthly_health
+    rk = get_ranking()
+    asof = get_asof()
+    html = render_monthly_health(rk, _anomaly_count(rk), asof, f"{BASE_URL}/monthly")
+    return {"html": _extract_body(html)}
 
 
 @app.get("/themes-index", response_class=HTMLResponse)
@@ -638,10 +700,13 @@ def sitemap():
     from datetime import datetime
     today = datetime.now().strftime("%Y-%m-%d")
     from glossary import TERMS
+    from factor.sectors import SLUGS
     urls = [("/", "daily", "1.0"), ("/weekly", "weekly", "0.9"),
             ("/anomaly-report", "weekly", "0.8"), ("/learn", "monthly", "0.8"),
+            ("/sector-report", "monthly", "0.8"), ("/monthly", "monthly", "0.8"),
             ("/themes-index", "weekly", "0.7"), ("/about", "monthly", "0.5")]
     urls += [(f"/learn/{slug}", "monthly", "0.7") for slug in TERMS]
+    urls += [(f"/sector-report/{slug}", "monthly", "0.7") for slug in SLUGS.values()]
     parts = [f"<url><loc>{BASE_URL}{p}</loc><lastmod>{today}</lastmod>"
              f"<changefreq>{cf}</changefreq><priority>{pr}</priority></url>"
              for p, cf, pr in urls]

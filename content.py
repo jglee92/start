@@ -351,6 +351,56 @@ def render_anomaly_report(grouped, asof, canonical):
                   desc, canonical, body)
 
 
+_DIM_LABELS = [("value", "💰", "밸류에이션"), ("profit", "📈", "수익성"),
+              ("safety", "🛡️", "안정성"), ("growth", "🌱", "성장성")]
+
+
+def _dim_leader_table(rows, dim_key):
+    scored = [r for r in rows if r.get("dims", {}).get(dim_key, {}).get("stars") is not None]
+    scored.sort(key=lambda r: (r["dims"][dim_key]["stars"], r.get("score") or 0), reverse=True)
+    top = scored[:5]
+    trs = "".join(
+        f'<tr><td style="text-align:left"><a href="/s/{_esc(r["code"])}">{_esc(r["name"])}</a></td>'
+        f'<td>{"★"*r["dims"][dim_key]["stars"]}</td></tr>' for r in top)
+    return trs or '<tr><td colspan=2 class="muted">데이터 부족</td></tr>'
+
+
+def render_monthly_health(rows, anomaly_count, asof, canonical):
+    """이번 달 건강점수 랭킹 — 종합점수 TOP20 + 4차원별 최고 TOP5."""
+    top20 = sorted(rows, key=lambda r: r.get("score") or 0, reverse=True)[:20]
+    top_rows = "".join(
+        f'<tr><td style="text-align:left"><a href="/s/{_esc(r["code"])}">{_esc(r["name"])}</a> '
+        f'<span class="muted">{_esc(r["code"])}</span></td><td><b>{_fmt(r.get("score"))}</b></td>'
+        f'<td>{_fmt(r.get("per"))}</td><td>{_fmt(r.get("pbr"),2)}</td>'
+        f'<td>{_fmt(r.get("roe"))}</td></tr>' for r in top20)
+    dim_sections = ""
+    for key, emoji, label in _DIM_LABELS:
+        dim_sections += (f'<h3>{emoji} {label} 최고 TOP5</h3>'
+                         f'<div class="wrap"><table><thead><tr><th style="text-align:left">종목</th>'
+                         f'<th>별점</th></tr></thead><tbody>{_dim_leader_table(rows, key)}'
+                         f'</tbody></table></div>')
+    body = f"""
+<h1>🎯 이번 달 건강점수 랭킹 <span class="muted" style="font-size:14px">({_esc(asof)} 기준)</span></h1>
+<p>가치+퀄리티 종합점수와, 밸류에이션·수익성·안정성·성장성 4차원 건강검진 별점을 기준으로
+이번 달 상위 기업을 정리했습니다. 매수·매도 추천이 아니라 <b>같은 유니버스 내 상대 비교</b>
+스냅샷입니다.</p>
+
+<h2>🏆 종합점수 TOP20</h2>
+<div class="wrap"><table><thead><tr><th style="text-align:left">종목</th><th>점수</th>
+<th>PER</th><th>PBR</th><th>ROE%</th></tr></thead><tbody>{top_rows}</tbody></table></div>
+
+<h2>차원별 최고 기업</h2>
+{dim_sections}
+
+<h2>🚩 참고: 이상신호</h2>
+<p>이번 달 재무 이상신호(적자전환·부채급증 등)가 감지된 종목은 <b>{anomaly_count}개</b>입니다.
+<a href="/anomaly-report">→ 이상신호 리포트 전체 보기</a></p>
+"""
+    desc = f"{asof} 기준 가치+퀄리티 건강점수 TOP20과 밸류에이션·수익성·안정성·성장성 4차원 최고 기업 랭킹."
+    return layout(f"이번 달 건강점수 랭킹 ({asof}) — 종합점수 TOP20 + 4차원 우수기업",
+                  desc, canonical, body)
+
+
 def render_weekly(strong, weak, top_value, asof, canonical):
     def theme_li(t):
         cls = "pos" if (t["ret_1m"] or 0) >= 0 else "neg"

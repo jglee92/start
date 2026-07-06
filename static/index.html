@@ -202,6 +202,8 @@
     <div class="nav-item" data-v="theme">🔥 테마 강세</div>
     <div class="nav-item" data-v="sec">🔄 섹터 로테이션</div>
     <div class="nav-item" data-v="weekly">📰 주간 리포트</div>
+    <div class="nav-item" data-v="monthly">🎯 월간 건강랭킹</div>
+    <div class="nav-item" data-v="sectorreport">📊 업종 밸류리포트</div>
     <div class="nav-item" data-v="anomaly">🚩 이상신호 리포트</div>
     <div class="nav-item" data-v="themesall">📋 테마 전체목록</div>
     <div class="nav-title">정보</div>
@@ -247,6 +249,8 @@
           <div class="qtile" onclick="switchView('theme')"><span class="qi">🔥</span>테마 강세</div>
           <div class="qtile" onclick="switchView('sec')"><span class="qi">🔄</span>섹터 로테이션</div>
           <div class="qtile" onclick="switchView('weekly')"><span class="qi">📰</span>주간 리포트</div>
+          <div class="qtile" onclick="switchView('monthly')"><span class="qi">🎯</span>월간 건강랭킹</div>
+          <div class="qtile" onclick="switchView('sectorreport')"><span class="qi">📊</span>업종 밸류리포트</div>
           <div class="qtile" onclick="switchView('anomaly')"><span class="qi">🚩</span>이상신호</div>
         </div>
         <div class="qgroup">
@@ -305,9 +309,13 @@
     <div id="view-themesall" class="wrap" style="display:none"></div>
     <div id="view-about" class="wrap about-content" style="display:none"></div>
     <div id="view-learn" class="wrap about-content" style="display:none"></div>
+    <div id="view-monthly" class="wrap about-content" style="display:none"></div>
+    <div id="view-sectorreport" class="wrap about-content" style="display:none"></div>
 
     <footer style="margin-top:20px;padding:16px 0;color:var(--dim);font-size:12px;border-top:1px solid var(--line)">
       <a href="/weekly" onclick="return spaNav(event,'weekly')" style="color:var(--accent)">📰 주간 리포트</a> ·
+      <a href="/monthly" onclick="return spaNav(event,'monthly')" style="color:var(--accent)">🎯 월간 건강랭킹</a> ·
+      <a href="/sector-report" onclick="return spaNav(event,'sectorreport')" style="color:var(--accent)">📊 업종 밸류리포트</a> ·
       <a href="/anomaly-report" onclick="return spaNav(event,'anomaly')" style="color:var(--accent)">🚩 이상신호 리포트</a> ·
       <a href="/learn" onclick="return spaNav(event,'learn')" style="color:var(--accent)">📚 투자 용어 해설</a> ·
       <a href="/themes-index" onclick="return spaNav(event,'themesall')" style="color:var(--accent)">테마 전체</a> ·
@@ -480,7 +488,8 @@ document.getElementById('q').oninput=renderTable;
 
 /* ── 사이드바 전환 ── */
 const ALL_PANELS=['view-home','view-screener','theme','sec','view-table',
-  'view-weekly','view-anomaly','view-themesall','view-about','view-learn'];
+  'view-weekly','view-anomaly','view-themesall','view-about','view-learn',
+  'view-monthly','view-sectorreport'];
 function switchView(v){
   curView=v;
   document.querySelectorAll('.nav-item[data-v]').forEach(n=>n.classList.toggle('active',n.dataset.v===v));
@@ -494,6 +503,8 @@ function switchView(v){
   if(v==='themesall'){document.getElementById('view-themesall').style.display='';loadThemesAll();return;}
   if(v==='about'){document.getElementById('view-about').style.display='';loadAbout();return;}
   if(v==='learn'){document.getElementById('view-learn').style.display='';loadLearnIndex();return;}
+  if(v==='monthly'){document.getElementById('view-monthly').style.display='';loadMonthly();return;}
+  if(v==='sectorreport'){document.getElementById('view-sectorreport').style.display='';loadSectorReportIndex();return;}
   if(VIEWS[v]){
     document.getElementById('view-table').style.display='';
     sortK=VIEWS[v].sort; sortAsc=VIEWS[v].asc;
@@ -625,6 +636,47 @@ function wireInlineLinks(el){
     const code=a.getAttribute('href').split('/').filter(Boolean).pop();
     a.onclick=(e)=>{e.preventDefault();openStock(code);};
   });
+  el.querySelectorAll('a[href^="/sector-report/"]').forEach(a=>{
+    const slug=a.getAttribute('href').split('/').filter(Boolean).pop();
+    a.onclick=(e)=>{e.preventDefault();openSectorReport(slug);};
+  });
+  el.querySelectorAll('a[href="/sector-report"]').forEach(a=>{
+    a.onclick=(e)=>{e.preventDefault();loadSectorReportIndex();};
+  });
+  el.querySelectorAll('a[href="/anomaly-report"]').forEach(a=>{
+    a.onclick=(e)=>{e.preventDefault();switchView('anomaly');};
+  });
+}
+let SECTOR_REPORT_INDEX_HTML=null;
+async function loadSectorReportIndex(){
+  const el=document.getElementById('view-sectorreport');
+  if(!SECTOR_REPORT_INDEX_HTML){
+    el.innerHTML='<span class="mut">불러오는 중…</span>';
+    try{ SECTOR_REPORT_INDEX_HTML=(await fetch('/api/sector-report').then(x=>x.json())).html; }
+    catch(e){ el.innerHTML='<p class="mut">불러오지 못했습니다.</p>'; return; }
+  }
+  el.innerHTML=SECTOR_REPORT_INDEX_HTML;
+  wireInlineLinks(el);
+}
+async function openSectorReport(slug){
+  const el=document.getElementById('view-sectorreport');
+  el.innerHTML='<span class="mut">불러오는 중…</span>';
+  try{
+    const d=await fetch('/api/sector-report/'+slug).then(x=>x.json());
+    el.innerHTML='<button class="backbtn" onclick="loadSectorReportIndex()">← 업종 목록으로</button>'+d.html;
+    wireInlineLinks(el);
+  }catch(e){ el.innerHTML='<p class="mut">불러오지 못했습니다.</p>'; }
+}
+async function loadMonthly(){
+  const el=document.getElementById('view-monthly');
+  if(el.dataset.done)return;
+  el.innerHTML='<span class="mut">불러오는 중…</span>';
+  try{
+    const d=await fetch('/api/monthly').then(x=>x.json());
+    el.innerHTML=d.html;
+    wireInlineLinks(el);
+  }catch(e){ el.innerHTML='<p class="mut">불러오지 못했습니다.</p>'; return; }
+  el.dataset.done='1';
 }
 async function loadLearnIndex(){
   const el=document.getElementById('view-learn');
