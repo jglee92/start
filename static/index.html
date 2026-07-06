@@ -627,7 +627,14 @@ async function loadAbout(){
   el.dataset.done='1';
 }
 let LEARN_INDEX_HTML=null;
+const SITE_NAV_MAP={'/':'home','/weekly':'weekly','/themes-index':'themesall',
+  '/about':'about','/learn':'learn','/anomaly-report':'anomaly',
+  '/monthly':'monthly','/sector-report':'sectorreport'};
 function wireInlineLinks(el){
+  el.querySelectorAll('a[href]').forEach(a=>{
+    const v=SITE_NAV_MAP[a.getAttribute('href')];
+    if(v)a.onclick=(e)=>{e.preventDefault();closeDrawer();switchView(v);};
+  });
   el.querySelectorAll('a[href^="/learn/"]').forEach(a=>{
     const slug=a.getAttribute('href').split('/').filter(Boolean).pop();
     a.onclick=(e)=>{e.preventDefault();openLearnTerm(slug);};
@@ -961,23 +968,15 @@ async function openTheme(no,fromBack){
   drawerCurrent={type:'theme',id:no};
   document.getElementById('drc').innerHTML=`${backHtml()}<span class="mut">불러오는 중…</span>`;
   document.getElementById('dr').classList.add('on');document.getElementById('bd').classList.add('on');
-  const d=await fetch('/api/theme/'+encodeURIComponent(no)).then(x=>x.json());
-  let html=backHtml()+`<h2>${d.theme} <span class="mut" style="font-size:13px">· ${d.count}종목</span></h2>`;
-  html+=`<h3>구성 종목 <span class="mut" style="font-weight:400">· 랭킹 포함 우선</span></h3>
-    <div class="tblscroll"><table><thead><tr><th style="text-align:left">종목</th>
-    <th>점수</th><th>PER</th><th>PBR</th><th>ROE%</th></tr></thead><tbody>`;
-  for(const st of d.stocks.slice(0,50))
-    html+=`<tr style="cursor:pointer" onclick="openStock('${st.code}')">
-      <td style="text-align:left">${st.name} <span class="code">${st.code}</span></td>
-      <td class="score">${st.score==null?'-':st.score}</td><td>${fmt(st.per)}</td>
-      <td>${fmt(st.pbr,2)}</td><td>${fmt(st.roe)}</td></tr>`;
-  html+=`</tbody></table></div>`;
-  html+=`<h3>테마 뉴스 <span class="mut" style="font-weight:400">· 상위 종목 통합·최신순</span></h3>`;
+  const d=await fetch('/api/theme-page/'+encodeURIComponent(no)).then(x=>x.json());
+  let html=backHtml()+d.html;
+  html+=`<h3>관련 뉴스 <span class="mut" style="font-weight:400">· 상위 종목 통합·최신순</span></h3>`;
   html+=(d.news&&d.news.length)?d.news.map(it=>`<div class="news">
     <a href="${it.link}" target="_blank" rel="noopener">${it.title}</a>
     <div class="nmeta">${it.stock} · ${it.source} · ${it.pub}</div></div>`).join('')
     :'<span class="mut">뉴스 없음</span>';
   document.getElementById('drc').innerHTML=html;
+  wireInlineLinks(document.getElementById('drc'));
 }
 function heatColor(v){
   if(v==null)return 'transparent';

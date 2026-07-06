@@ -223,9 +223,15 @@ def api_theme(ident: str):
         else:
             stocks.append({"code": c, "name": _name_of(c), "in_rank": False})
     stocks.sort(key=lambda s: (s["in_rank"], s.get("score", 0)), reverse=True)
+    news = _merged_news(stocks[:3])
+    return {"theme": name, "count": len(stocks), "stocks": stocks, "news": news}
+
+
+def _merged_news(stocks, per_stock=5, limit=12):
+    """상위 종목들의 뉴스를 통합·중복제거·최신순 정렬(테마/업종/섹터 뉴스 공용)."""
     merged = []
-    for s in stocks[:3]:
-        for it in _google_news(f"{s['name']} 주식", keep_ts=True, stock_name=s['name'])[:5]:
+    for s in stocks:
+        for it in _google_news(f"{s['name']} 주식", keep_ts=True, stock_name=s['name'])[:per_stock]:
             it["stock"] = s["name"]
             merged.append(it)
     seen, news = set(), []
@@ -234,7 +240,7 @@ def api_theme(ident: str):
             continue
         seen.add(it["title"])
         news.append({k: v for k, v in it.items() if k != "_ts"})
-    return {"theme": name, "count": len(stocks), "stocks": stocks, "news": news[:12]}
+    return news[:limit]
 
 
 def _stock_theme_pairs(code):
@@ -485,6 +491,20 @@ def theme_page(no: str):
     return render_theme_page(theme["name"], stocks, perf, f"{BASE_URL}/t/{no}")
 
 
+@app.get("/api/theme-page/{no}")
+def api_theme_page(no: str):
+    """/t/{no} 와 동일한 풍부한 서사형 렌더링을 SPA 드로어에 그대로 재사용(중복 구현 방지)."""
+    from content import render_theme_page
+    theme = get_tmap().get("themes", {}).get(no)
+    if not theme:
+        raise HTTPException(404, "테마 없음")
+    stocks = _theme_stocks(theme)
+    perf = _theme_perf_map().get(no)
+    html = render_theme_page(theme["name"], stocks, perf, f"{BASE_URL}/t/{no}")
+    news = _merged_news(stocks[:3])
+    return {"html": _extract_body(html), "name": theme["name"], "news": news}
+
+
 @app.get("/s/{code}", response_class=HTMLResponse)
 def stock_page(code: str):
     from content import render_stock_page
@@ -647,7 +667,6 @@ def themes_index():
                   f"{BASE_URL}/themes-index", body)
 
 
-@app.get("/api/about")
 def _extract_body(html: str) -> str:
     """전체 HTML 문서에서 <body> 내용만 추출(SPA 인라인 표시용 공용 헬퍼)."""
     import re
@@ -655,6 +674,7 @@ def _extract_body(html: str) -> str:
     return m.group(1) if m else html
 
 
+@app.get("/api/about")
 def api_about():
     """about.html의 <body> 내용만 추출(SPA 인라인 표시용)."""
     return {"html": _extract_body(_page("about.html"))}
