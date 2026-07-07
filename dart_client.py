@@ -185,10 +185,62 @@ class DartClient:
             })
         return out
 
-    def _fetch_acnt(self, corp: str, year: int) -> Optional[list]:
+    # ---------- 분기 재무(PEAD 리서치용: 누적치, 표준분기 변환은 factor/pead.py) ----------
+    def get_period_financials(self, stock_code: str, year: int, reprt_code: str) -> Optional[dict]:
+        """특정 reprt_code(11013=1Q,11012=반기,11014=3Q,11011=연간)의 '누적' 주요계정.
+        get_financials와 파싱 로직 동일, 기간만 파라미터화."""
+        corp = self.corp_code(stock_code)
+        if not corp:
+            return None
+        rows = self._fetch_acnt(corp, year, reprt_code)
+        if not rows:
+            return None
+        for fs in ("CFS", "OFS"):
+            fin = self._parse(rows, fs)
+            if fin:
+                return fin
+        return None
+
+    _REPORT_LABEL = {
+        "11013": "분기보고서", "11012": "반기보고서",
+        "11014": "분기보고서", "11011": "사업보고서",
+    }
+    _REPORT_MONTH = {"11013": "03", "11012": "06", "11014": "09", "11011": "12"}
+
+    def get_report_date(self, stock_code: str, year: int, reprt_code: str) -> Optional[str]:
+        """해당 (year, reprt_code) 정기보고서의 실제 공시일(YYYY-MM-DD).
+        list.json(정기공시=pblntf_ty A)에서 report_nm으로 정확히 매칭. 못 찾으면 None."""
+        corp = self.corp_code(stock_code)
+        if not corp:
+            return None
+        kw = self._REPORT_LABEL.get(reprt_code)
+        suffix = f"({year}.{self._REPORT_MONTH.get(reprt_code)})"
+        if not kw:
+            return None
+        try:
+            r = requests.get(f"{BASE}/list.json", params={
+                "crtfc_key": self.key, "corp_code": corp,
+                "bgn_de": f"{year}0101", "end_de": f"{year+1}0630",
+                "page_count": "100", "pblntf_ty": "A"}, timeout=20)
+            js = r.json()
+        except Exception:
+            return None
+        if js.get("status") == "020":
+            raise DartError("DART 사용한도 초과.")
+        if js.get("status") != "000":
+            return None
+        for row in js.get("list", []):
+            nm = row.get("report_nm") or ""
+            if kw in nm and suffix in nm:
+                dt = row.get("rcept_dt")
+                if dt and len(dt) == 8:
+                    return f"{dt[:4]}-{dt[4:6]}-{dt[6:]}"
+        return None
+
+    def _fetch_acnt(self, corp: str, year: int, reprt_code: str = REPRT_ANNUAL) -> Optional[list]:
         r = requests.get(f"{BASE}/fnlttSinglAcnt.json", params={
             "crtfc_key": self.key, "corp_code": corp,
-            "bsns_year": str(year), "reprt_code": REPRT_ANNUAL,
+            "bsns_year": str(year), "reprt_code": reprt_code,
         }, timeout=20)
         try:
             js = r.json()

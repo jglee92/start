@@ -91,6 +91,34 @@ def get_ranking_asof(days_ago: int):
     return _cache[key]
 
 
+def get_live_prices():
+    """장중(09:00~15:30 평일) 현재가 캐시(화면표시 전용, daily_prices와 무관).
+    전체 종목 조회에 30초+ 걸려서 요청을 막으면 안 됨 -> stale-while-revalidate:
+    캐시(오래됐어도)는 즉시 반환하고, 갱신은 백그라운드 스레드에서."""
+    import threading
+    import live_price
+    from datetime import datetime
+    if not live_price.is_market_hours():
+        return _cache.get("live_prices") or {}
+    ts = _cache.get("live_prices_ts")
+    stale = ts is None or (datetime.now() - ts).total_seconds() > live_price.TTL_SECONDS
+    if stale and not _cache.get("live_prices_refreshing"):
+        _cache["live_prices_refreshing"] = True
+
+        def _bg():
+            try:
+                codes = [r["code"] for r in get_ranking()]
+                fresh = live_price.fetch_many(codes)
+                if fresh:
+                    _cache["live_prices"] = fresh
+                    _cache["live_prices_ts"] = datetime.now()
+            finally:
+                _cache["live_prices_refreshing"] = False
+
+        threading.Thread(target=_bg, daemon=True).start()
+    return _cache.get("live_prices") or {}
+
+
 def _rank_movers(rk_now, rk_past, top_n=8):
     """현재 랭킹과 과거(가격만 되돌린) 랭킹을 비교한 순위 상승/하락 상위 top_n.
     재무는 최신 그대로 쓰므로 순수 가격 변동에 의한 밸류에이션 변화가 원인."""
@@ -117,21 +145,27 @@ def _rank_movers(rk_now, rk_past, top_n=8):
 def api_ranking():
     rk = get_ranking()
     asof = get_asof()
-    slim = [{
-        "rank": r["rank"], "code": r["code"], "name": r["name"],
-        "market": r["market"], "sector": r.get("sector"), "score": r["score"],
-        "per": _r(r["per"]), "pbr": _r(r["pbr"], 2), "psr": _r(r["psr"], 2),
-        "roe": _r(r["roe"]), "op_margin": _r(r["op_margin"]),
-        "debt_ratio": _r(r["debt_ratio"], 0),
-        "marcap_eok": round(r["marcap"] / 1e8),
-        "fiscal_year": r["fiscal_year"],
-        "price": r.get("price"), "chg_pct": _r(r.get("chg_pct"), 2),
-        "revenue_eok": round(r["revenue"] / 1e8) if r.get("revenue") else None,
-        "op_profit_eok": round(r["op_profit"] / 1e8) if r.get("op_profit") else None,
-        "div_yield": _r(r.get("div_yield"), 2),
-        "rev_growth": _r(r.get("rev_growth")),
-        "dims": r.get("dims"), "flags": r.get("flags") or [],
-    } for r in rk]
+    live = get_live_prices()
+    slim = []
+    for r in rk:
+        lp = live.get(r["code"])
+        price = lp["price"] if lp else r.get("price")
+        chg_pct = lp["chg_pct"] if lp else r.get("chg_pct")
+        slim.append({
+            "rank": r["rank"], "code": r["code"], "name": r["name"],
+            "market": r["market"], "sector": r.get("sector"), "score": r["score"],
+            "per": _r(r["per"]), "pbr": _r(r["pbr"], 2), "psr": _r(r["psr"], 2),
+            "roe": _r(r["roe"]), "op_margin": _r(r["op_margin"]),
+            "debt_ratio": _r(r["debt_ratio"], 0),
+            "marcap_eok": round(r["marcap"] / 1e8),
+            "fiscal_year": r["fiscal_year"],
+            "price": price, "chg_pct": _r(chg_pct, 2), "live": bool(lp),
+            "revenue_eok": round(r["revenue"] / 1e8) if r.get("revenue") else None,
+            "op_profit_eok": round(r["op_profit"] / 1e8) if r.get("op_profit") else None,
+            "div_yield": _r(r.get("div_yield"), 2),
+            "rev_growth": _r(r.get("rev_growth")),
+            "dims": r.get("dims"), "flags": r.get("flags") or [],
+        })
     return {"asof": asof, "count": len(slim), "rows": slim}
 
 
@@ -174,12 +208,15 @@ def api_stock(code: str):
         raise HTTPException(404, "종목 없음")
     name = row["name"] if row else code
     themes = _stock_theme_pairs(code)
+    live = get_live_prices().get(code)
     return {
         "code": code, "name": name, "themes": themes, "period_returns": period_returns,
         "audit": audit,
         "summary": None if row is None else {
             "rank": row["rank"], "score": row["score"], "market": row["market"],
-            "price": row["price"], "marcap_eok": round(row["marcap"] / 1e8),
+            "price": live["price"] if live else row["price"],
+            "chg_pct": _r(live["chg_pct"] if live else row.get("chg_pct"), 2),
+            "live": bool(live), "marcap_eok": round(row["marcap"] / 1e8),
             "per": _r(row["per"]), "pbr": _r(row["pbr"], 2),
             "psr": _r(row["psr"], 2), "roe": _r(row["roe"]),
             "op_margin": _r(row["op_margin"]), "debt_ratio": _r(row["debt_ratio"], 0),

@@ -124,6 +124,8 @@
   tbody tr{cursor:pointer}
   tbody tr:hover{background:var(--panel2)}
   .code{color:var(--dim);font-variant-numeric:tabular-nums}
+  .live-dot{color:var(--up);font-size:9px;animation:liveblink 1.6s ease-in-out infinite}
+  @keyframes liveblink{0%,100%{opacity:1}50%{opacity:.35}}
   @media(max-width:640px){
     th,td{padding:8px 5px;font-size:12.5px}
     .code{display:block;margin-top:2px;font-size:10.5px!important}
@@ -417,7 +419,7 @@ const VIEWS={
   price:{sort:'marcap_eok',asc:false,intro:'현재가·전일대비 등락률·시가총액입니다. 가장 기본적인 시세 정보입니다.',
     cols:[
       {label:'종목명',left:true,html:r=>`${r.name} <span class="code" style="font-size:11px">${r.code}</span>`},
-      {label:'현재가',html:r=>r.price?r.price.toLocaleString():'–'},
+      {label:'현재가',html:r=>(r.price?r.price.toLocaleString():'–')+(r.live?' <span class="live-dot" title="장중 실시간(성) 현재가">●</span>':'')},
       {label:'등락%',html:r=>r.chg_pct==null?'–':`<span class="${sign(r.chg_pct)}">${r.chg_pct>=0?'+':''}${r.chg_pct}%</span>`},
       {label:'시총(억)',key:'marcap_eok',html:r=>r.marcap_eok.toLocaleString()},
     ]},
@@ -440,7 +442,7 @@ const VIEWS={
     cols:[
       {label:'종목명',left:true,html:r=>`${r.name} <span class="code" style="font-size:11px">${r.code}</span>`},
       {label:'배당수익률%',key:'div_yield',html:r=>fmt(r.div_yield,2)},
-      {label:'현재가',html:r=>r.price?r.price.toLocaleString():'–'},
+      {label:'현재가',html:r=>(r.price?r.price.toLocaleString():'–')+(r.live?' <span class="live-dot" title="장중 실시간(성) 현재가">●</span>':'')},
       {label:'섹터',html:r=>`<span class="badge">${r.sector||'-'}</span>`},
     ]},
   value:{sort:'per',asc:true,intro:'PER·PBR이 낮을수록 이익·자산 대비 저평가로 봅니다. 다만 성장주는 PER이 높아도 정당화될 수 있어 업종 평균과 함께 보는 게 좋습니다.',
@@ -859,7 +861,9 @@ async function openStock(code,fromBack){
   const d=await fetch('/api/stock/'+code).then(x=>x.json());
   const s=d.summary;
   let html=backHtml()+`<h2>${d.name} <span class="code">${d.code}</span></h2>`;
-  if(s)html+=`<div class="sub">랭킹 #${s.rank} · ${s.market} · 시총 ${s.marcap_eok.toLocaleString()}억 · 현재가 ${s.price.toLocaleString()}</div>`;
+  if(s)html+=`<div class="sub">랭킹 #${s.rank} · ${s.market} · 시총 ${s.marcap_eok.toLocaleString()}억 · 현재가 ${s.price.toLocaleString()}`
+    +(s.chg_pct!=null?` <span class="${sign(s.chg_pct)}">${s.chg_pct>=0?'+':''}${s.chg_pct}%</span>`:'')
+    +(s.live?' <span class="live-dot" title="장중 실시간(성) 현재가">●</span>':'')+`</div>`;
   html+=auditHtml(d.audit);
   if(d.themes&&d.themes.length){
     html+=`<div style="margin-top:8px">`+d.themes.map(t=>

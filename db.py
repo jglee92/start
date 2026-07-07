@@ -78,6 +78,20 @@ CREATE TABLE IF NOT EXISTS audit_opinions (
     PRIMARY KEY (code, year)
 );
 
+-- PEAD 리서치용 표준분기(단독) 실적. revenue/op_profit/net_income은 '해당 분기만'의 값
+-- (11012/11014/11011의 누적치를 subtract해서 계산 — factor/pead.py 참고).
+CREATE TABLE IF NOT EXISTS quarterly_financials (
+    code           TEXT NOT NULL,
+    year           INTEGER NOT NULL,
+    quarter        INTEGER NOT NULL,   -- 1~4
+    revenue        REAL,
+    op_profit      REAL,
+    net_income     REAL,
+    disclosed_date TEXT,               -- 실제 공시일(YYYY-MM-DD, list.json rcept_dt)
+    fetched_at     TEXT,
+    PRIMARY KEY (code, year, quarter)
+);
+
 -- DART 재무 캐시 (연간 사업보고서 주요계정)
 CREATE TABLE IF NOT EXISTS financials (
     code        TEXT NOT NULL,
@@ -137,6 +151,34 @@ def save_watchlist(conn, run_id: int, rows: list[dict]) -> None:
     conn.executemany(
         "INSERT OR REPLACE INTO watchlist VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)", data)
     conn.commit()
+
+
+def save_quarterly(conn, code: str, year: int, quarter: int, revenue, op_profit,
+                   net_income, disclosed_date) -> None:
+    conn.execute(
+        "INSERT OR REPLACE INTO quarterly_financials VALUES (?,?,?,?,?,?,?,?)",
+        (code, int(year), int(quarter), _f(revenue), _f(op_profit), _f(net_income),
+         disclosed_date, datetime.now().isoformat(timespec="seconds")),
+    )
+    conn.commit()
+
+
+def get_quarterly(conn, code: str, year: int, quarter: int):
+    r = conn.execute(
+        "SELECT revenue,op_profit,net_income,disclosed_date FROM quarterly_financials "
+        "WHERE code=? AND year=? AND quarter=?", (code, int(year), int(quarter))).fetchone()
+    if not r:
+        return None
+    return {"revenue": r[0], "op_profit": r[1], "net_income": r[2], "disclosed_date": r[3]}
+
+
+def get_quarterly_series(conn, code: str):
+    """code의 모든 표준분기(연·분기 오름차순) 리스트."""
+    rows = conn.execute(
+        "SELECT year,quarter,revenue,op_profit,net_income,disclosed_date "
+        "FROM quarterly_financials WHERE code=? ORDER BY year,quarter", (code,)).fetchall()
+    return [{"year": r[0], "quarter": r[1], "revenue": r[2], "op_profit": r[3],
+             "net_income": r[4], "disclosed_date": r[5]} for r in rows]
 
 
 def save_financials(conn, code: str, fin: dict) -> None:
