@@ -46,7 +46,7 @@ nav{{font-size:14px;margin-bottom:14px}}
 table{{border-collapse:collapse;width:100%;font-size:14.5px;margin:10px 0}}
 th,td{{padding:8px 10px;border-bottom:1px solid #8883;text-align:right;white-space:nowrap}}
 th:first-child,td:first-child{{text-align:left}}
-.wrap{{overflow-x:auto}} .muted{{color:#4a5563}} .pos{{color:#178a56}} .neg{{color:#c8333a}}
+.wrap{{overflow-x:auto}} .muted{{color:#4a5563}} .pos{{color:#c8333a}} .neg{{color:#1f6fd1}}
 .badge{{display:inline-block;padding:1px 8px;border-radius:10px;background:#8881;font-size:12.5px;margin:2px 3px 0 0}}
 .dimgrid{{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin:10px 0}}
 @media(max-width:560px){{.dimgrid{{grid-template-columns:1fr}}}}
@@ -113,7 +113,7 @@ def _spark(prices):
 
     pts = " ".join(f'{px(i):.1f},{py(p["close"]):.1f}' for i, p in enumerate(prices))
     first, last = xs[0], xs[-1]
-    color = "#178a56" if last >= first else "#c8333a"
+    color = "#c8333a" if last >= first else "#1f6fd1"
     pct = (last / first - 1) * 100
     cls = "pos" if last >= first else "neg"
 

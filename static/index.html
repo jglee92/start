@@ -20,10 +20,12 @@
   :root{
     --bg:#0f1216; --panel:#171c23; --panel2:#1e252e; --line:#2a323d;
     --txt:#f1f4f8; --dim:#aab6c2; --accent:#5ba3ff; --good:#37c281; --bad:#f2555a;
+    --up:#f2555a; --down:#4d90ff;
   }
   @media (prefers-color-scheme: light){
     :root{--bg:#f4f6f9;--panel:#fff;--panel2:#f0f3f7;--line:#dde3ea;
-      --txt:#12161c;--dim:#4a5563;--accent:#1a63cf;--good:#178a56;--bad:#c8333a;}
+      --txt:#12161c;--dim:#4a5563;--accent:#1a63cf;--good:#178a56;--bad:#c8333a;
+      --up:#c8333a;--down:#1f6fd1;}
   }
   *{box-sizing:border-box}
   body{margin:0;background:var(--bg);color:var(--txt);
@@ -122,8 +124,12 @@
   tbody tr{cursor:pointer}
   tbody tr:hover{background:var(--panel2)}
   .code{color:var(--dim);font-variant-numeric:tabular-nums}
+  @media(max-width:640px){
+    th,td{padding:8px 5px;font-size:12.5px}
+    .code{display:block;margin-top:2px;font-size:10.5px!important}
+  }
   .score{font-weight:700;color:var(--accent)}
-  .pos{color:var(--good)} .neg{color:var(--bad)}
+  .pos{color:var(--up)} .neg{color:var(--down)}
   .mut{color:var(--dim)}
   .stars{color:#e0a500;letter-spacing:1px}
   .flagitem{margin:6px 0;font-size:13px;line-height:1.5}
@@ -950,7 +956,7 @@ function spark(ps){
   const px=i=>padL+i/(n-1)*plotW, py=v=>padT+plotH-(v-mn)/((mx-mn)||1)*plotH;
   const pts=ps.map((p,i)=>`${px(i).toFixed(1)},${py(p.close).toFixed(1)}`).join(' ');
   const last=xs[n-1],first=xs[0];
-  const cls=last>=first?'var(--good)':'var(--bad)';
+  const cls=last>=first?'var(--up)':'var(--down)';
   let grid='';
   for(const frac of [0,0.5,1]){const v=mn+(mx-mn)*frac,y=py(v);
     grid+=`<line x1="${padL}" y1="${y.toFixed(1)}" x2="${W-padR}" y2="${y.toFixed(1)}" stroke="var(--line)" stroke-width="1"/>
