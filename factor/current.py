@@ -98,6 +98,7 @@ def compute_ranking(conn, master=None, asof=None, ref_date=None):
         chg_pct = ((p[0] / prev - 1) * 100) if prev else None
         dps = db.get_dividend(conn, r.code, fin["year"])
         div_yield = (dps / p[0] * 100) if dps else None
+        audit = db.get_audit_opinion(conn, r.code, fin["year"]) or db.get_audit_opinion(conn, r.code)
         pf = _prior_financials(conn, r.code, fin["year"])
         pf2 = _prior_financials(conn, r.code, pf["year"]) if pf else None
         rev_growth = _growth_pct(rev, pf["revenue"]) if pf else None
@@ -112,6 +113,9 @@ def compute_ranking(conn, master=None, asof=None, ref_date=None):
             "revenue": rev, "op_profit": op, "net_income": ni,
             "div_yield": div_yield, "rev_growth": rev_growth, "op_growth": op_growth,
             "rev_growth_prev": rev_growth_prev, "_pf": pf,
+            "audit_opinion": audit.get("opinion") if audit else None,
+            "audit_auditor": audit.get("auditor") if audit else None,
+            "audit_year": audit.get("year") if audit else None,
             "per": (marcap / ni) if ni else None,
             "pbr": (marcap / eq) if eq else None,
             "psr": (marcap / rev) if rev else None,

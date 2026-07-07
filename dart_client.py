@@ -125,6 +125,32 @@ class DartClient:
                     return v
         return 0.0    # 배당 항목 조회됐으나 현금배당 없음
 
+    def get_audit_opinion(self, stock_code: str, year: int) -> Optional[dict]:
+        """해당 회계연도 회계감사인·감사의견(적정/한정/부적정/의견거절). 없으면 None."""
+        corp = self.corp_code(stock_code)
+        if not corp:
+            return None
+        try:
+            r = requests.get(f"{BASE}/accnutAdtorNmNdAdtOpinion.json", params={
+                "crtfc_key": self.key, "corp_code": corp,
+                "bsns_year": str(year), "reprt_code": REPRT_ANNUAL}, timeout=20)
+            js = r.json()
+        except Exception:
+            return None
+        if js.get("status") != "000":
+            if js.get("status") == "020":
+                raise DartError("DART 사용한도 초과.")
+            return None
+        rows = js.get("list") or []
+        if not rows:
+            return None
+        row = rows[0]
+        auditor = (row.get("adtor") or "").strip() or None
+        opinion = (row.get("adt_opinion") or "").strip() or None
+        if not opinion:
+            return None
+        return {"auditor": auditor, "opinion": opinion}
+
     def get_disclosures(self, stock_code: str, count: int = 8, days: int = 365) -> list:
         """최근 공시 목록. DART 공식 OpenAPI(list.json) 사용 — 크롤링 아님, 합법 공식 API.
         bgn_de/end_de 미지정 시 기본 조회기간이 매우 짧아(당일 근처) 명시적으로 지정한다.

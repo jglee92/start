@@ -227,10 +227,12 @@
     <!-- 홈 -->
     <div id="view-home">
       <section class="hero">
-        <p class="lead">한국주식(KOSPI·KOSDAQ)을 <b>쉬운 지표부터 심화 팩터까지</b> 단계별로 보는 리서치 도구입니다.</p>
-        <p class="why">단기 급등 매매는 거래비용을 못 넘는다는 걸 데이터로 확인하고, 학술적으로 견고한
-          <b>저회전 가치+퀄리티</b>로 방향을 잡았습니다. 시점정합·상장폐지 포함·비용반영으로 정직하게
-          검증해 유니버스 대비 <b>연 +3%p 초과</b>를 확인했습니다.
+        <p class="lead">한국주식(KOSPI·KOSDAQ) 종목의 <b>실시간 시세·재무제표·회계감사의견</b>을
+          공시 원문 없이 한 곳에서 바로 확인하는 리서치 도구입니다.</p>
+        <p class="why">매출·영업이익·부채비율은 물론, 잘 안 알려주는 <b>회계감사의견(적정/한정/부적정 등)</b>까지
+          종목 페이지에서 바로 보여드립니다. 여기에 더해 가치+퀄리티 팩터로 만든 참고용 해석(별점)도 제공하며,
+          이 해석 로직은 시점정합·상장폐지 포함·비용반영으로 정직하게 검증해 유니버스 대비 <b>연 +3%p 초과</b>를
+          확인했습니다(매매 추천은 아닙니다).
           <a href="/about" onclick="return spaNav(event,'about')">→ 왜 이렇게 만들었나 · 방법론 · 검증결과</a></p>
       </section>
 
@@ -382,7 +384,7 @@ async function loadCards(asof){
   const el=document.getElementById('cards'); if(!el)return;
   renderStatbar(asof);
   const val=RANK.slice(0,5).map(r=>`<div class="row" onclick="openStock('${r.code}')">
-    <span class="nm">${r.name}</span><span class="score">${r.score}</span></div>`).join('');
+    <span class="nm">${r.name}</span><span class="mut" style="font-size:12px">PER ${fmt(r.per)}배 · ${r.price?r.price.toLocaleString():'–'}원</span></div>`).join('');
   const safe=[...RANK].filter(r=>r.debt_ratio!=null).sort((a,b)=>a.debt_ratio-b.debt_ratio).slice(0,5)
     .map(r=>`<div class="row" onclick="openStock('${r.code}')">
     <span class="nm">${r.name}</span><span class="mut">${r.debt_ratio.toFixed(0)}%</span></div>`).join('');
@@ -816,6 +818,15 @@ function renderScreener(){
 /* ── 종목 상세 서랍 ── */
 const BRK={_ey:'이익수익률',_by:'장부수익률',_sy:'매출수익률',_roe:'ROE',_opm:'영업이익률',_lowdebt:'저부채'};
 const DIM_META={value:['💰','밸류에이션'],profit:['📈','수익성'],safety:['🛡️','안정성'],growth:['🌱','성장성']};
+function auditHtml(a){
+  if(!a||!a.opinion)return '';
+  const clean=a.opinion.includes('적정');
+  const cls=clean?'pos':'neg';
+  const warn=clean?'':' ⚠️ 감사인이 재무제표에 문제를 제기한 상태입니다. 원문 공시를 꼭 확인하세요.';
+  const yr=a.year?`${a.year}년 `:'';
+  const auditor=a.auditor?` (${a.auditor})`:'';
+  return `<div class="sub">회계감사인 감사의견 <span class="${cls}" style="font-weight:700">${yr}${a.opinion}${auditor}</span>${warn}</div>`;
+}
 function dimsHtml(dims){
   if(!dims)return '';
   let h='<h3>🩺 기업 건강검진 <span class="mut" style="font-weight:400;font-size:11px">업종·시총 내 상대평가</span></h3><div class="dimgrid">';
@@ -849,6 +860,7 @@ async function openStock(code,fromBack){
   const s=d.summary;
   let html=backHtml()+`<h2>${d.name} <span class="code">${d.code}</span></h2>`;
   if(s)html+=`<div class="sub">랭킹 #${s.rank} · ${s.market} · 시총 ${s.marcap_eok.toLocaleString()}억 · 현재가 ${s.price.toLocaleString()}</div>`;
+  html+=auditHtml(d.audit);
   if(d.themes&&d.themes.length){
     html+=`<div style="margin-top:8px">`+d.themes.map(t=>
       `<span class="badge" style="cursor:pointer;margin:2px 3px 0 0" onclick="openTheme('${t.no}')">${t.name}</span>`).join('')+`</div>`;

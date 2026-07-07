@@ -68,6 +68,16 @@ CREATE TABLE IF NOT EXISTS dividends (
     PRIMARY KEY (code, year)
 );
 
+-- DART 감사의견 캐시 (연간, 회계감사인/감사의견)
+CREATE TABLE IF NOT EXISTS audit_opinions (
+    code       TEXT NOT NULL,
+    year       INTEGER NOT NULL,
+    auditor    TEXT,                    -- 감사인(회계법인명)
+    opinion    TEXT,                    -- 감사의견(적정/한정/부적정/의견거절)
+    fetched_at TEXT,
+    PRIMARY KEY (code, year)
+);
+
 -- DART 재무 캐시 (연간 사업보고서 주요계정)
 CREATE TABLE IF NOT EXISTS financials (
     code        TEXT NOT NULL,
@@ -152,6 +162,28 @@ def get_cached_financials(conn, code: str):
     keys = ["year", "fs_div", "revenue", "op_profit", "net_income", "assets",
             "liabilities", "equity", "debt_ratio", "op_margin"]
     return dict(zip(keys, row))
+
+
+def save_audit_opinion(conn, code: str, year: int, auditor, opinion) -> None:
+    conn.execute("INSERT OR REPLACE INTO audit_opinions VALUES (?,?,?,?,?)",
+                 (code, int(year), auditor, opinion,
+                  datetime.now().isoformat(timespec="seconds")))
+    conn.commit()
+
+
+def get_audit_opinion(conn, code: str, year: int = None):
+    """year 지정 시 해당 연도, 없으면 캐시된 것 중 최신 연도."""
+    if year is not None:
+        r = conn.execute(
+            "SELECT year,auditor,opinion FROM audit_opinions WHERE code=? AND year=?",
+            (code, int(year))).fetchone()
+    else:
+        r = conn.execute(
+            "SELECT year,auditor,opinion FROM audit_opinions WHERE code=? "
+            "ORDER BY year DESC LIMIT 1", (code,)).fetchone()
+    if not r:
+        return None
+    return {"year": r[0], "auditor": r[1], "opinion": r[2]}
 
 
 def save_dividend(conn, code: str, year: int, dps) -> None:

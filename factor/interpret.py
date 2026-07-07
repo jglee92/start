@@ -137,6 +137,13 @@ def anomaly_flags(r, pf):
     ni, op, dr = r.get("net_income"), r.get("op_profit"), r.get("debt_ratio")
     g, g2 = r.get("rev_growth"), r.get("rev_growth_prev")
 
+    opinion = r.get("audit_opinion")
+    if opinion and "적정" not in opinion:
+        flags.append({"emoji": "🔴", "label": "비적정 감사의견",
+                     "text": f"{r.get('audit_year') or ''}년 감사의견이 '{opinion}'입니다. "
+                             "감사인이 재무제표에 문제를 제기했다는 뜻으로, 상장폐지로 이어질 수 있는 "
+                             "가장 심각한 신호 중 하나입니다."})
+
     if pf and pf.get("net_income") is not None and ni is not None:
         if pf["net_income"] > 0 and ni <= 0:
             flags.append({"emoji": "🔴", "label": "적자 전환",

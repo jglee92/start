@@ -211,12 +211,25 @@ def _disclosures_html(items):
             f'· DART 전자공시 원문</span></h2>{rows}')
 
 
+def _audit_html(audit):
+    if not audit or not audit.get("opinion"):
+        return ""
+    clean = "적정" in audit["opinion"]
+    cls = "pos" if clean else "neg"
+    warn = "" if clean else " ⚠️ 감사인이 재무제표에 문제를 제기한 상태입니다. 원문 공시를 꼭 확인하세요."
+    yr = f'{audit["year"]}년 ' if audit.get("year") else ""
+    auditor = f' ({_esc(audit["auditor"])})' if audit.get("auditor") else ""
+    return (f'<p>회계감사인 감사의견 <span class="{cls}" style="font-weight:700">'
+            f'{yr}{_esc(audit["opinion"])}{auditor}</span>{warn}</p>')
+
+
 def render_stock_page(code, name, summary, financials, prices, news, themes,
-                      disclosures, period_returns, canonical):
+                      disclosures, period_returns, canonical, audit=None):
     def eok(v):
         return "–" if v is None else f"{round(v/1e8):,}"
     head = f'<h1>{_esc(name)} <span class="muted" style="font-size:15px">{_esc(code)}</span></h1>'
     head += '<p class="muted">재무제표·건강검진 점수·밸류에이션과 관련 뉴스를 한 페이지에서.</p>'
+    head += _audit_html(audit)
     kpi = ""
     dims_html = ""
     if summary:
@@ -307,6 +320,9 @@ def render_theme_page(name, stocks, perf, canonical):
 
 
 _FLAG_EXPLAIN = {
+    "비적정 감사의견": "회계감사인이 재무제표에 '적정' 의견을 주지 않은 경우입니다(한정·부적정·의견거절). "
+                   "감사인이 재무 신뢰성 자체에 문제를 제기했다는 뜻으로, 상장폐지 사유가 될 수 있는 "
+                   "가장 심각한 유형의 신호입니다. 반드시 원문 공시를 직접 확인하세요.",
     "적자 전환": "전년에는 순이익이 흑자였는데 올해는 적자로 바뀐 경우입니다. "
                 "일시적 요인(자산매각 손실, 구조조정 등)인지 본업 악화인지 재무제표를 "
                 "직접 확인해볼 필요가 있습니다.",

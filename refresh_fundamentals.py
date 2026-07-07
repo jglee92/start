@@ -44,7 +44,7 @@ def main():
 
     dart = DartClient(os.getenv("DART_API_KEY"))
     dart.corp_map()
-    fin_got = div_got = 0
+    fin_got = div_got = audit_got = 0
     for i, code in enumerate(codes, 1):
         # 재무: 이미 FY_LATEST 있으면 skip
         has = conn.execute("SELECT 1 FROM financials WHERE code=? AND year=?",
@@ -66,11 +66,22 @@ def main():
                 dps = None
             db.save_dividend(conn, code, LATEST_FY, dps if dps is not None else 0.0)
             div_got += 1
+        # 감사의견
+        if db.get_audit_opinion(conn, code, LATEST_FY) is None:
+            try:
+                op = dart.get_audit_opinion(code, LATEST_FY)
+            except DartError as e:
+                print(f"[중단] {e}"); break
+            except Exception:
+                op = None
+            if op:
+                db.save_audit_opinion(conn, code, LATEST_FY, op["auditor"], op["opinion"])
+                audit_got += 1
         if i % 50 == 0:
-            print(f"  ...{i}/{len(codes)} (재무 {fin_got}, 배당 {div_got})", flush=True)
+            print(f"  ...{i}/{len(codes)} (재무 {fin_got}, 배당 {div_got}, 감사의견 {audit_got})", flush=True)
 
     conn.close()
-    print(f"완료. FY{LATEST_FY} 재무 {fin_got}건, 배당 {div_got}건 갱신.")
+    print(f"완료. FY{LATEST_FY} 재무 {fin_got}건, 배당 {div_got}건, 감사의견 {audit_got}건 갱신.")
     print("→ 대시보드 /api/refresh 호출 또는 서버 재시작 시 반영.")
 
 
