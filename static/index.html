@@ -355,9 +355,11 @@ const sign=(v)=>v==null?'':(v>=0?'pos':'neg');
 const starsHtml=(n)=>n==null?'<span class="mut">–</span>':'★'.repeat(n)+'<span class="mut">'+'☆'.repeat(5-n)+'</span>';
 let RANK=[], sortK='rank', sortAsc=true, curView='home';
 
+let LIVE_UPDATED_AT=null;
 async function load(){
   const r=await fetch('/api/ranking').then(x=>x.json());
-  RANK=r.rows; document.getElementById('asof').textContent=`기준일 ${r.asof} · ${r.count}종목`;
+  RANK=r.rows; LIVE_UPDATED_AT=r.live_updated_at;
+  document.getElementById('asof').textContent=`기준일 ${r.asof} · ${r.count}종목`;
   const secs=[...new Set(RANK.map(x=>x.sector).filter(Boolean))].sort();
   for(const sel of [document.getElementById('secf'), document.getElementById('f_sector')]){
     secs.forEach(s=>{const o=document.createElement('option');o.value=s;o.textContent=s;sel.appendChild(o);});
@@ -375,10 +377,14 @@ function renderStatbar(asof){
   const el=document.getElementById('statbar'); if(!el)return;
   const kospi=RANK.filter(r=>r.market==='KOSPI').length, kosdaq=RANK.filter(r=>r.market==='KOSDAQ').length;
   const anomN=RANK.reduce((a,r)=>a+((r.flags||[]).length>0?1:0),0);
+  const liveStat=LIVE_UPDATED_AT
+    ?`<div class="stat"><div class="l">장중 시세</div><div class="v">
+        <span class="live-dot">●</span> ${LIVE_UPDATED_AT} 갱신</div></div>`:'';
   el.innerHTML=`
     <div class="stat"><div class="l">기준일</div><div class="v">${asof||'-'}</div></div>
     <div class="stat"><div class="l">분석 종목</div><div class="v">${RANK.length}</div></div>
     <div class="stat"><div class="l">KOSPI · KOSDAQ</div><div class="v">${kospi} · ${kosdaq}</div></div>
+    ${liveStat}
     <div class="stat" style="cursor:pointer" onclick="switchView('anomaly')">
       <div class="l">🚩 이상신호 발견</div><div class="v">${anomN}개 종목</div></div>`;
 }

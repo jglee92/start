@@ -104,7 +104,8 @@ def get_live_prices():
     if not live_price.is_market_hours():
         return _cache.get("live_prices") or {}
     ts = _cache.get("live_prices_ts")
-    stale = ts is None or (datetime.now() - ts).total_seconds() > live_price.TTL_SECONDS
+    now_kst = datetime.now(live_price.KST)
+    stale = ts is None or (now_kst - ts).total_seconds() > live_price.TTL_SECONDS
     if stale and not _cache.get("live_prices_refreshing"):
         _cache["live_prices_refreshing"] = True
 
@@ -114,12 +115,19 @@ def get_live_prices():
                 fresh = live_price.fetch_many(codes)
                 if fresh:
                     _cache["live_prices"] = {**(_cache.get("live_prices") or {}), **fresh}
-                    _cache["live_prices_ts"] = datetime.now()
+                    _cache["live_prices_ts"] = datetime.now(live_price.KST)
             finally:
                 _cache["live_prices_refreshing"] = False
 
         threading.Thread(target=_bg, daemon=True).start()
     return _cache.get("live_prices") or {}
+
+
+def get_live_updated_at():
+    """장중 실시간가가 마지막으로 성공 갱신된 시각(HH:MM, KST) — 화면에 '5분마다 갱신' 같은
+    부정확한 문구 대신 실제 시각을 보여주기 위함."""
+    ts = _cache.get("live_prices_ts")
+    return ts.strftime("%H:%M") if ts else None
 
 
 def _rank_movers(rk_now, rk_past, top_n=8):
@@ -173,7 +181,8 @@ def api_ranking():
             "rev_growth": _r(r.get("rev_growth")),
             "dims": r.get("dims"), "flags": r.get("flags") or [],
         })
-    return {"asof": asof, "count": len(slim), "rows": slim}
+    return {"asof": asof, "count": len(slim), "rows": slim,
+            "live_updated_at": get_live_updated_at()}
 
 
 def _period_returns(conn, code):
