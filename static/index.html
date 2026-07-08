@@ -515,6 +515,7 @@ const ALL_PANELS=['view-home','view-screener','theme','sec','view-table',
   'view-monthly','view-sectorreport'];
 function switchView(v){
   curView=v;
+  history.replaceState(null,'',v==='home'?location.pathname:'#'+v);
   document.querySelectorAll('.nav-item[data-v]').forEach(n=>n.classList.toggle('active',n.dataset.v===v));
   for(const id of ALL_PANELS)document.getElementById(id).style.display='none';
   if(v==='home'){document.getElementById('view-home').style.display='';return;}
@@ -759,6 +760,7 @@ async function openLearnTerm(slug){
   }catch(e){ el.innerHTML='<p class="mut">불러오지 못했습니다.</p>'; }
 }
 function showPanel(panelId,navKey){
+  history.replaceState(null,'',navKey==='home'?location.pathname:'#'+navKey);
   document.querySelectorAll('.nav-item[data-v]').forEach(n=>n.classList.toggle('active',n.dataset.v===navKey));
   for(const id of ALL_PANELS)document.getElementById(id).style.display='none';
   document.getElementById(panelId).style.display='';
@@ -1095,7 +1097,10 @@ async function loadSectors(){
   el.innerHTML=h; el.dataset.done='1';
 }
 
-load();
+load().then(()=>{
+  const h=location.hash.slice(1);
+  if(h&&document.querySelector(`.nav-item[data-v="${h}"]`))switchView(h);
+});
 </script>
 </body>
 </html>
