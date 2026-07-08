@@ -37,11 +37,20 @@ def _fetch_one(code: str):
             return None
         price = d.get("closePrice")
         pct = d.get("fluctuationsRatio")
+        diff = d.get("compareToPreviousClosePrice")
         if price is None:
             return None
+        price_f = float(str(price).replace(",", ""))
+        prev_close = None
+        if diff is not None:
+            try:
+                prev_close = price_f - float(str(diff).replace(",", ""))
+            except ValueError:
+                prev_close = None
         return {
-            "price": float(str(price).replace(",", "")),
+            "price": price_f,
             "chg_pct": float(pct) if pct is not None else None,
+            "prev_close": prev_close,
         }
     except Exception:
         return None

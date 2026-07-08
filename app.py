@@ -151,6 +151,9 @@ def api_ranking():
         lp = live.get(r["code"])
         price = lp["price"] if lp else r.get("price")
         chg_pct = lp["chg_pct"] if lp else r.get("chg_pct")
+        # 라이브가 있으면 전일종가도 같은 소스(네이버)에서 뽑아 price와 시점을 맞춘다.
+        # daily_prices 기준 prev_close와 섞으면 하루치 시차로 어긋나 보일 수 있음.
+        prev_close = (lp.get("prev_close") if lp else None) or r.get("prev_close")
         slim.append({
             "rank": r["rank"], "code": r["code"], "name": r["name"],
             "market": r["market"], "sector": r.get("sector"), "score": r["score"],
@@ -160,7 +163,7 @@ def api_ranking():
             "marcap_eok": round(r["marcap"] / 1e8),
             "fiscal_year": r["fiscal_year"],
             "price": price, "chg_pct": _r(chg_pct, 2), "live": bool(lp),
-            "prev_close": r.get("prev_close"),
+            "prev_close": prev_close,
             "revenue_eok": round(r["revenue"] / 1e8) if r.get("revenue") else None,
             "op_profit_eok": round(r["op_profit"] / 1e8) if r.get("op_profit") else None,
             "div_yield": _r(r.get("div_yield"), 2),
@@ -217,7 +220,8 @@ def api_stock(code: str):
             "rank": row["rank"], "score": row["score"], "market": row["market"],
             "price": live["price"] if live else row["price"],
             "chg_pct": _r(live["chg_pct"] if live else row.get("chg_pct"), 2),
-            "live": bool(live), "prev_close": row.get("prev_close"),
+            "live": bool(live),
+            "prev_close": (live.get("prev_close") if live else None) or row.get("prev_close"),
             "marcap_eok": round(row["marcap"] / 1e8),
             "per": _r(row["per"]), "pbr": _r(row["pbr"], 2),
             "psr": _r(row["psr"], 2), "roe": _r(row["roe"]),
