@@ -68,18 +68,6 @@ CREATE TABLE IF NOT EXISTS dividends (
     PRIMARY KEY (code, year)
 );
 
--- 장중 실시간(성) 현재가 캐시(화면표시 전용, daily_prices 백테스트 데이터와 무관).
--- 디스크(DB)에 저장해서 서버 재배포/재시작으로 인메모리 캐시가 날아가도 마지막으로
--- 성공한 값이 남아있게 함 — 재배포 직후 daily_prices(하루 이상 stale 가능)까지
--- 떨어지는 것을 방지.
-CREATE TABLE IF NOT EXISTS live_prices (
-    code       TEXT PRIMARY KEY,
-    price      REAL,
-    chg_pct    REAL,
-    prev_close REAL,
-    updated_at TEXT
-);
-
 -- DART 감사의견 캐시 (연간, 회계감사인/감사의견)
 CREATE TABLE IF NOT EXISTS audit_opinions (
     code       TEXT NOT NULL,
@@ -142,6 +130,9 @@ def _migrate(conn) -> None:
     for col in ("debt_ratio", "op_margin"):
         if col not in cols:
             conn.execute(f"ALTER TABLE quarterly_financials ADD COLUMN {col} REAL")
+    # live_prices: DB 영속화 방식이 로컬 테스트 스냅샷으로 운영 데이터를 덮어쓰는
+    # 사고를 유발해 폐기(순수 인메모리 캐시로 되돌림) — 구버전 DB에 남은 테이블 정리.
+    conn.execute("DROP TABLE IF EXISTS live_prices")
     conn.commit()
 
 
@@ -178,22 +169,6 @@ def save_watchlist(conn, run_id: int, rows: list[dict]) -> None:
     conn.executemany(
         "INSERT OR REPLACE INTO watchlist VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)", data)
     conn.commit()
-
-
-def save_live_prices(conn, rows: dict) -> None:
-    """rows = {code: {"price":, "chg_pct":, "prev_close":}}"""
-    now = datetime.now().isoformat(timespec="seconds")
-    data = [(c, _f(v.get("price")), _f(v.get("chg_pct")), _f(v.get("prev_close")), now)
-            for c, v in rows.items()]
-    conn.executemany("INSERT OR REPLACE INTO live_prices VALUES (?,?,?,?,?)", data)
-    conn.commit()
-
-
-def get_live_prices_cached(conn):
-    """디스크에 저장된 마지막 실시간가 스냅샷 전체. {code: {price,chg_pct,prev_close,updated_at}}"""
-    rows = conn.execute("SELECT code,price,chg_pct,prev_close,updated_at FROM live_prices").fetchall()
-    return {r[0]: {"price": r[1], "chg_pct": r[2], "prev_close": r[3], "updated_at": r[4]}
-            for r in rows}
 
 
 def save_quarterly(conn, code: str, year: int, quarter: int, revenue, op_profit,
