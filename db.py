@@ -198,8 +198,13 @@ def get_live_prices_cached(conn):
 
 def save_quarterly(conn, code: str, year: int, quarter: int, revenue, op_profit,
                    net_income, disclosed_date, debt_ratio=None, op_margin=None) -> None:
+    # 컬럼명 명시 필수 — ALTER TABLE로 나중에 debt_ratio/op_margin이 추가된 구버전 DB는
+    # 실제 물리적 컬럼 순서가 CREATE TABLE 선언 순서와 달라(끝에 추가됨), 위치 기반
+    # VALUES(?,?,...)를 쓰면 값이 엉뚱한 컬럼에 들어간다.
     conn.execute(
-        "INSERT OR REPLACE INTO quarterly_financials VALUES (?,?,?,?,?,?,?,?,?,?)",
+        "INSERT OR REPLACE INTO quarterly_financials "
+        "(code,year,quarter,revenue,op_profit,net_income,debt_ratio,op_margin,"
+        "disclosed_date,fetched_at) VALUES (?,?,?,?,?,?,?,?,?,?)",
         (code, int(year), int(quarter), _f(revenue), _f(op_profit), _f(net_income),
          _f(debt_ratio), _f(op_margin), disclosed_date,
          datetime.now().isoformat(timespec="seconds")),

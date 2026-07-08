@@ -216,6 +216,7 @@ def api_stock(code: str):
         "AND date>=? ORDER BY date", (code, "2023-01-01")).fetchall()
     period_returns = _period_returns(conn, code)
     audit = db.get_audit_opinion(conn, code)
+    quarterly = db.get_quarterly_series(conn, code)
     conn.close()
     if row is None and not fins:
         raise HTTPException(404, "종목 없음")
@@ -224,7 +225,7 @@ def api_stock(code: str):
     live = get_live_prices().get(code)
     return {
         "code": code, "name": name, "themes": themes, "period_returns": period_returns,
-        "audit": audit,
+        "audit": audit, "quarterly": quarterly,
         "summary": None if row is None else {
             "rank": row["rank"], "score": row["score"], "market": row["market"],
             "price": live["price"] if live else row["price"],
@@ -613,6 +614,7 @@ def stock_page(code: str):
         "AND date>=? ORDER BY date", (code, "2024-04-01")).fetchall()
     period_returns = _period_returns(conn, code)
     audit = db.get_audit_opinion(conn, code)
+    quarterly = db.get_quarterly_series(conn, code)
     conn.close()
     name = row["name"] if row else _name_of(code)
     if row is None and not fins:
@@ -631,7 +633,8 @@ def stock_page(code: str):
     news = _google_news(f"{name} 주식", stock_name=name)[:10]
     disclosures = api_disclosures(code).get("items", [])
     return render_stock_page(code, name, summary, financials, prices_l, news,
-                             themes, disclosures, period_returns, f"{BASE_URL}/s/{code}", audit)
+                             themes, disclosures, period_returns, f"{BASE_URL}/s/{code}",
+                             audit, quarterly)
 
 
 def _weekly_ctx():

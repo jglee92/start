@@ -223,8 +223,25 @@ def _audit_html(audit):
             f'{yr}{_esc(audit["opinion"])}{auditor}</span>{warn}</p>')
 
 
+def _quarterly_rows_html(quarterly):
+    if not quarterly:
+        return ""
+    def eok(v):
+        return "–" if v is None else f"{round(v/1e8):,}"
+    rows = "".join(
+        f'<tr><td>{q["year"]} Q{q["quarter"]}</td><td>{eok(q.get("revenue"))}</td>'
+        f'<td>{eok(q.get("op_profit"))}</td><td>{eok(q.get("net_income"))}</td>'
+        f'<td>{_fmt(q.get("op_margin"))}</td><td>{_fmt(q.get("debt_ratio"),0)}</td></tr>'
+        for q in quarterly)
+    return (f'<h2>분기별 재무 <span class="muted" style="font-size:13px;font-weight:400">'
+            f'· DART 분기·반기보고서 기준 단독분기 환산, 단위 억</span></h2>'
+            f'<div class="wrap"><table><thead><tr><th>분기</th><th>매출</th><th>영업이익</th>'
+            f'<th>순이익</th><th>영익률%</th><th>부채%</th></tr></thead>'
+            f'<tbody>{rows}</tbody></table></div>')
+
+
 def render_stock_page(code, name, summary, financials, prices, news, themes,
-                      disclosures, period_returns, canonical, audit=None):
+                      disclosures, period_returns, canonical, audit=None, quarterly=None):
     def eok(v):
         return "–" if v is None else f"{round(v/1e8):,}"
     head = f'<h1>{_esc(name)} <span class="muted" style="font-size:15px">{_esc(code)}</span></h1>'
@@ -271,6 +288,7 @@ def render_stock_page(code, name, summary, financials, prices, news, themes,
 <div class="wrap"><table><thead><tr><th>연도</th><th>매출</th><th>영업이익</th>
 <th>순이익</th><th>자본</th><th>영익률%</th><th>부채%</th></tr></thead>
 <tbody>{fin_rows or '<tr><td colspan=7 class="muted">재무 데이터 없음</td></tr>'}</tbody></table></div>
+{_quarterly_rows_html(quarterly)}
 {disc_html}
 <h2>관련 뉴스 <span class="muted" style="font-size:13px;font-weight:400">· 구글뉴스</span></h2>
 {news_html}
@@ -333,6 +351,14 @@ _FLAG_EXPLAIN = {
                   " 인수합병, 실적 악화로 인한 자본 감소 등 원인을 확인해볼 필요가 있습니다.",
     "매출 2년 연속 감소": "최근 2개 회계연도 모두 매출이 전년보다 줄었습니다. "
                       "업종 전반의 불황인지, 개별 기업의 경쟁력 약화인지 살펴볼 필요가 있습니다.",
+    "분기 적자 전환": "가장 최근 분기가 전년 동기(계절성 회피) 대비 흑자에서 적자로 전환됐습니다. "
+                   "연간 결산을 기다리지 않고 분기 단위로 더 빠르게 잡아낸 신호입니다.",
+    "분기 영업외 손익 의존": "가장 최근 분기의 영업이익은 적자이나 순이익은 흑자입니다. "
+                        "본업 외 요인(자산매각·평가이익 등)에 기댄 결과일 수 있습니다.",
+    "분기 부채비율 급증": "직전 분기 대비 부채비율이 20%p 이상 늘었습니다. 짧은 기간(3개월) 내 "
+                      "급격한 변화라 원인을 확인해볼 필요가 있습니다.",
+    "매출 2분기 연속 감소": "최근 2개 분기 모두 매출이 전년 동기 대비 감소했습니다. "
+                        "연간 수치에는 아직 안 드러났을 수 있는 조기 신호입니다.",
 }
 
 

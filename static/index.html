@@ -896,6 +896,7 @@ async function openStock(code,fromBack){
   }
   html+=`<h3>가격 (최근)</h3>`+spark(d.prices)+periodPillsHtml(d.period_returns);
   html+=`<h3>재무 추이 (DART 연결/별도, 단위 억)</h3>`+finTable(d.financials);
+  html+=quarterlyTable(d.quarterly);
   html+=`<h3>📄 공시자료 <span class="mut" style="font-weight:400">· DART 전자공시 원문</span></h3>
     <div id="disc"><span class="mut">불러오는 중…</span></div>`;
   html+=`<h3>관련 뉴스 <span class="mut" style="font-weight:400">· 구글뉴스</span></h3>
@@ -999,6 +1000,17 @@ function finTable(f){
     <td class="${sign(r.op_profit)}">${eok(r.op_profit)}</td>
     <td class="${sign(r.net_income)}">${eok(r.net_income)}</td>
     <td>${eok(r.equity)}</td><td>${fmt(r.op_margin)}</td><td>${fmt(r.debt_ratio,0)}</td></tr>`;
+  return h+'</tbody></table></div>';
+}
+function quarterlyTable(q){
+  if(!q||!q.length)return '';
+  const eok=v=>v==null?'–':Math.round(v/1e8).toLocaleString();
+  let h='<h3>분기별 재무 <span class="mut" style="font-weight:400;font-size:11px">단독분기 환산, 단위 억</span></h3>'
+    +'<div class="tblscroll"><table><thead><tr><th>분기</th><th>매출</th><th>영업이익</th><th>순이익</th><th>영익률%</th><th>부채%</th></tr></thead><tbody>';
+  for(const r of q)h+=`<tr><td>${r.year} Q${r.quarter}</td><td>${eok(r.revenue)}</td>
+    <td class="${sign(r.op_profit)}">${eok(r.op_profit)}</td>
+    <td class="${sign(r.net_income)}">${eok(r.net_income)}</td>
+    <td>${fmt(r.op_margin)}</td><td>${fmt(r.debt_ratio,0)}</td></tr>`;
   return h+'</tbody></table></div>';
 }
 

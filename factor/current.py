@@ -158,11 +158,15 @@ def compute_ranking(conn, master=None, asof=None, ref_date=None):
     rows.sort(key=lambda r: r["score"], reverse=True)
     for i, r in enumerate(rows, 1):
         r["rank"] = i
-    from factor.interpret import dimension_grades, sector_averages, anomaly_flags
+    from factor.interpret import (dimension_grades, sector_averages, anomaly_flags,
+                                   quarterly_anomaly_flags)
     sec_avg = sector_averages(rows)
     for r in rows:
         r["dims"] = dimension_grades(r, sec_avg)
-        r["flags"] = anomaly_flags(r, r.pop("_pf", None))
+        flags = anomaly_flags(r, r.pop("_pf", None))
+        qseries = db.get_quarterly_series(conn, r["code"])
+        flags += quarterly_anomaly_flags(qseries)
+        r["flags"] = flags
     return rows
 
 

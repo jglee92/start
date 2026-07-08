@@ -163,6 +163,56 @@ def anomaly_flags(r, pf):
     return flags
 
 
+def quarterly_anomaly_flags(series):
+    """분기 기준 이상신호(참고용) — series는 db.get_quarterly_series() 결과
+    (연·분기 오름차순). 최신 분기를 전년 동기(계절성 회피)·직전 분기와 비교해
+    연간판 anomaly_flags와 병렬로, 더 빠르게(최대 1년 먼저) 신호를 잡는 용도."""
+    if not series:
+        return []
+    idx = {(r["year"], r["quarter"]): i for i, r in enumerate(series)}
+    latest = series[-1]
+    y, q = latest["year"], latest["quarter"]
+    period_label = f"{y}년 {q}분기"
+
+    def yoy_of(row):
+        if row is None:
+            return None
+        i = idx.get((row["year"] - 1, row["quarter"]))
+        return series[i] if i is not None else None
+
+    def yoy_growth(row):
+        ref = yoy_of(row)
+        if row is None or ref is None:
+            return None
+        a, b = row.get("revenue"), ref.get("revenue")
+        return ((a / b - 1) * 100) if (a is not None and b) else None
+
+    yoy = yoy_of(latest)
+    qoq = series[-2] if len(series) >= 2 else None
+    ni, op, dr = latest.get("net_income"), latest.get("op_profit"), latest.get("debt_ratio")
+
+    flags = []
+    if yoy and yoy.get("net_income") is not None and ni is not None:
+        if yoy["net_income"] > 0 and ni <= 0:
+            flags.append({"emoji": "🔴", "label": "분기 적자 전환",
+                         "text": f"{period_label}에 전년 동기 흑자에서 적자로 전환됐습니다."})
+    if op is not None and ni is not None and op < 0 and ni > 0:
+        flags.append({"emoji": "🟡", "label": "분기 영업외 손익 의존",
+                     "text": f"{period_label} 영업이익은 적자이나 순이익은 흑자입니다."})
+    if qoq and qoq.get("debt_ratio") is not None and dr is not None and (dr - qoq["debt_ratio"]) >= 20:
+        dr_r, qoq_r = round(dr), round(qoq["debt_ratio"])
+        flags.append({"emoji": "🟡", "label": "분기 부채비율 급증",
+                     "text": f"{period_label} 부채비율이 직전 분기 {qoq_r:.0f}%에서 {dr_r:.0f}%로 "
+                             f"{dr_r-qoq_r:.0f}%p 늘었습니다."})
+    g = yoy_growth(latest)
+    g2 = yoy_growth(qoq) if qoq else None
+    if g is not None and g2 is not None and g < 0 and g2 < 0:
+        flags.append({"emoji": "🟡", "label": "매출 2분기 연속 감소",
+                     "text": f"최근 2개 분기({period_label} 포함) 모두 매출이 전년 동기 대비 "
+                             "감소했습니다."})
+    return flags
+
+
 def _overall_text(r, dims):
     best = max(dims.items(), key=lambda kv: kv[1]["stars"] or 0,
               default=(None, None))
