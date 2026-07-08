@@ -182,7 +182,7 @@ def _dims_html(dims):
                   f'<p class="dimtext">{_esc(d.get("text"))}</p></div>')
     overall = dims.get("overall_text") or ""
     return (f'<h2>기업 건강검진 <span class="muted" style="font-size:13px;font-weight:400">'
-            f'· 같은 업종·시총 내 상대 평가</span></h2>'
+            f'· 같은 업종·시총 내 상대 평가, 최근 연간 재무제표 기준</span></h2>'
             f'<div class="dimgrid">{cards}</div>'
             + (f'<p class="muted">{_esc(overall)}</p>' if overall else ""))
 
@@ -250,7 +250,8 @@ def render_stock_page(code, name, summary, financials, prices, news, themes,
     kpi = ""
     dims_html = ""
     if summary:
-        kpi = (f'<p>가치+퀄리티 종합점수 <b>{_fmt(summary.get("score"))}</b> · '
+        kpi = (f'<p>가치+퀄리티 종합점수 <b>{_fmt(summary.get("score"))}</b> '
+               f'<span class="muted" style="font-size:12px">(최근 연간 재무제표 기준)</span> · '
                f'<a href="/learn/per">PER</a> {_fmt(summary.get("per"))} · '
                f'<a href="/learn/pbr">PBR</a> {_fmt(summary.get("pbr"),2)} · '
                f'<a href="/learn/psr">PSR</a> {_fmt(summary.get("psr"),2)} · '

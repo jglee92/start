@@ -425,9 +425,9 @@ const VIEWS={
   price:{sort:'marcap_eok',asc:false,intro:'현재가·전일대비 등락률·시가총액입니다. 가장 기본적인 시세 정보입니다.',
     cols:[
       {label:'종목명',left:true,html:r=>`${r.name} <span class="code" style="font-size:11px">${r.code}</span>`},
-      {label:'현재가',html:r=>(r.price?r.price.toLocaleString():'–')+(r.live?' <span class="live-dot" title="장중 실시간(성) 현재가">●</span>':'')},
-      {label:'전일종가',html:r=>r.prev_close?r.prev_close.toLocaleString():'–'},
-      {label:'등락%',html:r=>r.chg_pct==null?'–':`<span class="${sign(r.chg_pct)}">${r.chg_pct>=0?'+':''}${r.chg_pct}%</span>`},
+      {label:'현재가',key:'price',html:r=>(r.price?r.price.toLocaleString():'–')+(r.live?' <span class="live-dot" title="장중 실시간(성) 현재가">●</span>':'')},
+      {label:'전일종가',key:'prev_close',html:r=>r.prev_close?r.prev_close.toLocaleString():'–'},
+      {label:'등락%',key:'chg_pct',html:r=>r.chg_pct==null?'–':`<span class="${sign(r.chg_pct)}">${r.chg_pct>=0?'+':''}${r.chg_pct}%</span>`},
       {label:'시총(억)',key:'marcap_eok',html:r=>r.marcap_eok.toLocaleString()},
     ]},
   fin:{sort:'revenue_eok',asc:false,intro:'매출과 영업이익(단위: 억원), 전년 대비 매출 성장률입니다. 매출·이익이 꾸준히 늘어나는 기업인지 확인하세요.',
@@ -469,7 +469,7 @@ const VIEWS={
       {label:'수익성',html:r=>starsHtml(r.dims&&r.dims.profit&&r.dims.profit.stars)},
       {label:'섹터',html:r=>`<span class="badge">${r.sector||'-'}</span>`},
     ]},
-  score:{sort:'score',asc:false,intro:'가치(저평가)+퀄리티(수익성·안정성)를 결합한 종합점수입니다. 시점정합·상장폐지 포함 백테스트로 유니버스 대비 초과수익을 검증했습니다.',
+  score:{sort:'score',asc:false,intro:'가치(저평가)+퀄리티(수익성·안정성)를 결합한 종합점수입니다(최근 연간 재무제표 기준). 시점정합·상장폐지 포함 백테스트로 유니버스 대비 초과수익을 검증했습니다. 분기 실적은 별도 "분기별 재무" 표·이상신호로 참고하세요.',
     cols:[
       {label:'#',html:r=>r.rank},
       {label:'종목명',left:true,html:r=>`${r.name} <span class="code" style="font-size:11px">${r.code}</span>`},
@@ -841,7 +841,7 @@ function auditHtml(a){
 }
 function dimsHtml(dims){
   if(!dims)return '';
-  let h='<h3>🩺 기업 건강검진 <span class="mut" style="font-weight:400;font-size:11px">업종·시총 내 상대평가</span></h3><div class="dimgrid">';
+  let h='<h3>🩺 기업 건강검진 <span class="mut" style="font-weight:400;font-size:11px">업종·시총 내 상대평가, 최근 연간 재무제표 기준</span></h3><div class="dimgrid">';
   for(const k in DIM_META){const [emoji,label]=DIM_META[k];const d=dims[k]||{};
     h+=`<div class="dimcard"><div class="dimhead">${emoji} ${label}
       <span class="dimstars">${starsHtml(d.stars)}</span></div>
@@ -882,7 +882,7 @@ async function openStock(code,fromBack){
   }
   if(s){
     html+=`<div class="kpis">
-      <div class="kpi"><div class="l">종합점수</div><div class="v">${s.score}</div></div>
+      <div class="kpi"><div class="l">종합점수 <span class="mut" style="font-weight:400">(연간)</span></div><div class="v">${s.score}</div></div>
       <div class="kpi"><div class="l">PER</div><div class="v">${fmt(s.per)}</div></div>
       <div class="kpi"><div class="l">PBR</div><div class="v">${fmt(s.pbr,2)}</div></div>
       <div class="kpi"><div class="l">PSR</div><div class="v">${fmt(s.psr,2)}</div></div>
