@@ -119,34 +119,6 @@ def get_live_prices():
     return _cache.get("live_prices") or {}
 
 
-@app.get("/api/debug/live-test")
-def debug_live_test():
-    """임시 진단용: 네이버 실시간가 엔드포인트가 이 서버(Render)에서 실제로 되는지 확인.
-    문제 해결되면 삭제할 것."""
-    import time
-    import requests
-    import live_price
-    out = {
-        "is_market_hours": live_price.is_market_hours(),
-        "cache_ts": str(_cache.get("live_prices_ts")),
-        "cache_refreshing": _cache.get("live_prices_refreshing"),
-        "cache_size": len(_cache.get("live_prices") or {}),
-    }
-    t0 = time.time()
-    try:
-        r = requests.get(live_price._URL.format(code="005930"), headers=live_price.H, timeout=8)
-        out["raw_status_code"] = r.status_code
-        out["raw_elapsed_s"] = round(time.time() - t0, 2)
-        out["raw_body_head"] = r.text[:300]
-    except Exception as e:
-        out["raw_error"] = f"{type(e).__name__}: {e}"
-        out["raw_elapsed_s"] = round(time.time() - t0, 2)
-    t0 = time.time()
-    out["fetch_one_result"] = live_price._fetch_one("005930")
-    out["fetch_one_elapsed_s"] = round(time.time() - t0, 2)
-    return out
-
-
 def _rank_movers(rk_now, rk_past, top_n=8):
     """현재 랭킹과 과거(가격만 되돌린) 랭킹을 비교한 순위 상승/하락 상위 top_n.
     재무는 최신 그대로 쓰므로 순수 가격 변동에 의한 밸류에이션 변화가 원인."""
