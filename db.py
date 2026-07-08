@@ -68,6 +68,18 @@ CREATE TABLE IF NOT EXISTS dividends (
     PRIMARY KEY (code, year)
 );
 
+-- 장중 실시간(성) 현재가 캐시(화면표시 전용, daily_prices 백테스트 데이터와 무관).
+-- 디스크(DB)에 저장해서 서버 재배포/재시작으로 인메모리 캐시가 날아가도 마지막으로
+-- 성공한 값이 남아있게 함 — 재배포 직후 daily_prices(하루 이상 stale 가능)까지
+-- 떨어지는 것을 방지.
+CREATE TABLE IF NOT EXISTS live_prices (
+    code       TEXT PRIMARY KEY,
+    price      REAL,
+    chg_pct    REAL,
+    prev_close REAL,
+    updated_at TEXT
+);
+
 -- DART 감사의견 캐시 (연간, 회계감사인/감사의견)
 CREATE TABLE IF NOT EXISTS audit_opinions (
     code       TEXT NOT NULL,
@@ -78,8 +90,10 @@ CREATE TABLE IF NOT EXISTS audit_opinions (
     PRIMARY KEY (code, year)
 );
 
--- PEAD 리서치용 표준분기(단독) 실적. revenue/op_profit/net_income은 '해당 분기만'의 값
--- (11012/11014/11011의 누적치를 subtract해서 계산 — factor/pead.py 참고).
+-- 분기별 재무(대시보드 표시용 + PEAD 리서치 겸용). revenue/op_profit/net_income은
+-- '해당 분기만'의 값(11012/11014/11011의 누적치를 subtract해서 계산 — factor/pead.py 참고).
+-- debt_ratio는 재무상태표 항목이라 분기 시점 스냅샷 그대로(빼기 불필요), op_margin은
+-- 단독분기 기준으로 재계산됨.
 CREATE TABLE IF NOT EXISTS quarterly_financials (
     code           TEXT NOT NULL,
     year           INTEGER NOT NULL,
@@ -87,6 +101,8 @@ CREATE TABLE IF NOT EXISTS quarterly_financials (
     revenue        REAL,
     op_profit      REAL,
     net_income     REAL,
+    debt_ratio     REAL,
+    op_margin      REAL,
     disclosed_date TEXT,               -- 실제 공시일(YYYY-MM-DD, list.json rcept_dt)
     fetched_at     TEXT,
     PRIMARY KEY (code, year, quarter)
@@ -115,7 +131,18 @@ def connect(db_path: str = DB_PATH) -> sqlite3.Connection:
     os.makedirs(os.path.dirname(db_path), exist_ok=True)
     conn = sqlite3.connect(db_path)
     conn.executescript(SCHEMA)
+    _migrate(conn)
     return conn
+
+
+def _migrate(conn) -> None:
+    """CREATE TABLE IF NOT EXISTS는 이미 존재하는 테이블에 새 컬럼을 안 더해주므로,
+    이전 배포에서 만들어진 구버전 테이블에 나중에 추가된 컬럼을 여기서 보강한다."""
+    cols = {r[1] for r in conn.execute("PRAGMA table_info(quarterly_financials)").fetchall()}
+    for col in ("debt_ratio", "op_margin"):
+        if col not in cols:
+            conn.execute(f"ALTER TABLE quarterly_financials ADD COLUMN {col} REAL")
+    conn.commit()
 
 
 def create_run(conn, data_date: str, provider: str, params: dict) -> int:
@@ -153,32 +180,52 @@ def save_watchlist(conn, run_id: int, rows: list[dict]) -> None:
     conn.commit()
 
 
+def save_live_prices(conn, rows: dict) -> None:
+    """rows = {code: {"price":, "chg_pct":, "prev_close":}}"""
+    now = datetime.now().isoformat(timespec="seconds")
+    data = [(c, _f(v.get("price")), _f(v.get("chg_pct")), _f(v.get("prev_close")), now)
+            for c, v in rows.items()]
+    conn.executemany("INSERT OR REPLACE INTO live_prices VALUES (?,?,?,?,?)", data)
+    conn.commit()
+
+
+def get_live_prices_cached(conn):
+    """디스크에 저장된 마지막 실시간가 스냅샷 전체. {code: {price,chg_pct,prev_close,updated_at}}"""
+    rows = conn.execute("SELECT code,price,chg_pct,prev_close,updated_at FROM live_prices").fetchall()
+    return {r[0]: {"price": r[1], "chg_pct": r[2], "prev_close": r[3], "updated_at": r[4]}
+            for r in rows}
+
+
 def save_quarterly(conn, code: str, year: int, quarter: int, revenue, op_profit,
-                   net_income, disclosed_date) -> None:
+                   net_income, disclosed_date, debt_ratio=None, op_margin=None) -> None:
     conn.execute(
-        "INSERT OR REPLACE INTO quarterly_financials VALUES (?,?,?,?,?,?,?,?)",
+        "INSERT OR REPLACE INTO quarterly_financials VALUES (?,?,?,?,?,?,?,?,?,?)",
         (code, int(year), int(quarter), _f(revenue), _f(op_profit), _f(net_income),
-         disclosed_date, datetime.now().isoformat(timespec="seconds")),
+         _f(debt_ratio), _f(op_margin), disclosed_date,
+         datetime.now().isoformat(timespec="seconds")),
     )
     conn.commit()
 
 
 def get_quarterly(conn, code: str, year: int, quarter: int):
     r = conn.execute(
-        "SELECT revenue,op_profit,net_income,disclosed_date FROM quarterly_financials "
-        "WHERE code=? AND year=? AND quarter=?", (code, int(year), int(quarter))).fetchone()
+        "SELECT revenue,op_profit,net_income,debt_ratio,op_margin,disclosed_date "
+        "FROM quarterly_financials WHERE code=? AND year=? AND quarter=?",
+        (code, int(year), int(quarter))).fetchone()
     if not r:
         return None
-    return {"revenue": r[0], "op_profit": r[1], "net_income": r[2], "disclosed_date": r[3]}
+    return {"revenue": r[0], "op_profit": r[1], "net_income": r[2],
+            "debt_ratio": r[3], "op_margin": r[4], "disclosed_date": r[5]}
 
 
 def get_quarterly_series(conn, code: str):
     """code의 모든 표준분기(연·분기 오름차순) 리스트."""
     rows = conn.execute(
-        "SELECT year,quarter,revenue,op_profit,net_income,disclosed_date "
+        "SELECT year,quarter,revenue,op_profit,net_income,debt_ratio,op_margin,disclosed_date "
         "FROM quarterly_financials WHERE code=? ORDER BY year,quarter", (code,)).fetchall()
     return [{"year": r[0], "quarter": r[1], "revenue": r[2], "op_profit": r[3],
-             "net_income": r[4], "disclosed_date": r[5]} for r in rows]
+             "net_income": r[4], "debt_ratio": r[5], "op_margin": r[6],
+             "disclosed_date": r[7]} for r in rows]
 
 
 def save_financials(conn, code: str, fin: dict) -> None:

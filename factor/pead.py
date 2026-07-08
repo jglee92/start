@@ -21,7 +21,9 @@ REPRT = {1: "11013", 2: "11012", 3: "11014", 4: "11011"}  # quarter -> DART repr
 
 def standalone_from_cumulative(q1, half, q3, annual):
     """4개 누적 dict(없으면 None) -> {1:{...},2:{...},3:{...},4:{...}} 표준분기(단독).
-    각 dict는 {"revenue":.., "op_profit":.., "net_income":..} 형태."""
+    revenue/op_profit/net_income은 뺄셈으로 단독분기화. debt_ratio(재무상태표 항목)는
+    원래 그 분기 시점 스냅샷이라 빼기 불필요 — 해당 분기 보고서 값을 그대로 쓰고,
+    op_margin은 단독분기 revenue/op_profit으로 재계산(누적 op_margin을 그대로 쓰면 틀림)."""
     def sub(a, b, keys=("revenue", "op_profit", "net_income")):
         if a is None or b is None:
             return None
@@ -31,12 +33,15 @@ def standalone_from_cumulative(q1, half, q3, annual):
             out[k] = (av - bv) if (av is not None and bv is not None) else None
         return out
 
-    return {
-        1: q1,
-        2: sub(half, q1),
-        3: sub(q3, half),
-        4: sub(annual, q3),
-    }
+    out = {1: q1, 2: sub(half, q1), 3: sub(q3, half), 4: sub(annual, q3)}
+    for q, cum in ((1, q1), (2, half), (3, q3), (4, annual)):
+        row = out.get(q)
+        if row is None:
+            continue
+        row["debt_ratio"] = cum.get("debt_ratio") if cum else None
+        rev, op = row.get("revenue"), row.get("op_profit")
+        row["op_margin"] = (op / rev * 100) if (op is not None and rev) else None
+    return out
 
 
 def compute_sue_series(series):

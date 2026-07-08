@@ -94,10 +94,16 @@ def get_ranking_asof(days_ago: int):
 def get_live_prices():
     """장중(09:00~15:30 평일) 현재가 캐시(화면표시 전용, daily_prices와 무관).
     전체 종목 조회에 30초+ 걸려서 요청을 막으면 안 됨 -> stale-while-revalidate:
-    캐시(오래됐어도)는 즉시 반환하고, 갱신은 백그라운드 스레드에서."""
+    캐시(오래됐어도)는 즉시 반환하고, 갱신은 백그라운드 스레드에서.
+    디스크(DB)에도 저장 — 재배포로 인메모리 캐시가 초기화돼도 마지막 성공값을 그대로
+    이어받아서, daily_prices(하루 이상 stale 가능)까지 떨어지는 걸 방지."""
     import threading
     import live_price
     from datetime import datetime
+    if _cache.get("live_prices") is None:
+        conn = _conn()
+        _cache["live_prices"] = db.get_live_prices_cached(conn)
+        conn.close()
     if not live_price.is_market_hours():
         return _cache.get("live_prices") or {}
     ts = _cache.get("live_prices_ts")
@@ -110,8 +116,11 @@ def get_live_prices():
                 codes = [r["code"] for r in get_ranking()]
                 fresh = live_price.fetch_many(codes)
                 if fresh:
-                    _cache["live_prices"] = fresh
+                    _cache["live_prices"] = {**(_cache.get("live_prices") or {}), **fresh}
                     _cache["live_prices_ts"] = datetime.now()
+                    conn = _conn()
+                    db.save_live_prices(conn, fresh)
+                    conn.close()
             finally:
                 _cache["live_prices_refreshing"] = False
 
