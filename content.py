@@ -515,3 +515,32 @@ def render_weekly(strong, weak, top_value, asof, canonical, movers_up=None, move
             f"가치+퀄리티 팩터 상위 종목 정리.")
     return layout(f"주간 한국주식 시장 리포트 ({asof}) — 강세 테마·저평가 우량주",
                   desc, canonical, body)
+
+
+def render_earnings_report(items, canonical):
+    """최근 공시된 분기 실적 발표 현황 — '예정' 캘린더가 아니라 이미 나온 것 중 최신순."""
+    def yoy_cell(v):
+        if v is None:
+            return "–"
+        cls = "pos" if v >= 0 else "neg"
+        return f'<span class="{cls}">{v:+.1f}%</span>'
+
+    rows = "".join(
+        f'<tr><td style="text-align:left"><a href="/s/{_esc(it["code"])}">{_esc(it["name"])}</a></td>'
+        f'<td>{it["year"]} Q{it["quarter"]}</td><td>{_esc(it["disclosed_date"])}</td>'
+        f'<td>{yoy_cell(it["rev_yoy"])}</td><td>{yoy_cell(it["ni_yoy"])}</td></tr>'
+        for it in items) or '<tr><td colspan=5 class="muted">데이터 없음</td></tr>'
+    body = f"""
+<h1>📅 최근 실적발표 현황</h1>
+<p>DART에 최근 공시된 분기·반기 실적을 발표일 순으로 정리했습니다. 전년 동기 대비
+매출·순이익 성장률로 실적 흐름을 빠르게 훑어볼 수 있습니다. <b>"다음 주 발표 예정"같은
+사전 예측이 아니라 이미 공시된 실적만</b> 다룹니다 — DART는 공시 일정을 미리 알려주지
+않아 정확한 예정일을 제공할 수 없기 때문입니다.</p>
+<div class="wrap"><table><thead><tr><th style="text-align:left">종목</th><th>분기</th>
+<th>발표일</th><th>매출 YoY</th><th>순이익 YoY</th></tr></thead>
+<tbody>{rows}</tbody></table></div>
+<p class="muted">데이터: DART 분기·반기보고서(단독분기 환산). 매매 추천이 아닙니다.</p>
+"""
+    desc = "최근 공시된 한국 상장기업 분기 실적 발표 현황과 전년 동기 대비 매출·순이익 성장률 정리."
+    return layout("최근 실적발표 현황 — 분기 실적 발표일·전년동기 성장률",
+                  desc, canonical, body)

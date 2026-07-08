@@ -208,6 +208,30 @@ def get_quarterly_series(conn, code: str):
              "disclosed_date": r[7]} for r in rows]
 
 
+def get_recent_disclosures(conn, limit: int = 40):
+    """최근 공시된 분기(disclosed_date desc) + 전년 동기 대비 매출·순이익 성장률.
+    실적발표 리포트용 — '예정' 캘린더가 아니라 이미 공시된 것 중 최신순."""
+    rows = conn.execute(
+        "SELECT code,year,quarter,revenue,op_profit,net_income,disclosed_date "
+        "FROM quarterly_financials WHERE disclosed_date IS NOT NULL "
+        "ORDER BY disclosed_date DESC LIMIT ?", (limit,)).fetchall()
+    out = []
+    for code, year, quarter, revenue, op_profit, net_income, ddate in rows:
+        prev = conn.execute(
+            "SELECT revenue,net_income FROM quarterly_financials "
+            "WHERE code=? AND year=? AND quarter=?", (code, year - 1, quarter)).fetchone()
+        rev_yoy = ni_yoy = None
+        if prev:
+            if prev[0] and revenue is not None:
+                rev_yoy = (revenue / prev[0] - 1) * 100
+            if prev[1] and net_income is not None:
+                ni_yoy = (net_income / prev[1] - 1) * 100
+        out.append({"code": code, "year": year, "quarter": quarter, "revenue": revenue,
+                    "op_profit": op_profit, "net_income": net_income,
+                    "disclosed_date": ddate, "rev_yoy": rev_yoy, "ni_yoy": ni_yoy})
+    return out
+
+
 def save_financials(conn, code: str, fin: dict) -> None:
     conn.execute(
         "INSERT OR REPLACE INTO financials VALUES (?,?,?,?,?,?,?,?,?,?,?,?)",

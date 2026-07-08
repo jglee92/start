@@ -769,6 +769,28 @@ def api_monthly_health():
     return {"html": _extract_body(html)}
 
 
+def _earnings_items():
+    conn = _conn()
+    items = db.get_recent_disclosures(conn, limit=40)
+    conn.close()
+    for it in items:
+        it["name"] = _name_of(it["code"])
+    return items
+
+
+@app.get("/earnings-report", response_class=HTMLResponse)
+def earnings_report():
+    from content import render_earnings_report
+    return render_earnings_report(_earnings_items(), f"{BASE_URL}/earnings-report")
+
+
+@app.get("/api/earnings-report")
+def api_earnings_report():
+    from content import render_earnings_report
+    html = render_earnings_report(_earnings_items(), f"{BASE_URL}/earnings-report")
+    return {"html": _extract_body(html)}
+
+
 @app.get("/themes-index", response_class=HTMLResponse)
 def themes_index():
     from content import layout
@@ -847,6 +869,7 @@ def sitemap():
     urls = [("/", "daily", "1.0"), ("/weekly", "weekly", "0.9"),
             ("/anomaly-report", "weekly", "0.8"), ("/learn", "monthly", "0.8"),
             ("/sector-report", "monthly", "0.8"), ("/monthly", "monthly", "0.8"),
+            ("/earnings-report", "daily", "0.8"),
             ("/themes-index", "weekly", "0.7"), ("/about", "monthly", "0.5")]
     urls += [(f"/learn/{slug}", "monthly", "0.7") for slug in TERMS]
     urls += [(f"/sector-report/{slug}", "monthly", "0.7") for slug in SLUGS.values()]

@@ -201,8 +201,8 @@
     <div class="nav-item" data-v="safety">🛡️ 자산건전성</div>
     <div class="nav-item" data-v="div">💵 배당</div>
     <div class="nav-title">심화 분석</div>
-    <div class="nav-item" data-v="value">💰 밸류에이션</div>
-    <div class="nav-item" data-v="profit">📈 수익성</div>
+    <div class="nav-item" data-v="value">💰 밸류에이션 <span class="mut" style="font-size:11px">(저평가?)</span></div>
+    <div class="nav-item" data-v="profit">📈 수익성 <span class="mut" style="font-size:11px">(돈 잘 버나)</span></div>
     <div class="nav-item" data-v="score">🎯 종합 건강점수</div>
     <div class="nav-title">스크리너</div>
     <div class="nav-item" data-v="screener">🔍 조건검색 <span class="newbadge">NEW</span></div>
@@ -215,6 +215,7 @@
     <div class="nav-item" data-v="monthly">🎯 월간 건강랭킹</div>
     <div class="nav-item" data-v="sectorreport">📊 업종 밸류리포트</div>
     <div class="nav-item" data-v="anomaly">🚩 이상신호 리포트</div>
+    <div class="nav-item" data-v="earnings">📅 실적발표 현황</div>
     <div class="nav-title">정보</div>
     <div class="nav-item" data-v="about">ℹ️ 소개·방법론</div>
     <div class="nav-item" data-v="learn">📚 투자 용어 해설</div>
@@ -267,6 +268,7 @@
           <div class="qtile" onclick="switchView('monthly')"><span class="qi">🎯</span>월간 건강랭킹</div>
           <div class="qtile" onclick="switchView('sectorreport')"><span class="qi">📊</span>업종 밸류리포트</div>
           <div class="qtile" onclick="switchView('anomaly')"><span class="qi">🚩</span>이상신호</div>
+          <div class="qtile" onclick="switchView('earnings')"><span class="qi">📅</span>실적발표 현황</div>
         </div>
         <div class="qgroup">
           <div class="qtitle">직접 찾기</div>
@@ -326,6 +328,7 @@
     <div id="view-learn" class="wrap about-content" style="display:none"></div>
     <div id="view-monthly" class="wrap about-content" style="display:none"></div>
     <div id="view-sectorreport" class="wrap about-content" style="display:none"></div>
+    <div id="view-earnings" class="wrap about-content" style="display:none"></div>
 
     <footer style="margin-top:20px;padding:16px 0;color:var(--dim);font-size:12px;border-top:1px solid var(--line)">
       <a href="/weekly" onclick="return spaNav(event,'weekly')" style="color:var(--accent)">📰 주간 리포트</a> ·
@@ -492,7 +495,9 @@ function renderTable(){
     if(x==null)x=sortAsc?1e18:-1e18; if(y==null)y=sortAsc?1e18:-1e18;
     return sortAsc?(x>y?1:-1):(x<y?1:-1);});
   document.getElementById('cnt').textContent=`${rows.length}종목`;
-  document.getElementById('viewIntro').textContent=cfg.intro;
+  const liveNote=(LIVE_UPDATED_AT&&(curView==='price'||curView==='div'))
+    ?` (장중 시세 ${LIVE_UPDATED_AT} 갱신)`:'';
+  document.getElementById('viewIntro').textContent=cfg.intro+liveNote;
   const thead=document.querySelector('#tbl thead'); const tbody=document.querySelector('#tbl tbody');
   thead.innerHTML='<tr>'+cfg.cols.map(c=>`<th${c.left?' style="text-align:left"':''} data-k="${c.key||''}">${c.label}</th>`).join('')+'</tr>';
   tbody.innerHTML='';
@@ -512,7 +517,7 @@ document.getElementById('q').oninput=renderTable;
 /* ── 사이드바 전환 ── */
 const ALL_PANELS=['view-home','view-screener','theme','sec','view-table',
   'view-weekly','view-anomaly','view-themesall','view-about','view-learn',
-  'view-monthly','view-sectorreport'];
+  'view-monthly','view-sectorreport','view-earnings'];
 function switchView(v){
   curView=v;
   history.replaceState(null,'',v==='home'?location.pathname:'#'+v);
@@ -529,6 +534,7 @@ function switchView(v){
   if(v==='learn'){document.getElementById('view-learn').style.display='';loadLearnIndex();return;}
   if(v==='monthly'){document.getElementById('view-monthly').style.display='';loadMonthly();return;}
   if(v==='sectorreport'){document.getElementById('view-sectorreport').style.display='';loadSectorReportIndex();return;}
+  if(v==='earnings'){document.getElementById('view-earnings').style.display='';loadEarnings();return;}
   if(VIEWS[v]){
     document.getElementById('view-table').style.display='';
     sortK=VIEWS[v].sort; sortAsc=VIEWS[v].asc;
@@ -680,7 +686,7 @@ async function loadAbout(){
 let LEARN_INDEX_HTML=null;
 const SITE_NAV_MAP={'/':'home','/weekly':'weekly','/themes-index':'themesall',
   '/about':'about','/learn':'learn','/anomaly-report':'anomaly',
-  '/monthly':'monthly','/sector-report':'sectorreport'};
+  '/monthly':'monthly','/sector-report':'sectorreport','/earnings-report':'earnings'};
 function wireInlineLinks(el){
   el.querySelectorAll('a[href]').forEach(a=>{
     const href=a.getAttribute('href');
@@ -735,6 +741,17 @@ async function loadMonthly(){
   el.innerHTML='<span class="mut">불러오는 중…</span>';
   try{
     const d=await fetch('/api/monthly').then(x=>x.json());
+    el.innerHTML=d.html;
+    wireInlineLinks(el);
+  }catch(e){ el.innerHTML='<p class="mut">불러오지 못했습니다.</p>'; return; }
+  el.dataset.done='1';
+}
+async function loadEarnings(){
+  const el=document.getElementById('view-earnings');
+  if(el.dataset.done)return;
+  el.innerHTML='<span class="mut">불러오는 중…</span>';
+  try{
+    const d=await fetch('/api/earnings-report').then(x=>x.json());
     el.innerHTML=d.html;
     wireInlineLinks(el);
   }catch(e){ el.innerHTML='<p class="mut">불러오지 못했습니다.</p>'; return; }
