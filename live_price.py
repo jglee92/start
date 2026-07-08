@@ -21,11 +21,25 @@ TTL_SECONDS = 300   # 5분 — 이보다 오래되면 다음 요청에서 갱신
 
 
 def is_market_hours(now=None) -> bool:
+    """실제 정규장 시간(09:00~15:30). 표시용 '장중' 배지 등에 쓸 엄격한 정의."""
     now = (now or datetime.now(KST)).astimezone(KST)
     if now.weekday() >= 5:   # 토(5)/일(6)
         return False
     t = now.hour * 60 + now.minute
     return 9 * 60 <= t <= 15 * 60 + 30
+
+
+def should_refresh_live(now=None) -> bool:
+    """실시간가 갱신을 '시도'할지 여부. 09:00~19:00로 정규장(15:30 마감)보다 넓게 잡음 —
+    장마감 후~저녁 정식 daily_prices 갱신(19:00) 사이에 공백이 생기면 daily_prices가
+    하루 이상 stale한 상태로 노출되는 문제가 있었음(실제 발생). 이 구간엔 네이버가
+    당일 종가를 그대로 반환해주므로(장중이 아니라도 마지막 체결가 조회는 됨) 계속
+    갱신 시도하는 게 더 정확하다."""
+    now = (now or datetime.now(KST)).astimezone(KST)
+    if now.weekday() >= 5:
+        return False
+    t = now.hour * 60 + now.minute
+    return 9 * 60 <= t <= 19 * 60
 
 
 def _fetch_one(code: str):

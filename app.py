@@ -92,7 +92,9 @@ def get_ranking_asof(days_ago: int):
 
 
 def get_live_prices():
-    """장중(09:00~15:30 평일) 현재가 캐시(화면표시 전용, daily_prices와 무관).
+    """현재가 캐시(화면표시 전용, daily_prices와 무관). 갱신 시도는 09:00~19:00로
+    정규장(15:30 마감)보다 넓게 잡음 — 장마감~저녁 정식 daily_prices 갱신(19:00) 사이
+    공백에서 daily_prices가 하루 이상 stale한 채로 노출되던 문제가 실제로 있었음.
     전체 종목 조회에 30초+ 걸려서 요청을 막으면 안 됨 -> stale-while-revalidate:
     캐시(오래됐어도)는 즉시 반환하고, 갱신은 백그라운드 스레드에서.
     순수 인메모리 캐시(재배포 시 초기화됨) — DB(git 커밋으로 배포되는 파일)에 저장하면
@@ -101,7 +103,7 @@ def get_live_prices():
     import threading
     import live_price
     from datetime import datetime
-    if not live_price.is_market_hours():
+    if not live_price.should_refresh_live():
         return _cache.get("live_prices") or {}
     ts = _cache.get("live_prices_ts")
     now_kst = datetime.now(live_price.KST)
