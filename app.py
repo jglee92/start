@@ -18,6 +18,7 @@ from email.utils import parsedate_to_datetime
 import requests
 from fastapi import FastAPI, HTTPException
 from fastapi.responses import HTMLResponse, JSONResponse, PlainTextResponse, Response
+from fastapi.staticfiles import StaticFiles
 
 import db
 from factor.universe import build_master
@@ -537,6 +538,7 @@ def api_sector(name: str):
 # 배포 시 실제 도메인으로: 예) SITE_BASE_URL=https://mydomain.com
 BASE_URL = os.getenv("SITE_BASE_URL", "https://example.com").rstrip("/")
 _STATIC = os.path.join(os.path.dirname(__file__), "static")
+app.mount("/static", StaticFiles(directory=_STATIC), name="static")
 
 
 def _page(fname):

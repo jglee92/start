@@ -7,10 +7,27 @@ SEO용 서버렌더 원본 콘텐츠 (테마 관련주 랜딩페이지 · 주간
 """
 from __future__ import annotations
 import html
+import json
+from urllib.parse import urlsplit
 
 
 def _esc(s):
     return html.escape(str(s if s is not None else ""))
+
+
+def _breadcrumb_ld(title, canonical):
+    """홈 > 현재 페이지 2단 브레드크럼(JSON-LD) — 검색결과에 URL 대신 경로로 표시될 수 있음."""
+    parts = urlsplit(canonical)
+    home = f"{parts.scheme}://{parts.netloc}/"
+    data = {
+        "@context": "https://schema.org",
+        "@type": "BreadcrumbList",
+        "itemListElement": [
+            {"@type": "ListItem", "position": 1, "name": "홈", "item": home},
+            {"@type": "ListItem", "position": 2, "name": title, "item": canonical},
+        ],
+    }
+    return json.dumps(data, ensure_ascii=False)
 
 
 def _fmt(v, nd=1):
@@ -23,6 +40,8 @@ def _fmt(v, nd=1):
 
 
 def layout(title, desc, canonical, body, extra_nav=""):
+    parts = urlsplit(canonical)
+    og_image = f"{parts.scheme}://{parts.netloc}/static/og-image.png"
     return f"""<!doctype html><html lang="ko"><head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
 <script async src="https://www.googletagmanager.com/gtag/js?id=G-0C72PQQH21"></script>
@@ -39,6 +58,12 @@ def layout(title, desc, canonical, body, extra_nav=""):
 <link rel="canonical" href="{_esc(canonical)}">
 <meta property="og:type" content="article"><meta property="og:title" content="{_esc(title)}">
 <meta property="og:description" content="{_esc(desc)}"><meta property="og:locale" content="ko_KR">
+<meta property="og:url" content="{_esc(canonical)}">
+<meta property="og:image" content="{_esc(og_image)}">
+<meta property="og:image:width" content="1200"><meta property="og:image:height" content="630">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:image" content="{_esc(og_image)}">
+<script type="application/ld+json">{_breadcrumb_ld(title, canonical)}</script>
 <link rel="stylesheet" as="style" crossorigin
   href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.css">
 <style>
