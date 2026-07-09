@@ -28,7 +28,19 @@ RULES = [
 ]
 
 
-def classify(industry) -> str:
+# KSIC 등록업종 텍스트만으로는 잘못 분류되는 유명 대기업 수동 보정.
+# 삼성전자·LG전자는 둘 다 "통신 및 방송 장비 제조업"으로 등록돼 있어 키워드 매칭이
+# "통신장비"로 먼저 걸리는데, 시장에서 인식되는 정체성(실제 매출 비중)은 반도체·전자라
+# 사용자가 보면 바로 이상하다고 느낄 만한 대표적 케이스라 수동으로 고정한다.
+CODE_OVERRIDES = {
+    "005930": "반도체·전자",   # 삼성전자
+    "066570": "반도체·전자",   # LG전자
+}
+
+
+def classify(industry, code=None) -> str:
+    if code and code in CODE_OVERRIDES:
+        return CODE_OVERRIDES[code]
     n = str(industry or "")
     for sector, kws in RULES:
         if any(k in n for k in kws):

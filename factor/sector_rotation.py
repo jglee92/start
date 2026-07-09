@@ -27,7 +27,7 @@ def _year_universe_by_sector(conn, master, year):
         p = price_asof(conn, r.code, rebal_date(year))
         if not p or r.shares * p[0] < cfg.MIN_MARKET_CAP:
             continue
-        sec = classify(getattr(r, "industry", None))
+        sec = classify(getattr(r, "industry", None), r.code)
         buckets.setdefault(sec, []).append(r.code)
     return buckets
 

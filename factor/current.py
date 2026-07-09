@@ -106,7 +106,7 @@ def compute_ranking(conn, master=None, asof=None, ref_date=None):
         op_growth = _growth_pct(op, pf["op_profit"]) if pf else None
         rows.append({
             "code": r.code, "name": r.name, "market": r.market,
-            "sector": classify(getattr(r, "industry", None)),
+            "sector": classify(getattr(r, "industry", None), r.code),
             "industry": getattr(r, "industry", None),
             "price": p[0], "price_date": p[1], "chg_pct": chg_pct, "prev_close": prev,
             "marcap": marcap,
