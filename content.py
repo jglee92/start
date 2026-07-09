@@ -53,6 +53,9 @@ def layout(title, desc, canonical, body, extra_nav=""):
 </script>
 <meta name="google-site-verification" content="5TVrZ_HlWRfb6pGJ1o-2YwzL1qnPxqpTwJSLWVGLM74" />
 <meta name="naver-site-verification" content="2f945cfe349bbdceb4341472d7d2a1cc69b26a1f" />
+<link rel="icon" type="image/png" sizes="32x32" href="{parts.scheme}://{parts.netloc}/static/favicon-32.png">
+<link rel="icon" type="image/png" sizes="16x16" href="{parts.scheme}://{parts.netloc}/static/favicon-16.png">
+<link rel="apple-touch-icon" href="{parts.scheme}://{parts.netloc}/static/apple-touch-icon.png">
 <title>머니체크업 · {_esc(title)}</title>
 <meta name="description" content="{_esc(desc)}">
 <link rel="canonical" href="{_esc(canonical)}">
