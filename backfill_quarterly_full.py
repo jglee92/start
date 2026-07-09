@@ -1,11 +1,13 @@
 # -*- coding: utf-8 -*-
 """
 전체 대시보드 유니버스의 표준분기(단독) 재무 + 정확한 공시일을 수집해
-quarterly_financials에 저장한다. 최근 2개 회계연도(최대 8분기)만 대상 —
+quarterly_financials에 저장한다. 최근 3개 회계연도(최대 12분기)만 대상 —
 분기별 재무표/이상신호 기능 표시용(전체 기간 리서치는 backfill_quarterly_pilot.py 참고).
+2년치만 모으면 가장 이른 연도의 분기는 전년 동기(YoY) 비교 대상이 없어 실적발표
+리포트에서 계속 "–"로만 뜨는 문제가 있어 1개 연도 더 늘림.
 
-DART 하루 쿼터(20,000건) 고려해 종목당 최대 8분기*2호출(재무+공시일)=16건 —
-전체 유니버스(~450개) 기준 최대 7,200건 정도로 여유 있음.
+DART 하루 쿼터(20,000건) 고려해 종목당 최대 12분기*2호출(재무+공시일)=24건 —
+전체 유니버스(~450개) 기준 최대 10,800건 정도로 여유 있음.
 
 사용: KR_DB_PATH=data/screener_deploy.db .\.venv\Scripts\python.exe backfill_quarterly_full.py
 """
@@ -26,7 +28,7 @@ from dart_client import DartClient, DartError
 from factor.pead import standalone_from_cumulative, REPRT
 
 THIS_YEAR = datetime.now().year
-YEARS = [THIS_YEAR - 1, THIS_YEAR]   # 최근 2개 연도 = 최대 8분기
+YEARS = [THIS_YEAR - 2, THIS_YEAR - 1, THIS_YEAR]   # 최근 3개 연도 = 최대 12분기(YoY 비교용 1개년 추가)
 
 
 def main():

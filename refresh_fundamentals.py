@@ -25,7 +25,7 @@ from dart_client import DartClient, DartError
 from factor.pead import standalone_from_cumulative, REPRT
 
 LATEST_FY = datetime.now().year - 1   # 2026 → FY2025
-QUARTER_YEARS = [datetime.now().year - 1, datetime.now().year]   # 분기재무 대상 연도
+QUARTER_YEARS = [datetime.now().year - 2, datetime.now().year - 1, datetime.now().year]   # 분기재무 대상 연도(YoY 비교용 1개년 추가)
 
 
 def main():
