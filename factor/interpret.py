@@ -131,6 +131,15 @@ def _growth_text(r, sec):
     return txt
 
 
+def _debt_caveat(dr):
+    """부채비율이 비정상적으로 높으면(금융 자회사를 연결로 잡는 지주사 등) 단순
+    '위험'으로 오독하지 않게 안내 문구를 덧붙인다. 실제로 증권·캐피탈 계열사를 둔
+    지주/IT기업이 연결기준 부채비율 900%+로 나오는 경우가 있음(계산 오류 아님)."""
+    if dr is not None and dr >= 500:
+        return " 다만 이 정도로 높으면 증권·캐피탈 등 금융 계열사를 연결로 잡는 지주사 구조일 수 있어, 부채비율만으로 위험도를 판단하기 어렵습니다."
+    return ""
+
+
 def anomaly_flags(r, pf):
     """재무 이상신호(참고용, 회계부정 진단 아님) — 이미 확보한 다년치 데이터로만 판단."""
     flags = []
@@ -156,7 +165,7 @@ def anomaly_flags(r, pf):
         dr_r, pf_r = round(dr), round(pf["debt_ratio"])   # 표시값 기준으로 차이도 계산(반올림 불일치 방지)
         flags.append({"emoji": "🟡", "label": "부채비율 급증",
                      "text": f"부채비율이 전년 {pf_r:.0f}%에서 {dr_r:.0f}%로 "
-                             f"{dr_r-pf_r:.0f}%p 급증했습니다."})
+                             f"{dr_r-pf_r:.0f}% 급증했습니다.{_debt_caveat(dr_r)}"})
     if g is not None and g2 is not None and g < 0 and g2 < 0:
         flags.append({"emoji": "🟡", "label": "매출 2년 연속 감소",
                      "text": "최근 2개 회계연도 모두 매출이 전년보다 감소했습니다."})
@@ -203,7 +212,7 @@ def quarterly_anomaly_flags(series):
         dr_r, qoq_r = round(dr), round(qoq["debt_ratio"])
         flags.append({"emoji": "🟡", "label": "분기 부채비율 급증",
                      "text": f"{period_label} 부채비율이 직전 분기 {qoq_r:.0f}%에서 {dr_r:.0f}%로 "
-                             f"{dr_r-qoq_r:.0f}%p 늘었습니다."})
+                             f"{dr_r-qoq_r:.0f}% 늘었습니다.{_debt_caveat(dr_r)}"})
     g = yoy_growth(latest)
     g2 = yoy_growth(qoq) if qoq else None
     if g is not None and g2 is not None and g < 0 and g2 < 0:
