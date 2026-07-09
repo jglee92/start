@@ -225,7 +225,7 @@ def api_stock(code: str):
     conn.close()
     if row is None and not fins:
         raise HTTPException(404, "종목 없음")
-    name = row["name"] if row else code
+    name = row["name"] if row else _name_of(code)
     themes = _stock_theme_pairs(code)
     live = get_live_prices().get(code)
     return {
@@ -505,7 +505,7 @@ def api_disclosures(code: str):
 def api_news(code: str):
     rk = get_ranking()
     row = next((r for r in rk if r["code"] == code), None)
-    name = row["name"] if row else code
+    name = row["name"] if row else _name_of(code)
     return {"code": code, "name": name,
             "items": _google_news(f"{name} 주식", stock_name=name)[:10]}
 

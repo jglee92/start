@@ -208,27 +208,65 @@ def get_quarterly_series(conn, code: str):
              "disclosed_date": r[7]} for r in rows]
 
 
+def _growth_pct(cur, prev, allow_negative=True):
+    """성장률(%). DART 누적치를 단독분기로 환산(standalone_from_cumulative)하는 과정에서
+    직전 공시가 정정되면 표준화된 값이 음수로 튀는 경우가 실제로 있다(매출이 음수가 되는
+    등 물리적으로 불가능한 값) — 이런 깨진 기준으로 계산한 성장률은 -1000%대의 무의미한
+    숫자가 되므로 노출하지 않는다. 매출(allow_negative=False)은 항상 양수여야 정상이라
+    둘 중 하나라도 0 이하면 계산하지 않고, 순이익처럼 부호가 있는 값은 흑자/적자가
+    전환되는 구간(분모·분자 부호가 다름)만 걸러낸다(전환 자체는 별도 이상신호로 표시)."""
+    if cur is None or prev is None or prev == 0:
+        return None
+    if not allow_negative and (cur <= 0 or prev <= 0):
+        return None
+    if (cur < 0) != (prev < 0):
+        return None
+    pct = (cur / prev - 1) * 100
+    # 기준분기가 비정상적으로 작으면(환산 잔차 등) 배율로 튀는 값이 나온다 —
+    # 실제 성장이라기보다 계산 잡음일 가능성이 높아 이런 값은 숨긴다.
+    if abs(pct) > 500:
+        return None
+    return pct
+
+
 def get_recent_disclosures(conn, limit: int = 40):
-    """최근 공시된 분기(disclosed_date desc) + 전년 동기 대비 매출·순이익 성장률.
-    실적발표 리포트용 — '예정' 캘린더가 아니라 이미 공시된 것 중 최신순."""
-    rows = conn.execute(
+    """최근 공시된 분기(disclosed_date desc, 종목당 최신 1건) + 전년 동기 대비
+    매출·순이익 성장률(YoY). 전년 동기 데이터가 없으면(수집 기간이 2개년뿐이라
+    초반 분기는 흔함) 직전 분기 대비(QoQ)도 같이 계산해 화면에서 대체 표시할 수
+    있게 한다. 실적발표 리포트용 — '예정' 캘린더가 아니라 이미 공시된 것 중 최신순.
+    같은 종목이 여러 분기로 겹쳐 들어오면 최신 것만 남긴다(중복 기업 노출 방지)."""
+    all_rows = conn.execute(
         "SELECT code,year,quarter,revenue,op_profit,net_income,disclosed_date "
         "FROM quarterly_financials WHERE disclosed_date IS NOT NULL "
-        "ORDER BY disclosed_date DESC LIMIT ?", (limit,)).fetchall()
+        "ORDER BY disclosed_date DESC, year DESC, quarter DESC").fetchall()
+    seen, rows = set(), []
+    for r in all_rows:
+        if r[0] in seen:  # 같은 종목이 여러 분기로 겹치면(동일 disclosed_date 포함) 최신 것만
+            continue
+        seen.add(r[0])
+        rows.append(r)
+        if len(rows) >= limit:
+            break
     out = []
     for code, year, quarter, revenue, op_profit, net_income, ddate in rows:
-        prev = conn.execute(
+        prev_yoy = conn.execute(
             "SELECT revenue,net_income FROM quarterly_financials "
             "WHERE code=? AND year=? AND quarter=?", (code, year - 1, quarter)).fetchone()
-        rev_yoy = ni_yoy = None
-        if prev:
-            if prev[0] and revenue is not None:
-                rev_yoy = (revenue / prev[0] - 1) * 100
-            if prev[1] and net_income is not None:
-                ni_yoy = (net_income / prev[1] - 1) * 100
+        py, pq = (year, quarter - 1) if quarter > 1 else (year - 1, 4)
+        prev_qoq = conn.execute(
+            "SELECT revenue,net_income FROM quarterly_financials "
+            "WHERE code=? AND year=? AND quarter=?", (code, py, pq)).fetchone()
+        rev_yoy = ni_yoy = rev_qoq = ni_qoq = None
+        if prev_yoy:
+            rev_yoy = _growth_pct(revenue, prev_yoy[0], allow_negative=False)
+            ni_yoy = _growth_pct(net_income, prev_yoy[1])
+        if prev_qoq:
+            rev_qoq = _growth_pct(revenue, prev_qoq[0], allow_negative=False)
+            ni_qoq = _growth_pct(net_income, prev_qoq[1])
         out.append({"code": code, "year": year, "quarter": quarter, "revenue": revenue,
                     "op_profit": op_profit, "net_income": net_income,
-                    "disclosed_date": ddate, "rev_yoy": rev_yoy, "ni_yoy": ni_yoy})
+                    "disclosed_date": ddate, "rev_yoy": rev_yoy, "ni_yoy": ni_yoy,
+                    "rev_qoq": rev_qoq, "ni_qoq": ni_qoq})
     return out
 
 

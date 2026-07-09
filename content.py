@@ -530,21 +530,27 @@ def render_weekly(strong, weak, top_value, asof, canonical, movers_up=None, move
 
 def render_earnings_report(items, canonical):
     """최근 공시된 분기 실적 발표 현황 — '예정' 캘린더가 아니라 이미 나온 것 중 최신순."""
-    def yoy_cell(v):
+    def growth_cell(yoy, qoq):
+        # 전년 동기 데이터가 없으면(수집 기간이 2개년뿐이라 초반 분기는 흔함) 직전 분기
+        # 대비(QoQ)로 대체 표시 — 계산 안 된 게 아니라 비교 기준 데이터가 없는 것뿐이라,
+        # "–"만 찍기보다 QoQ라도 보여주는 게 낫다는 판단.
+        v, label = (yoy, "") if yoy is not None else (qoq, ' <small class="muted">(QoQ)</small>')
         if v is None:
             return "–"
         cls = "pos" if v >= 0 else "neg"
-        return f'<span class="{cls}">{v:+.1f}%</span>'
+        return f'<span class="{cls}">{v:+.1f}%</span>{label}'
 
     rows = "".join(
         f'<tr><td style="text-align:left"><a href="/s/{_esc(it["code"])}">{_esc(it["name"])}</a></td>'
         f'<td>{it["year"]} Q{it["quarter"]}</td><td>{_esc(it["disclosed_date"])}</td>'
-        f'<td>{yoy_cell(it["rev_yoy"])}</td><td>{yoy_cell(it["ni_yoy"])}</td></tr>'
+        f'<td>{growth_cell(it["rev_yoy"], it.get("rev_qoq"))}</td>'
+        f'<td>{growth_cell(it["ni_yoy"], it.get("ni_qoq"))}</td></tr>'
         for it in items) or '<tr><td colspan=5 class="muted">데이터 없음</td></tr>'
     body = f"""
 <h1>📅 최근 실적발표 현황</h1>
 <p>DART에 최근 공시된 분기·반기 실적을 발표일 순으로 정리했습니다. 전년 동기 대비
-매출·순이익 성장률로 실적 흐름을 빠르게 훑어볼 수 있습니다. <b>"다음 주 발표 예정"같은
+매출·순이익 성장률로 실적 흐름을 빠르게 훑어볼 수 있습니다(전년 동기 데이터가 없는
+분기는 직전 분기 대비 <b>QoQ</b>로 대체 표시). <b>"다음 주 발표 예정"같은
 사전 예측이 아니라 이미 공시된 실적만</b> 다룹니다 — DART는 공시 일정을 미리 알려주지
 않아 정확한 예정일을 제공할 수 없기 때문입니다.</p>
 <div class="wrap"><table><thead><tr><th style="text-align:left">종목</th><th>분기</th>
