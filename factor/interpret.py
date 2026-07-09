@@ -168,7 +168,7 @@ def anomaly_flags(r, pf):
         dr_r, pf_r = round(dr), round(pf["debt_ratio"])   # 표시값 기준으로 차이도 계산(반올림 불일치 방지)
         flags.append({"emoji": "🟡", "label": "부채비율 급증",
                      "text": f"부채비율이 전년 {pf_r:.0f}%에서 {dr_r:.0f}%로 "
-                             f"{dr_r-pf_r:.0f}% 급증했습니다.{_debt_caveat(dr_r)}"})
+                             f"{dr_r-pf_r:.0f}%포인트 급증했습니다.{_debt_caveat(dr_r)}"})
     if g is not None and g2 is not None and g < 0 and g2 < 0:
         flags.append({"emoji": "🟡", "label": "매출 2년 연속 감소",
                      "text": "최근 2개 회계연도 모두 매출이 전년보다 감소했습니다."})
@@ -215,7 +215,7 @@ def quarterly_anomaly_flags(series):
         dr_r, qoq_r = round(dr), round(qoq["debt_ratio"])
         flags.append({"emoji": "🟡", "label": "분기 부채비율 급증",
                      "text": f"{period_label} 부채비율이 직전 분기 {qoq_r:.0f}%에서 {dr_r:.0f}%로 "
-                             f"{dr_r-qoq_r:.0f}% 늘었습니다.{_debt_caveat(dr_r)}"})
+                             f"{dr_r-qoq_r:.0f}%포인트 늘었습니다.{_debt_caveat(dr_r)}"})
     g = yoy_growth(latest)
     g2 = yoy_growth(qoq) if qoq else None
     if g is not None and g2 is not None and g < 0 and g2 < 0:
