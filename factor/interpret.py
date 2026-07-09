@@ -76,10 +76,13 @@ def _avg(*vals):
     return sum(vs) / len(vs) if vs else None
 
 
-def _cmp(v, avg, unit="", higher_better=True):
+def _cmp(v, avg, unit=""):
+    """업종평균과의 순수 크기 비교 문장. 높낮이가 좋은지 나쁜지는 별개(별점 계산)에서
+    이미 판단하므로, 여기선 higher_better로 문구를 뒤집으면 안 됨 — 실제로 그렇게 짜여
+    있어서 '낮은데 높다고, 높은데 낮다고' 나오는 버그가 있었음."""
     if v is None or avg is None:
         return ""
-    diff = "높습니다" if (v > avg) == higher_better else "낮습니다"
+    diff = "높습니다" if v > avg else "낮습니다"
     return f" 업종평균({avg:.1f}{unit})보다 {diff}."
 
 
@@ -90,7 +93,7 @@ def _value_text(r, sec):
     base = f"PER {per:.1f}배"
     if pbr is not None:
         base += f", PBR {pbr:.2f}배"
-    return base + f"입니다.{_cmp(per, sec.get('per'), '배', higher_better=False)}"
+    return base + f"입니다.{_cmp(per, sec.get('per'), '배')}"
 
 
 def _profit_text(r, sec):
@@ -104,7 +107,7 @@ def _safety_text(r, sec):
     dr = r.get("debt_ratio")
     if dr is None:
         return "부채 데이터가 부족합니다."
-    base = f"부채비율 {dr:.0f}%입니다.{_cmp(dr, sec.get('debt'), '%', higher_better=False)}"
+    base = f"부채비율 {dr:.0f}%입니다.{_cmp(dr, sec.get('debt'), '%')}"
     if dr < 50:
         base += " 100% 미만은 통상 안전한 수준으로 봅니다."
     elif dr > 200:
