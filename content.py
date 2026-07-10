@@ -103,6 +103,11 @@ footer{{margin-top:32px;padding-top:16px;border-top:1px solid #8883;font-size:13
  style="flex:1;min-width:180px;padding:9px 12px;border-radius:7px;border:1px solid #8883">
 <button type="submit" style="padding:9px 18px;border-radius:7px;border:none;background:#1a63cf;color:#fff;font-weight:700;cursor:pointer">구독하기</button>
 </form>
+<label style="display:flex;align-items:flex-start;gap:6px;font-size:11.5px;color:#4a5563;margin-top:8px;cursor:pointer">
+<input type="checkbox" id="newsletterConsent" required style="margin-top:2px">
+<span>이메일 뉴스레터 수신 및 개인정보 처리(발송 위탁: Resend)에 동의합니다.
+<a href="/about#privacy">개인정보처리방침 보기</a></span>
+</label>
 <div id="newsletterMsg" style="font-size:12.5px;margin-top:6px"></div>
 <div style="color:#4a5563;font-size:11.5px;margin-top:8px">구독 취소는 매일 받으시는 메일 맨 아래 "구독 취소" 링크로 언제든 가능합니다.</div>
 </div>
