@@ -16,7 +16,7 @@ import xml.etree.ElementTree as ET
 from email.utils import parsedate_to_datetime
 
 import requests
-from fastapi import FastAPI, HTTPException
+from fastapi import Body, FastAPI, HTTPException
 from fastapi.responses import HTMLResponse, JSONResponse, PlainTextResponse, RedirectResponse, Response
 from fastapi.staticfiles import StaticFiles
 
@@ -1109,6 +1109,29 @@ def api_learn_term(slug: str):
     compare = _learn_compare(TERMS[slug])
     html = render_glossary(slug, compare, f"{BASE_URL}/learn/{slug}")
     return {"html": _extract_body(html)}
+
+
+@app.post("/api/newsletter/subscribe")
+def newsletter_subscribe(email: str = Body(..., embed=True)):
+    """이메일 뉴스레터 구독. 이메일 자체는 우리 DB(git 커밋되는 배포 DB)에 저장하지
+    않고 Resend Audience API로 바로 전달 — 개인정보를 git 이력에 남기지 않기 위함."""
+    email = (email or "").strip()
+    if "@" not in email or "." not in email.split("@")[-1]:
+        raise HTTPException(400, "올바른 이메일 주소를 입력해주세요.")
+    api_key = os.getenv("RESEND_API_KEY")
+    audience_id = os.getenv("RESEND_AUDIENCE_ID")
+    if not api_key or not audience_id:
+        raise HTTPException(503, "뉴스레터 기능을 준비 중입니다. 곧 열릴게요!")
+    try:
+        r = requests.post(
+            f"https://api.resend.com/audiences/{audience_id}/contacts",
+            headers={"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"},
+            json={"email": email, "unsubscribed": False}, timeout=10)
+    except requests.RequestException:
+        raise HTTPException(502, "구독 처리 중 오류가 발생했어요. 잠시 후 다시 시도해주세요.")
+    if r.status_code >= 400 and r.status_code != 409:
+        raise HTTPException(502, "구독 처리 중 오류가 발생했어요. 잠시 후 다시 시도해주세요.")
+    return {"ok": True}
 
 
 @app.get("/robots.txt", response_class=PlainTextResponse)
