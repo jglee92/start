@@ -1096,6 +1096,11 @@ def api_earnings_report():
     return {"html": _extract_body(html)}
 
 
+@app.get("/api/earnings-recent")
+def api_earnings_recent(n: int = 5):
+    return {"items": _earnings_items()[:n]}
+
+
 @app.get("/themes-index", response_class=HTMLResponse)
 def themes_index():
     from content import layout
