@@ -931,6 +931,23 @@ def _blog_draft_text():
                 lines.append(f"  - {t['name']}: {t['ret_1m']:+.1f}%")
         lines.append("")
 
+    if now.weekday() == 4:  # 금요일엔 주간 마무리 섹션 추가
+        _, strong, _weak, _top_value, _asof, movers_up, movers_down = _weekly_ctx()
+        lines.append("\U0001F4C5 이번주 마감! 주간증시 정리")
+        if strong:
+            lines.append("이번주 강세 테마 TOP5")
+            for t in strong[:5]:
+                lines.append(f"- {t['name']}: {t['ret_1m']:+.1f}%")
+        if movers_up:
+            lines.append("이번주 순위 급상승 종목")
+            for m in movers_up[:3]:
+                lines.append(f"- {m['name']}({m['code']}): {m['prev_rank']}위 → {m['rank']}위")
+        if movers_down:
+            lines.append("이번주 순위 급하락 종목")
+            for m in movers_down[:3]:
+                lines.append(f"- {m['name']}({m['code']}): {m['prev_rank']}위 → {m['rank']}위")
+        lines.append("")
+
     lines.append("전 종목 스크리닝, 재무제표, 회계감사의견까지 더 자세한 데이터는")
     lines.append(f"머니체크업에서 무료로 확인하실 수 있어요 \U0001F449 {BASE_URL}/")
     lines.append("")
