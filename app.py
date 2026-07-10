@@ -1199,6 +1199,11 @@ def robots():
     return f"User-agent: *\nAllow: /\nSitemap: {BASE_URL}/sitemap.xml\n"
 
 
+@app.get("/ads.txt", response_class=PlainTextResponse)
+def ads_txt():
+    return "google.com, pub-2115777789192453, DIRECT, f08c47fec0942fa0\n"
+
+
 @app.get("/sitemap.xml")
 def sitemap():
     from datetime import datetime

@@ -87,6 +87,7 @@ def layout(title, desc, canonical, body, extra_nav=""):
   gtag('config', 'G-0C72PQQH21');
 </script>
 <meta name="google-site-verification" content="5TVrZ_HlWRfb6pGJ1o-2YwzL1qnPxqpTwJSLWVGLM74" />
+<meta name="google-adsense-account" content="ca-pub-2115777789192453">
 <meta name="naver-site-verification" content="2f945cfe349bbdceb4341472d7d2a1cc69b26a1f" />
 <meta name="naver-site-verification" content="8d698cb6521592ccddbba542f4cfdbe0f8d4a1fd" />
 <link rel="icon" type="image/png" sizes="32x32" href="{parts.scheme}://{parts.netloc}/static/favicon-32.png">
