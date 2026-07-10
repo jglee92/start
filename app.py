@@ -139,7 +139,7 @@ def get_market_indices():
     import threading
     from datetime import datetime, timezone, timedelta
     KST = timezone(timedelta(hours=9))
-    TTL_SECONDS = 300
+    TTL_SECONDS = 60
     ts = _cache.get("indices_ts")
     now_kst = datetime.now(KST)
     stale = ts is None or (now_kst - ts).total_seconds() > TTL_SECONDS
@@ -1115,7 +1115,8 @@ def themes_index():
     body = (f'<h1>테마별 관련주 전체 ({len(items)}개)</h1>'
             f'<p class="muted">테마를 누르면 해당 테마의 저평가·우량 종목 랭킹을 볼 수 있습니다. '
             f'수익률이 가장 강했던 테마 순으로 정렬했습니다. 매매 추천이 아닙니다.</p>'
-            f'<ul style="columns:2;line-height:2;font-size:14px">{lis}</ul>')
+            f'<ul style="columns:2;line-height:2;font-size:14px">{lis}</ul>'
+            f'<p class="muted footnote">테마 분류: 공개 테마 데이터 참고. 정렬·분석은 자체 팩터 모델.</p>')
     return layout("한국주식 테마 전체 목록 — 관련주 가치·퀄리티 분석",
                   "266개 시장 테마별 관련주를 가치+퀄리티 팩터로 분석한 목록.",
                   f"{BASE_URL}/themes-index", body, show_subscribe=False)

@@ -74,7 +74,7 @@ def _fmt(v, nd=1):
         return "–"
 
 
-def layout(title, desc, canonical, body, extra_nav="", show_subscribe=True):
+def layout(title, desc, canonical, body, show_subscribe=True):
     parts = urlsplit(canonical)
     og_image = f"{parts.scheme}://{parts.netloc}/static/og-image.png"
     subscribe_html = f"""<!--newsletter-block-->
@@ -158,8 +158,8 @@ body{{max-width:900px;margin:0 auto;padding:20px 18px 60px;line-height:1.7;font-
 @media (prefers-color-scheme:dark){{body{{background:#0f1216;color:#f1f4f8}}a{{color:#5a9bdb}}
  th{{color:#aab6c2}} tr:hover{{background:#171c23}} .muted{{color:#aab6c2}}}}
 a{{color:#1a63cf;text-decoration:none;font-weight:600}}a:hover{{text-decoration:underline}}
+.top{{font-size:13px;color:#5a6472;margin-bottom:14px}}
 h1{{font-size:20px}}h2{{font-size:16.5px;margin-top:26px}}
-nav{{font-size:13px;margin-bottom:14px}}
 .ic{{width:14px;height:14px;vertical-align:-2px;margin-right:1px;flex:none;display:inline-block}}
 h1 .ic{{width:17px;height:17px;vertical-align:-3px;margin-right:3px}}
 h2 .ic{{width:15px;height:15px;vertical-align:-2px;margin-right:2px}}
@@ -180,7 +180,7 @@ th:first-child,td:first-child{{text-align:left}}
 .dimtext{{font-size:13.5px;margin:0;line-height:1.6}}
 footer{{margin-top:32px;padding-top:16px;border-top:1px solid #8883;font-size:11.5px;color:#5a6472}}
 </style></head><body>
-<nav><a href="/">← 대시보드</a> · <a href="/weekly">주간 리포트</a> · <a href="/themes-index">테마 전체</a> · <a href="/about">소개·면책</a>{extra_nav}</nav>
+<div class="top"><a href="/">← 대시보드로</a></div>
 {body}
 {subscribe_html}
 </body></html>"""
@@ -522,6 +522,7 @@ def render_anomaly_report(grouped, asof, canonical):
 클릭해서 실제 재무제표·공시 원문을 직접 확인해보세요.</p>
 <p class="muted">전체 {total}건 감지 (시총 3,000억 이상 유니버스 기준)</p>
 {sections}
+<p class="muted footnote">데이터: DART 최신 사업보고서. 규칙 기반 참고 신호이며 회계부정 진단이 아닙니다.</p>
 """
     desc = f"{asof} 기준 적자전환·부채비율급증·영업외손익의존·매출감소 등 재무 이상신호가 감지된 한국 상장기업 리포트."
     return layout(f"이상신호 리포트 ({asof}) — 적자전환·부채급증 감지 기업",
@@ -610,6 +611,7 @@ def render_monthly_health(rows, anomaly_count, asof, canonical, movers_up=None, 
 <p class="muted footnote">같은 별점 안에서도 실제 수치는 다를 수 있어 지표 값을 함께 표시했습니다.</p>
 {dim_sections}
 {_movers_section(movers_up, movers_down, "한 달")}
+<p class="muted footnote">데이터: FinanceDataReader·DART. 분석·정렬은 자체 팩터 모델. 매매 추천이 아닙니다.</p>
 """
     desc = f"{asof} 기준 가치+퀄리티 건강점수 TOP20과 밸류에이션·수익성·안정성·성장성 4차원 최고 기업 랭킹."
     return layout(f"이번 달 건강점수 랭킹 ({asof}) — 종합점수 TOP20 + 4차원 우수기업",

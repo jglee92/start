@@ -122,7 +122,8 @@ def render_sector_index(rk, canonical):
             f'매매 추천이 아닙니다.</p>'
             f'<div class="wrap"><table><thead><tr><th style="text-align:left">업종</th>'
             f'<th>종목수</th><th>평균PER</th><th>평균PBR</th><th>평균ROE%</th><th>평균부채%</th>'
-            f'</tr></thead><tbody>{trs}</tbody></table></div>')
+            f'</tr></thead><tbody>{trs}</tbody></table></div>'
+            f'<p class="muted footnote">데이터: 시총 3,000억 이상 유니버스 기준.</p>')
     return layout("업종별 밸류에이션 리포트 전체 — 저평가·우량 종목 분석",
                   "반도체·2차전지·바이오 등 16개 업종의 평균 밸류에이션과 저평가·우량 종목을 "
                   "정리한 업종별 리포트 목록.", canonical, body, show_subscribe=False)
