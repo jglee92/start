@@ -1231,6 +1231,12 @@ def ads_txt():
     return "google.com, pub-2115777789192453, DIRECT, f08c47fec0942fa0\n"
 
 
+@app.get("/favicon.ico")
+def favicon():
+    # <link rel=icon>은 있지만 루트 /favicon.ico를 직접 찾는 크롤러·구형 클라이언트용.
+    return RedirectResponse("/static/favicon-32.png", status_code=301)
+
+
 @app.get("/sitemap.xml")
 def sitemap():
     from datetime import datetime
@@ -1250,6 +1256,11 @@ def sitemap():
     for no in get_tmap().get("themes", {}):
         parts.append(f"<url><loc>{BASE_URL}/t/{no}</loc><lastmod>{today}</lastmod>"
                      f"<changefreq>weekly</changefreq><priority>0.6</priority></url>")
+    # 개별 종목 페이지(/s/{code}) — 랭킹 유니버스 전 종목. 실제 검색어("삼성전자 PER" 등)에
+    # 대응하는 SSR 랜딩페이지라 색인 가치가 큼. 데이터 없는 얇은 페이지는 랭킹에 없으니 자동 제외.
+    for r in get_ranking():
+        parts.append(f"<url><loc>{BASE_URL}/s/{r['code']}</loc><lastmod>{today}</lastmod>"
+                     f"<changefreq>daily</changefreq><priority>0.7</priority></url>")
     xml = ('<?xml version="1.0" encoding="UTF-8"?>'
            '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">'
            + "".join(parts) + "</urlset>")
