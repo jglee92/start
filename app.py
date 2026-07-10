@@ -800,6 +800,72 @@ def _earnings_items():
     return items
 
 
+def _blog_draft_text():
+    """'장 열리기전 체크포인트' 블로그 초안(제목+본문) 생성.
+    네이버 블로그 자동 포스팅 API는 2020년에 종료되어(직접 확인함) 발행은 수동으로
+    해야 하지만, 초안은 매일 최신 데이터로 자동 완성해 복사만 하면 되게 한다."""
+    from datetime import datetime, timezone, timedelta
+    KST = timezone(timedelta(hours=9))
+    now = datetime.now(KST)
+    title = f"{now.month}월 {now.day}일 장 열리기전 체크포인트"
+
+    conn = _conn()
+    disclosures = db.get_recent_disclosures(conn, limit=8)
+    rk = get_ranking()
+    if _cache.get("theme_perf") is None:
+        from factor.themes import compute_theme_perf
+        _cache["theme_perf"] = compute_theme_perf(conn, get_tmap())
+    conn.close()
+
+    for it in disclosures:
+        it["name"] = _name_of(it["code"])
+
+    lines = ["어제까지 새로 공시된 실적과 시장 신호를 정리했습니다.", ""]
+
+    lines.append("[실적 발표]")
+    for it in disclosures[:5]:
+        yoy, qoq = it.get("rev_yoy"), it.get("rev_qoq")
+        if yoy is not None:
+            tag = f"매출 YoY {yoy:+.1f}%"
+        elif qoq is not None:
+            tag = f"매출 QoQ {qoq:+.1f}%"
+        else:
+            tag = "매출 데이터 부족(금융업 등)"
+        lines.append(f"- {it['name']}({it['code']}) {it['year']}년 {it['quarter']}분기: {tag}")
+    lines.append("")
+
+    anomalies = [(r["name"], r["code"], f) for r in rk for f in (r.get("flags") or [])]
+    if anomalies:
+        anomalies.sort(key=lambda x: 0 if x[2]["emoji"] == "\U0001F534" else 1)
+        lines.append("[이상신호 포착]")
+        for name, code, f in anomalies[:3]:
+            lines.append(f"- {name}({code}) {f['label']}: {f['text']}")
+        lines.append("")
+
+    themes = [r for r in _cache["theme_perf"] if r.get("used", 0) >= 3 and r["count"] >= 8]
+    themes.sort(key=lambda r: (r["ret_1m"] is not None, r["ret_1m"]), reverse=True)
+    if themes:
+        lines.append("[요즘 강세 테마 (최근 1개월)]")
+        for t in themes[:3]:
+            lines.append(f"- {t['name']}: {t['ret_1m']:+.1f}%")
+        lines.append("")
+
+    lines.append(f"더 많은 종목과 상세 데이터는 머니체크업에서 무료로 확인하실 수 있습니다.")
+    lines.append(f"\U0001F449 {BASE_URL}/")
+    lines.append("")
+    lines.append("※ 본 내용은 공개 데이터를 정리한 정보 제공이며 특정 종목의 매수·매도 권유가 아닙니다.")
+    return title, "\n".join(lines)
+
+
+@app.get("/internal/blog-draft", response_class=PlainTextResponse)
+def blog_draft(key: str = ""):
+    expected = os.getenv("BLOG_DRAFT_KEY")
+    if not expected or key != expected:
+        raise HTTPException(404)
+    title, body = _blog_draft_text()
+    return f"{title}\n{'=' * len(title)}\n\n{body}"
+
+
 @app.get("/earnings-report", response_class=HTMLResponse)
 def earnings_report():
     from content import render_earnings_report
