@@ -509,7 +509,9 @@ def render_anomaly_report(grouped, asof, canonical):
         sections += (f'<h2>{items[0]["emoji"]} {_esc(label)} <span class="muted" '
                     f'style="font-size:13px;font-weight:400">· {len(items)}개 종목</span></h2>'
                     f'<p>{_esc(_FLAG_EXPLAIN.get(label, ""))}</p>'
-                    f'<div class="wrap"><table><thead><tr><th style="text-align:left">종목</th>'
+                    f'<div class="wrap"><table style="table-layout:fixed;width:100%">'
+                    f'<colgroup><col style="width:30%"><col style="width:70%"></colgroup>'
+                    f'<thead><tr><th style="text-align:left">종목</th>'
                     f'<th style="text-align:left">내용</th></tr></thead>'
                     f'<tbody>{rows}</tbody></table></div>')
     if not sections:
