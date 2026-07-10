@@ -133,6 +133,38 @@ def get_live_updated_at():
     return ts.strftime("%H:%M") if ts else None
 
 
+def get_market_indices():
+    """코스피/코스닥/나스닥/S&P500/국제 금 - 홈 화면 표시 전용. get_live_prices()와
+    동일하게 stale-while-revalidate + 순수 인메모리 캐시(DB에 저장 안 함)."""
+    import threading
+    from datetime import datetime, timezone, timedelta
+    KST = timezone(timedelta(hours=9))
+    TTL_SECONDS = 300
+    ts = _cache.get("indices_ts")
+    now_kst = datetime.now(KST)
+    stale = ts is None or (now_kst - ts).total_seconds() > TTL_SECONDS
+    if stale and not _cache.get("indices_refreshing"):
+        _cache["indices_refreshing"] = True
+
+        def _bg():
+            try:
+                import market_indices
+                fresh = market_indices.fetch_indices()
+                if fresh:
+                    _cache["indices"] = fresh
+                    _cache["indices_ts"] = datetime.now(KST)
+            finally:
+                _cache["indices_refreshing"] = False
+
+        threading.Thread(target=_bg, daemon=True).start()
+    return _cache.get("indices") or {}
+
+
+@app.get("/api/indices")
+def api_indices():
+    return {"indices": get_market_indices()}
+
+
 def _rank_movers(rk_now, rk_past, top_n=8):
     """현재 랭킹과 과거(가격만 되돌린) 랭킹을 비교한 순위 상승/하락 상위 top_n.
     재무는 최신 그대로 쓰므로 순수 가격 변동에 의한 밸류에이션 변화가 원인."""
