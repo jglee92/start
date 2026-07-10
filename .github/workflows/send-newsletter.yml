@@ -1,0 +1,30 @@
+name: 뉴스레터 자동 발송
+
+on:
+  schedule:
+    # 매 평일(KST) 08:30 = UTC 전날 23:30. 일~목 UTC로 지정해야 월~금 KST 아침이 된다.
+    - cron: '30 23 * * 0-4'
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+jobs:
+  send:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: 의존성 설치
+        run: pip install -r requirements.txt
+
+      - name: 뉴스레터 발송 (블로그 초안과 동일 내용, 휴장일엔 자동 스킵)
+        env:
+          KR_DB_PATH: data/screener_deploy.db
+          RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
+          RESEND_AUDIENCE_ID: ${{ secrets.RESEND_AUDIENCE_ID }}
+        run: python send_newsletter.py

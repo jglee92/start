@@ -97,13 +97,14 @@ footer{{margin-top:32px;padding-top:16px;border-top:1px solid #8883;font-size:13
 {body}
 <div style="margin-top:28px;padding:14px 16px;border:1px solid #8883;border-radius:10px">
 <div style="font-weight:700;margin-bottom:4px">📬 매일 아침 국내증시 체크포인트, 이메일로 받아보기</div>
-<div style="color:#4a5563;font-size:13px;margin-bottom:10px">실적발표·이상신호·강세테마 요약을 보내드려요. 언제든 구독 취소 가능합니다.</div>
+<div style="color:#4a5563;font-size:13px;margin-bottom:10px">실적발표·이상신호·강세테마 요약을 매일 아침 보내드려요.</div>
 <form id="newsletterForm" style="display:flex;gap:8px;flex-wrap:wrap">
 <input type="email" id="newsletterEmail" placeholder="이메일 주소" required
  style="flex:1;min-width:180px;padding:9px 12px;border-radius:7px;border:1px solid #8883">
 <button type="submit" style="padding:9px 18px;border-radius:7px;border:none;background:#1a63cf;color:#fff;font-weight:700;cursor:pointer">구독하기</button>
 </form>
 <div id="newsletterMsg" style="font-size:12.5px;margin-top:6px"></div>
+<div style="color:#4a5563;font-size:11.5px;margin-top:8px">구독 취소는 매일 받으시는 메일 맨 아래 "구독 취소" 링크로 언제든 가능합니다.</div>
 </div>
 <script>
 document.getElementById('newsletterForm').addEventListener('submit', async (e) => {{
