@@ -15,6 +15,41 @@ def _esc(s):
     return html.escape(str(s if s is not None else ""))
 
 
+_ICON_SVG = {
+    "mail": '<rect x="3" y="5" width="18" height="14" rx="2"/><path d="m3.5 6 8.5 7 8.5-7"/>',
+    "wallet": '<rect x="3.5" y="7" width="17" height="12" rx="2"/><path d="M3.5 10h17"/><circle cx="16.2" cy="14" r="1" fill="currentColor" stroke="none"/>',
+    "trendUp": '<path d="M4 16l5.5-5.5 3.5 3.5L20 7"/><path d="M14.5 7H20v5.5"/>',
+    "trendDown": '<path d="M4 8l5.5 5.5 3.5-3.5L20 17"/><path d="M14.5 17H20v-5.5"/>',
+    "shield": '<path d="M12 3.5 18.5 6v5.5c0 4.6-2.8 7.6-6.5 8.8-3.7-1.2-6.5-4.2-6.5-8.8V6z"/>',
+    "sprout": '<path d="M12 21v-9"/><path d="M12 12C7 12 5 9 5 5c5 0 7 3 7 7z"/><path d="M12 12c0-4 2-7 7-7 0 4-2 7-7 7z"/>',
+    "alert": '<path d="M12 3.5 21 19.5H3z"/><path d="M12 10v3.6"/><circle cx="12" cy="16.7" r="0.9" fill="currentColor" stroke="none"/>',
+    "document": '<rect x="6" y="3" width="12" height="18" rx="1.5"/><path d="M9 8h6M9 12h6M9 16h3.5"/>',
+    "barchart": '<path d="M5 19V11"/><path d="M12 19V5"/><path d="M19 19v-7"/>',
+    "flame": '<path d="M12 3c-1 3-4 4-4 8a4 4 0 0 0 8 0c0-1.5-.7-2.3-1.2-3.3.8.3 2.2 1.6 2.2 4.3a5 5 0 0 1-10 0c0-4 3-5 5-9z"/>',
+    "gem": '<path d="M6 3h12l3 5-9 13L3 8z"/><path d="M3 8h18M9 3l-2 5 5 13 5-13-2-5"/>',
+    "target": '<circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="4.2"/><circle cx="12" cy="12" r="0.8" fill="currentColor" stroke="none"/>',
+    "trophy": '<path d="M7 4h10v3a5 5 0 0 1-10 0z"/><path d="M7 5H4v1a4 4 0 0 0 4 4M17 5h3v1a4 4 0 0 1-4 4"/><path d="M12 13v3M9 20h6M10 16.5h4v2.5a1 1 0 0 1-1 1h-2a1 1 0 0 1-1-1z"/>',
+    "calendar": '<rect x="4" y="5.5" width="16" height="14.5" rx="1.8"/><path d="M4 10h16M8 3.5v3.5M16 3.5v3.5"/>',
+    "ruler": '<path d="M4 15.5 8.5 20 20 8.5 15.5 4z"/><path d="m9 11 2 2M12 8l2 2M15 5l2 2"/>',
+    "bank": '<path d="M4 9.5 12 4l8 5.5"/><path d="M5 9.5h14V19H5z"/><path d="M8 12.5V17M12 12.5V17M16 12.5V17"/><path d="M4 19h16"/>',
+    "gear": '<circle cx="12" cy="12" r="3"/><path d="M12 3.5v2.2M12 18.3v2.2M20.5 12h-2.2M5.7 12H3.5M17.8 6.2l-1.6 1.6M7.8 16.2l-1.6 1.6M17.8 17.8l-1.6-1.6M7.8 7.8 6.2 6.2"/>',
+    "coin": '<circle cx="12" cy="12" r="8"/><path d="M9.3 14.2c.4.9 1.3 1.5 2.5 1.5 1.5 0 2.6-.9 2.6-2s-1-1.6-2.6-2c-1.5-.4-2.5-.9-2.5-2s1.1-2 2.5-2c1.2 0 2.1.6 2.5 1.5"/><path d="M12 7.3v1.2M12 15.7v1.2"/>',
+    "calculator": '<rect x="5" y="3" width="14" height="18" rx="1.5"/><path d="M8 7h8"/><path d="M8 11.5h.01M12 11.5h.01M16 11.5h.01M8 15h.01M12 15h.01M16 15h.01M8 18.5h.01M12 18.5h.01M16 18.5h.01"/>',
+    "list": '<path d="M9 6h11M9 12h11M9 18h11"/><circle cx="4.5" cy="6" r="1" fill="currentColor" stroke="none"/><circle cx="4.5" cy="12" r="1" fill="currentColor" stroke="none"/><circle cx="4.5" cy="18" r="1" fill="currentColor" stroke="none"/>',
+    "check": '<circle cx="12" cy="12" r="8"/><path d="m8.5 12.3 2.4 2.4 4.6-5.4"/>',
+    "refresh": '<path d="M4 12a8 8 0 0 1 14-5.3M20 12a8 8 0 0 1-14 5.3"/><path d="M18 3v4h-4M6 21v-4h4"/>',
+    "book": '<path d="M4 5.5A2 2 0 0 1 6 4h11a1 1 0 0 1 1 1v13a1 1 0 0 1-1 1H6a2 2 0 0 0-2 2z"/><path d="M4 18.5A2 2 0 0 1 6 17h12"/>',
+}
+
+
+def _ic(name):
+    d = _ICON_SVG.get(name)
+    if not d:
+        return ""
+    return (f'<svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" '
+            f'stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">{d}</svg>')
+
+
 def _breadcrumb_ld(title, canonical):
     """홈 > 현재 페이지 2단 브레드크럼(JSON-LD) — 검색결과에 URL 대신 경로로 표시될 수 있음."""
     parts = urlsplit(canonical)
@@ -79,6 +114,9 @@ body{{max-width:900px;margin:0 auto;padding:20px 18px 60px;line-height:1.75;font
 a{{color:#1a63cf;text-decoration:none;font-weight:600}}a:hover{{text-decoration:underline}}
 h1{{font-size:24px}}h2{{font-size:19px;margin-top:28px}}
 nav{{font-size:14px;margin-bottom:14px}}
+.ic{{width:14px;height:14px;vertical-align:-2px;margin-right:1px;flex:none;display:inline-block}}
+h1 .ic{{width:20px;height:20px;vertical-align:-4px;margin-right:3px}}
+h2 .ic{{width:16px;height:16px;vertical-align:-3px;margin-right:2px}}
 table{{border-collapse:collapse;width:100%;font-size:14.5px;margin:10px 0}}
 th,td{{padding:8px 10px;border-bottom:1px solid #8883;text-align:right;white-space:nowrap}}
 th:first-child,td:first-child{{text-align:left}}
@@ -97,7 +135,7 @@ footer{{margin-top:32px;padding-top:16px;border-top:1px solid #8883;font-size:13
 {body}
 <!--newsletter-block-->
 <div style="margin-top:28px;padding:14px 16px;border:1px solid #8883;border-radius:10px">
-<div style="font-weight:700;margin-bottom:4px">📬 매일 아침 국내증시 체크포인트, 이메일로 받아보기</div>
+<div style="font-weight:700;margin-bottom:4px">{_ic('mail')} 매일 아침 국내증시 체크포인트, 이메일로 받아보기</div>
 <div style="color:#4a5563;font-size:13px;margin-bottom:10px">실적발표·이상신호·강세테마 요약을 매일 아침 보내드려요.</div>
 <form id="newsletterForm" style="display:flex;gap:8px;flex-wrap:wrap">
 <input type="email" id="newsletterEmail" placeholder="이메일 주소" required
@@ -237,8 +275,8 @@ def _period_pills_html(pr):
             f'border:1px solid #8883;border-radius:8px">{cells}</div>')
 
 
-_DIM_META = {"value": ("💰", "밸류에이션"), "profit": ("📈", "수익성"),
-             "safety": ("🛡️", "안정성"), "growth": ("🌱", "성장성")}
+_DIM_META = {"value": ("wallet", "밸류에이션"), "profit": ("trendUp", "수익성"),
+             "safety": ("shield", "안정성"), "growth": ("sprout", "성장성")}
 
 
 def _stars_html(n):
@@ -251,9 +289,9 @@ def _dims_html(dims):
     if not dims:
         return ""
     cards = ""
-    for key, (emoji, label) in _DIM_META.items():
+    for key, (icon_name, label) in _DIM_META.items():
         d = dims.get(key) or {}
-        cards += (f'<div class="dimcard"><div class="dimhead">{emoji} {label} '
+        cards += (f'<div class="dimcard"><div class="dimhead">{_ic(icon_name)} {label} '
                   f'<span class="dimstars">{_stars_html(d.get("stars"))}</span></div>'
                   f'<div class="dimlabel">{_esc(d.get("label"))}</div>'
                   f'<p class="dimtext">{_esc(d.get("text"))}</p></div>')
@@ -268,23 +306,23 @@ def _flags_html(flags):
     if flags is None:
         return ""
     if not flags:
-        return ('<h2>🚩 참고할 점</h2><p class="muted">규칙 기반으로 확인한 특별한 '
+        return (f'<h2>{_ic("alert")} 참고할 점</h2><p class="muted">규칙 기반으로 확인한 특별한 '
                 '재무 이상신호는 없습니다. (회계부정 진단이 아닌 참고 신호입니다)</p>')
     items = "".join(f'<p style="margin:6px 0">{f["emoji"]} <b>{_esc(f["label"])}</b> — '
                     f'{_esc(f["text"])}</p>' for f in flags)
-    return (f'<h2>🚩 참고할 점 <span class="muted" style="font-size:13px;font-weight:400">'
+    return (f'<h2>{_ic("alert")} 참고할 점 <span class="muted" style="font-size:13px;font-weight:400">'
             f'· 규칙 기반 참고 신호, 회계부정 진단 아님</span></h2>{items}')
 
 
 def _disclosures_html(items):
     if not items:
-        return '<h2>📄 공시자료</h2><p class="muted">최근 공시 데이터를 불러올 수 없습니다.</p>'
+        return f'<h2>{_ic("document")} 공시자료</h2><p class="muted">최근 공시 데이터를 불러올 수 없습니다.</p>'
     rows = "".join(
         f'<p style="margin:6px 0"><a href="{_esc(d["link"])}" target="_blank" '
         f'rel="noopener">{_esc(d["title"])}</a> '
         f'<span class="muted" style="font-size:12px">{_esc(d.get("date"))} · '
         f'{_esc(d.get("submitter"))}</span></p>' for d in items)
-    return (f'<h2>📄 공시자료 <span class="muted" style="font-size:13px;font-weight:400">'
+    return (f'<h2>{_ic("document")} 공시자료 <span class="muted" style="font-size:13px;font-weight:400">'
             f'· DART 전자공시 원문</span></h2>{rows}')
 
 
@@ -493,20 +531,20 @@ def _movers_section(movers_up, movers_down, period_label):
     if not movers_up and not movers_down:
         return ""
     return f"""
-<h2>📊 종합점수 순위 변동 ({period_label} 대비)</h2>
+<h2>{_ic('barchart')} 종합점수 순위 변동 ({period_label} 대비)</h2>
 <p class="muted">{period_label} 전 가격을 기준으로 다시 계산한 점수와 비교했습니다(재무제표는 최신 값을 그대로 사용).
 가격이 올라 밸류에이션 매력이 줄면 순위가 내려가고, 내려서 저평가 매력이 커지면 순위가 오릅니다.</p>
-<h3>🔼 순위 상승 TOP{len(movers_up)}</h3>
+<h3>{_ic('trendUp')} 순위 상승 TOP{len(movers_up)}</h3>
 <div class="wrap"><table><thead><tr><th style="text-align:left">종목</th><th>현재순위</th>
 <th>변동</th><th>점수변동</th></tr></thead><tbody>{_movers_rows(movers_up)}</tbody></table></div>
-<h3>🔽 순위 하락 TOP{len(movers_down)}</h3>
+<h3>{_ic('trendDown')} 순위 하락 TOP{len(movers_down)}</h3>
 <div class="wrap"><table><thead><tr><th style="text-align:left">종목</th><th>현재순위</th>
 <th>변동</th><th>점수변동</th></tr></thead><tbody>{_movers_rows(movers_down)}</tbody></table></div>
 """
 
 
-_DIM_LABELS = [("value", "💰", "밸류에이션"), ("profit", "📈", "수익성"),
-              ("safety", "🛡️", "안정성"), ("growth", "🌱", "성장성")]
+_DIM_LABELS = [("value", "wallet", "밸류에이션"), ("profit", "trendUp", "수익성"),
+              ("safety", "shield", "안정성"), ("growth", "sprout", "성장성")]
 
 
 def _dim_leader_table(rows, dim_key):
@@ -528,25 +566,25 @@ def render_monthly_health(rows, anomaly_count, asof, canonical, movers_up=None, 
         f'<td>{_fmt(r.get("per"))}</td><td>{_fmt(r.get("pbr"),2)}</td>'
         f'<td>{_fmt(r.get("roe"))}</td></tr>' for r in top20)
     dim_sections = ""
-    for key, emoji, label in _DIM_LABELS:
-        dim_sections += (f'<h3>{emoji} {label} 최고 TOP5</h3>'
+    for key, icon_name, label in _DIM_LABELS:
+        dim_sections += (f'<h3>{_ic(icon_name)} {label} 최고 TOP5</h3>'
                          f'<div class="wrap"><table><thead><tr><th style="text-align:left">종목</th>'
                          f'<th>별점</th></tr></thead><tbody>{_dim_leader_table(rows, key)}'
                          f'</tbody></table></div>')
     body = f"""
-<h1>🎯 이번 달 건강점수 랭킹 <span class="muted" style="font-size:14px">({_esc(asof)} 기준)</span></h1>
+<h1>{_ic('target')} 이번 달 건강점수 랭킹 <span class="muted" style="font-size:14px">({_esc(asof)} 기준)</span></h1>
 <p>가치+퀄리티 종합점수와, 밸류에이션·수익성·안정성·성장성 4차원 건강검진 별점을 기준으로
 이번 달 상위 기업을 정리했습니다. 매수·매도 추천이 아니라 <b>같은 유니버스 내 상대 비교</b>
 스냅샷입니다.</p>
 
-<h2>🏆 종합점수 TOP20</h2>
+<h2>{_ic('trophy')} 종합점수 TOP20</h2>
 <div class="wrap"><table><thead><tr><th style="text-align:left">종목</th><th>점수</th>
 <th>PER</th><th>PBR</th><th>ROE%</th></tr></thead><tbody>{top_rows}</tbody></table></div>
 
 <h2>차원별 최고 기업</h2>
 {dim_sections}
 {_movers_section(movers_up, movers_down, "한 달")}
-<h2>🚩 참고: 이상신호</h2>
+<h2>{_ic('alert')} 참고: 이상신호</h2>
 <p>이번 달 재무 이상신호(적자전환·부채급증 등)가 감지된 종목은 <b>{anomaly_count}개</b>입니다.
 <a href="/anomaly-report">→ 이상신호 리포트 전체 보기</a></p>
 """
@@ -577,15 +615,15 @@ def render_weekly(strong, weak, top_value, asof, canonical, movers_up=None, move
 구성종목 동일가중 수익률로 본 강세·약세 순위와, 가치+퀄리티 팩터 상위 종목입니다.
 매매 추천이 아니라 데이터로 본 흐름 정리입니다.</p>
 
-<h2>🔥 강세 테마 TOP 10 (최근 1개월)</h2>
+<h2>{_ic('flame')} 강세 테마 TOP 10 (최근 1개월)</h2>
 <div class="wrap"><table><thead><tr><th>테마</th><th>1개월%</th><th>3개월%</th><th>종목수</th></tr></thead>
 <tbody>{strong_rows}</tbody></table></div>
 
-<h2>❄️ 약세 테마 (최근 1개월)</h2>
+<h2>{_ic('trendDown')} 약세 테마 (최근 1개월)</h2>
 <div class="wrap"><table><thead><tr><th>테마</th><th>1개월%</th><th>3개월%</th><th>종목수</th></tr></thead>
 <tbody>{weak_rows}</tbody></table></div>
 
-<h2>💎 가치+퀄리티 팩터 상위 종목</h2>
+<h2>{_ic('gem')} 가치+퀄리티 팩터 상위 종목</h2>
 <p class="muted">저평가(가치) + 우량(퀄리티) 종합점수 상위. 시총 3,000억 이상.</p>
 <div class="wrap"><table><thead><tr><th>종목</th><th>점수</th><th>PER</th><th>PBR</th><th>ROE%</th><th>섹터</th></tr></thead>
 <tbody>{val_rows}</tbody></table></div>
@@ -617,7 +655,7 @@ def render_earnings_report(items, canonical):
         f'<td>{growth_cell(it["ni_yoy"], it.get("ni_qoq"))}</td></tr>'
         for it in items) or '<tr><td colspan=5 class="muted">데이터 없음</td></tr>'
     body = f"""
-<h1>📅 최근 실적발표 현황</h1>
+<h1>{_ic('calendar')} 최근 실적발표 현황</h1>
 <p>DART에 최근 공시된 분기·반기 실적을 발표일 순으로 정리했습니다. 전년 동기 대비
 매출·순이익 성장률로 실적 흐름을 빠르게 훑어볼 수 있습니다(전년 동기 데이터가 없는
 분기는 직전 분기 대비 <b>QoQ</b>로 대체 표시). <b>"다음 주 발표 예정"같은

@@ -81,6 +81,11 @@
   .nav-group > summary .gic{width:17px;height:17px;flex:none;color:var(--dim)}
   .nav-group > summary .chev{margin-left:auto;transition:transform .15s;flex:none;color:var(--dim)}
   .nav-group[open] > summary .chev{transform:rotate(90deg)}
+  .ic-svg{width:15px;height:15px;flex:none;vertical-align:-3px;display:inline-block}
+  .nav-item .ic-svg{margin-right:2px}
+  .qtile .qi svg{width:18px;height:18px;vertical-align:-4px}
+  h3 .ic-svg,.dimhead .ic-svg{width:14px;height:14px;vertical-align:-2px;margin-right:1px}
+  .stat .l .ic-svg{width:11px;height:11px;vertical-align:-1px}
   .nav-group .nav-item{padding-left:26px;font-size:13.5px}
   .nav-item{display:flex;justify-content:space-between;align-items:center;gap:6px;
     padding:8px 10px;border-radius:8px;cursor:pointer;color:var(--txt);text-decoration:none;
@@ -229,7 +234,6 @@
   .bar>i{display:block;height:100%;background:var(--accent)}
   .brk{margin:4px 0;font-size:12px}
   h3{font-size:14px;color:var(--txt);margin:18px 0 6px;text-transform:none;font-weight:700}
-  svg{display:block;width:100%;height:120px}
   .dimgrid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:8px 0}
   @media(max-width:560px){.dimgrid{grid-template-columns:1fr}}
   .dimcard{border:1px solid var(--line);border-radius:9px;padding:10px 12px;background:var(--panel2)}
@@ -255,42 +259,42 @@
 
 <div class="applayout">
   <aside class="sidenav" id="sidenav">
-    <div class="nav-item active" data-v="home">🏠 홈</div>
+    <div class="nav-item active" data-v="home"><svg class="ic-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 11.5 12 4l8 7.5"/><path d="M6 10v9a1 1 0 0 0 1 1h3.5v-6h3v6H17a1 1 0 0 0 1-1v-9"/></svg> 홈</div>
     <details class="nav-group" open>
       <summary><svg class="gic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6h10M4 12h16M4 18h7"/><circle cx="16" cy="6" r="1.6" fill="currentColor" stroke="none"/><circle cx="9" cy="18" r="1.6" fill="currentColor" stroke="none"/></svg>기본 지표<svg class="chev" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5l7 7-7 7"/></svg></summary>
-      <div class="nav-item" data-v="price">📊 시세</div>
-      <div class="nav-item" data-v="fin">🧾 재무제표</div>
-      <div class="nav-item" data-v="safety">🛡️ 자산건전성</div>
-      <div class="nav-item" data-v="div">💵 배당</div>
+      <div class="nav-item" data-v="price"><svg class="ic-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M5 19V11"/><path d="M12 19V5"/><path d="M19 19v-7"/></svg> 시세</div>
+      <div class="nav-item" data-v="fin"><svg class="ic-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="6" y="3" width="12" height="18" rx="1.5"/><path d="M9 8h6M9 12h6M9 16h3.5"/></svg> 재무제표</div>
+      <div class="nav-item" data-v="safety"><svg class="ic-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3.5 18.5 6v5.5c0 4.6-2.8 7.6-6.5 8.8-3.7-1.2-6.5-4.2-6.5-8.8V6z"/></svg> 자산건전성</div>
+      <div class="nav-item" data-v="div"><svg class="ic-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8"/><path d="M9.3 14.2c.4.9 1.3 1.5 2.5 1.5 1.5 0 2.6-.9 2.6-2s-1-1.6-2.6-2c-1.5-.4-2.5-.9-2.5-2s1.1-2 2.5-2c1.2 0 2.1.6 2.5 1.5"/><path d="M12 7.3v1.2M12 15.7v1.2"/></svg> 배당</div>
     </details>
     <details class="nav-group">
       <summary><svg class="gic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="4" width="7" height="7" rx="1.2"/><rect x="13" y="4" width="7" height="7" rx="1.2"/><rect x="4" y="13" width="7" height="7" rx="1.2"/><rect x="13" y="13" width="7" height="7" rx="1.2"/></svg>심화 분석<svg class="chev" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5l7 7-7 7"/></svg></summary>
-      <div class="nav-item" data-v="value">💰 밸류에이션 <span class="mut" style="font-size:11px">(저평가?)</span></div>
-      <div class="nav-item" data-v="profit">📈 수익성 <span class="mut" style="font-size:11px">(돈 잘 버나)</span></div>
-      <div class="nav-item" data-v="score">🎯 종합 건강점수</div>
+      <div class="nav-item" data-v="value"><svg class="ic-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="7" width="17" height="12" rx="2"/><path d="M3.5 10h17"/><circle cx="16.2" cy="14" r="1" fill="currentColor" stroke="none"/></svg> 밸류에이션 <span class="mut" style="font-size:11px">(저평가?)</span></div>
+      <div class="nav-item" data-v="profit"><svg class="ic-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 16l5.5-5.5 3.5 3.5L20 7"/><path d="M14.5 7H20v5.5"/></svg> 수익성 <span class="mut" style="font-size:11px">(돈 잘 버나)</span></div>
+      <div class="nav-item" data-v="score"><svg class="ic-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="4.2"/><circle cx="12" cy="12" r="0.8" fill="currentColor" stroke="none"/></svg> 종합 건강점수</div>
     </details>
     <details class="nav-group">
       <summary><svg class="gic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5h16M7 12h10M10 19h4"/></svg>스크리너<svg class="chev" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5l7 7-7 7"/></svg></summary>
-      <div class="nav-item" data-v="screener">🔍 조건검색 <span class="newbadge">NEW</span></div>
+      <div class="nav-item" data-v="screener"><svg class="ic-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="10.5" cy="10.5" r="6.5"/><path d="M20 20l-5-5"/></svg> 조건검색 <span class="newbadge">NEW</span></div>
     </details>
     <details class="nav-group">
       <summary><svg class="gic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3c-1 3-4 4-4 8a4 4 0 0 0 8 0c0-1.5-.7-2.3-1.2-3.3.8.3 2.2 1.6 2.2 4.3a5 5 0 0 1-10 0c0-4 3-5 5-9z"/></svg>시장 동향<svg class="chev" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5l7 7-7 7"/></svg></summary>
-      <div class="nav-item" data-v="theme">🔥 테마 강세</div>
-      <div class="nav-item" data-v="sec">🔄 섹터 로테이션</div>
-      <div class="nav-item" data-v="themesall">📋 테마 전체목록</div>
+      <div class="nav-item" data-v="theme"><svg class="ic-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3c-1 3-4 4-4 8a4 4 0 0 0 8 0c0-1.5-.7-2.3-1.2-3.3.8.3 2.2 1.6 2.2 4.3a5 5 0 0 1-10 0c0-4 3-5 5-9z"/></svg> 테마 강세</div>
+      <div class="nav-item" data-v="sec"><svg class="ic-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12a8 8 0 0 1 14-5.3M20 12a8 8 0 0 1-14 5.3"/><path d="M18 3v4h-4M6 21v-4h4"/></svg> 섹터 로테이션</div>
+      <div class="nav-item" data-v="themesall"><svg class="ic-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6h11M9 12h11M9 18h11"/><circle cx="4.5" cy="6" r="1" fill="currentColor" stroke="none"/><circle cx="4.5" cy="12" r="1" fill="currentColor" stroke="none"/><circle cx="4.5" cy="18" r="1" fill="currentColor" stroke="none"/></svg> 테마 전체목록</div>
     </details>
     <details class="nav-group">
       <summary><svg class="gic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="3.5" width="14" height="17" rx="1.6"/><path d="M8 8h8M8 12h8M8 16h5"/></svg>리포트<svg class="chev" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5l7 7-7 7"/></svg></summary>
-      <div class="nav-item" data-v="weekly">📰 주간 리포트</div>
-      <div class="nav-item" data-v="monthly">🎯 월간 건강랭킹</div>
-      <div class="nav-item" data-v="sectorreport">📊 업종 밸류리포트</div>
-      <div class="nav-item" data-v="anomaly">🚩 이상신호 리포트</div>
-      <div class="nav-item" data-v="earnings">📅 실적발표 현황</div>
+      <div class="nav-item" data-v="weekly"><svg class="ic-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="5.5" width="12" height="14" rx="1.2"/><path d="M15.5 8.5h4.2a.8.8 0 0 1 .8.8v8.2a1.8 1.8 0 0 1-1.8 1.8h-3.2"/><path d="M6.3 9h6M6.3 12h6M6.3 15h4"/></svg> 주간 리포트</div>
+      <div class="nav-item" data-v="monthly"><svg class="ic-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="4.2"/><circle cx="12" cy="12" r="0.8" fill="currentColor" stroke="none"/></svg> 월간 건강랭킹</div>
+      <div class="nav-item" data-v="sectorreport"><svg class="ic-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M5 19V11"/><path d="M12 19V5"/><path d="M19 19v-7"/></svg> 업종 밸류리포트</div>
+      <div class="nav-item" data-v="anomaly"><svg class="ic-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3.5 21 19.5H3z"/><path d="M12 10v3.6"/><circle cx="12" cy="16.7" r="0.9" fill="currentColor" stroke="none"/></svg> 이상신호 리포트</div>
+      <div class="nav-item" data-v="earnings"><svg class="ic-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="5.5" width="16" height="14.5" rx="1.8"/><path d="M4 10h16M8 3.5v3.5M16 3.5v3.5"/></svg> 실적발표 현황</div>
     </details>
     <details class="nav-group">
       <summary><svg class="gic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8"/><path d="M12 11v5"/><circle cx="12" cy="8" r=".3" fill="currentColor" stroke-width="2.4"/></svg>정보<svg class="chev" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5l7 7-7 7"/></svg></summary>
-      <div class="nav-item" data-v="about">ℹ️ 소개·방법론</div>
-      <div class="nav-item" data-v="learn">📚 투자 용어 해설</div>
+      <div class="nav-item" data-v="about"><svg class="ic-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8"/><path d="M12 11v5"/><circle cx="12" cy="8" r=".3" fill="currentColor" stroke-width="2.4"/></svg> 소개·방법론</div>
+      <div class="nav-item" data-v="learn"><svg class="ic-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5.5A2 2 0 0 1 6 4h11a1 1 0 0 1 1 1v13a1 1 0 0 1-1 1H6a2 2 0 0 0-2 2z"/><path d="M4 18.5A2 2 0 0 1 6 17h12"/></svg> 투자 용어 해설</div>
     </details>
   </aside>
 
@@ -340,39 +344,39 @@
         </div>
       </div>
 
-      <h3 style="margin-top:22px">🚀 바로가기</h3>
+      <h3 style="margin-top:22px"><svg class="ic-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2c3 2 4.5 5.5 4.5 9 0 2-.5 3.5-1.2 4.7L12 18l-3.3-2.3C8 14.5 7.5 13 7.5 11c0-3.5 1.5-7 4.5-9z"/><path d="M9.5 14 7 16.5m9.5-2.5 2.5 2.5M10.5 17.5 10 20l2-1 2 1-.5-2.5"/></svg> 바로가기</h3>
       <div class="quicknav" id="quicknav">
         <div class="qgroup">
           <div class="qtitle">기본 지표</div>
-          <div class="qtile" onclick="switchView('price')"><span class="qi">📊</span>시세</div>
-          <div class="qtile" onclick="switchView('fin')"><span class="qi">🧾</span>재무제표</div>
-          <div class="qtile" onclick="switchView('safety')"><span class="qi">🛡️</span>자산건전성</div>
-          <div class="qtile" onclick="switchView('div')"><span class="qi">💵</span>배당</div>
+          <div class="qtile" onclick="switchView('price')"><span class="qi"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M5 19V11"/><path d="M12 19V5"/><path d="M19 19v-7"/></svg></span>시세</div>
+          <div class="qtile" onclick="switchView('fin')"><span class="qi"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="6" y="3" width="12" height="18" rx="1.5"/><path d="M9 8h6M9 12h6M9 16h3.5"/></svg></span>재무제표</div>
+          <div class="qtile" onclick="switchView('safety')"><span class="qi"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3.5 18.5 6v5.5c0 4.6-2.8 7.6-6.5 8.8-3.7-1.2-6.5-4.2-6.5-8.8V6z"/></svg></span>자산건전성</div>
+          <div class="qtile" onclick="switchView('div')"><span class="qi"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8"/><path d="M9.3 14.2c.4.9 1.3 1.5 2.5 1.5 1.5 0 2.6-.9 2.6-2s-1-1.6-2.6-2c-1.5-.4-2.5-.9-2.5-2s1.1-2 2.5-2c1.2 0 2.1.6 2.5 1.5"/><path d="M12 7.3v1.2M12 15.7v1.2"/></svg></span>배당</div>
         </div>
         <div class="qgroup">
           <div class="qtitle">심화 분석</div>
-          <div class="qtile" onclick="switchView('value')"><span class="qi">💰</span>밸류에이션</div>
-          <div class="qtile" onclick="switchView('profit')"><span class="qi">📈</span>수익성</div>
-          <div class="qtile" onclick="switchView('score')"><span class="qi">🎯</span>종합점수</div>
+          <div class="qtile" onclick="switchView('value')"><span class="qi"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="7" width="17" height="12" rx="2"/><path d="M3.5 10h17"/><circle cx="16.2" cy="14" r="1" fill="currentColor" stroke="none"/></svg></span>밸류에이션</div>
+          <div class="qtile" onclick="switchView('profit')"><span class="qi"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 16l5.5-5.5 3.5 3.5L20 7"/><path d="M14.5 7H20v5.5"/></svg></span>수익성</div>
+          <div class="qtile" onclick="switchView('score')"><span class="qi"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="4.2"/><circle cx="12" cy="12" r="0.8" fill="currentColor" stroke="none"/></svg></span>종합점수</div>
         </div>
         <div class="qgroup">
           <div class="qtitle">시장 동향</div>
-          <div class="qtile" onclick="switchView('theme')"><span class="qi">🔥</span>테마 강세</div>
-          <div class="qtile" onclick="switchView('sec')"><span class="qi">🔄</span>섹터 로테이션</div>
-          <div class="qtile" onclick="switchView('themesall')"><span class="qi">📋</span>테마 전체목록</div>
+          <div class="qtile" onclick="switchView('theme')"><span class="qi"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3c-1 3-4 4-4 8a4 4 0 0 0 8 0c0-1.5-.7-2.3-1.2-3.3.8.3 2.2 1.6 2.2 4.3a5 5 0 0 1-10 0c0-4 3-5 5-9z"/></svg></span>테마 강세</div>
+          <div class="qtile" onclick="switchView('sec')"><span class="qi"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12a8 8 0 0 1 14-5.3M20 12a8 8 0 0 1-14 5.3"/><path d="M18 3v4h-4M6 21v-4h4"/></svg></span>섹터 로테이션</div>
+          <div class="qtile" onclick="switchView('themesall')"><span class="qi"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6h11M9 12h11M9 18h11"/><circle cx="4.5" cy="6" r="1" fill="currentColor" stroke="none"/><circle cx="4.5" cy="12" r="1" fill="currentColor" stroke="none"/><circle cx="4.5" cy="18" r="1" fill="currentColor" stroke="none"/></svg></span>테마 전체목록</div>
         </div>
         <div class="qgroup">
           <div class="qtitle">리포트</div>
-          <div class="qtile" onclick="switchView('weekly')"><span class="qi">📰</span>주간 리포트</div>
-          <div class="qtile" onclick="switchView('monthly')"><span class="qi">🎯</span>월간 건강랭킹</div>
-          <div class="qtile" onclick="switchView('sectorreport')"><span class="qi">📊</span>업종 밸류리포트</div>
-          <div class="qtile" onclick="switchView('anomaly')"><span class="qi">🚩</span>이상신호</div>
-          <div class="qtile" onclick="switchView('earnings')"><span class="qi">📅</span>실적발표 현황</div>
+          <div class="qtile" onclick="switchView('weekly')"><span class="qi"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="5.5" width="12" height="14" rx="1.2"/><path d="M15.5 8.5h4.2a.8.8 0 0 1 .8.8v8.2a1.8 1.8 0 0 1-1.8 1.8h-3.2"/><path d="M6.3 9h6M6.3 12h6M6.3 15h4"/></svg></span>주간 리포트</div>
+          <div class="qtile" onclick="switchView('monthly')"><span class="qi"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="4.2"/><circle cx="12" cy="12" r="0.8" fill="currentColor" stroke="none"/></svg></span>월간 건강랭킹</div>
+          <div class="qtile" onclick="switchView('sectorreport')"><span class="qi"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M5 19V11"/><path d="M12 19V5"/><path d="M19 19v-7"/></svg></span>업종 밸류리포트</div>
+          <div class="qtile" onclick="switchView('anomaly')"><span class="qi"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3.5 21 19.5H3z"/><path d="M12 10v3.6"/><circle cx="12" cy="16.7" r="0.9" fill="currentColor" stroke="none"/></svg></span>이상신호</div>
+          <div class="qtile" onclick="switchView('earnings')"><span class="qi"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="5.5" width="16" height="14.5" rx="1.8"/><path d="M4 10h16M8 3.5v3.5M16 3.5v3.5"/></svg></span>실적발표 현황</div>
         </div>
         <div class="qgroup">
           <div class="qtitle">직접 찾기</div>
-          <div class="qtile cta" onclick="switchView('screener')"><span class="qi">🔍</span>조건검색<br><span class="qsub">스크리너</span></div>
-          <div class="qtile" onclick="switchView('learn')"><span class="qi">📚</span>용어해설</div>
+          <div class="qtile cta" onclick="switchView('screener')"><span class="qi"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="10.5" cy="10.5" r="6.5"/><path d="M20 20l-5-5"/></svg></span>조건검색<br><span class="qsub">스크리너</span></div>
+          <div class="qtile" onclick="switchView('learn')"><span class="qi"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5.5A2 2 0 0 1 6 4h11a1 1 0 0 1 1 1v13a1 1 0 0 1-1 1H6a2 2 0 0 0-2 2z"/><path d="M4 18.5A2 2 0 0 1 6 17h12"/></svg></span>용어해설</div>
         </div>
       </div>
 
@@ -397,10 +401,10 @@
       <p class="viewintro">원하는 조건을 입력하면 조건을 만족하는 종목만 즉시 걸러줍니다.
         비워두면 해당 조건은 적용되지 않습니다.</p>
       <div class="chips">
-        <span class="chip" data-p="value">💰 저평가 가치주</span>
-        <span class="chip" data-p="dividend">💵 고배당 우량주</span>
-        <span class="chip" data-p="growth">🌱 우량 성장주</span>
-        <span class="chip" data-p="safe">🛡️ 초안전주</span>
+        <span class="chip" data-p="value"><svg class="ic-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="7" width="17" height="12" rx="2"/><path d="M3.5 10h17"/><circle cx="16.2" cy="14" r="1" fill="currentColor" stroke="none"/></svg> 저평가 가치주</span>
+        <span class="chip" data-p="dividend"><svg class="ic-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8"/><path d="M9.3 14.2c.4.9 1.3 1.5 2.5 1.5 1.5 0 2.6-.9 2.6-2s-1-1.6-2.6-2c-1.5-.4-2.5-.9-2.5-2s1.1-2 2.5-2c1.2 0 2.1.6 2.5 1.5"/><path d="M12 7.3v1.2M12 15.7v1.2"/></svg> 고배당 우량주</span>
+        <span class="chip" data-p="growth"><svg class="ic-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21v-9"/><path d="M12 12C7 12 5 9 5 5c5 0 7 3 7 7z"/><path d="M12 12c0-4 2-7 7-7 0 4-2 7-7 7z"/></svg> 우량 성장주</span>
+        <span class="chip" data-p="safe"><svg class="ic-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3.5 18.5 6v5.5c0 4.6-2.8 7.6-6.5 8.8-3.7-1.2-6.5-4.2-6.5-8.8V6z"/></svg> 초안전주</span>
         <span class="chip reset" data-p="reset">✕ 초기화</span>
       </div>
       <div class="screener-bar">
@@ -430,7 +434,7 @@
     <div id="view-earnings" class="wrap about-content" style="display:none"></div>
 
     <div style="margin-top:20px;padding:16px 18px;border:1px solid var(--line);border-radius:10px;background:var(--panel)">
-      <div style="font-weight:700;margin-bottom:4px">📬 매일 아침 국내증시 체크포인트, 이메일로 받아보기</div>
+      <div style="font-weight:700;margin-bottom:4px"><svg class="ic-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="m3.5 6 8.5 7 8.5-7"/></svg> 매일 아침 국내증시 체크포인트, 이메일로 받아보기</div>
       <div style="color:var(--dim);font-size:13px;margin-bottom:10px">실적발표·이상신호·강세테마 요약을 매일 아침 보내드려요.</div>
       <form id="newsletterForm" style="display:flex;gap:8px;flex-wrap:wrap">
         <input type="email" id="newsletterEmail" placeholder="이메일 주소" required
@@ -470,11 +474,11 @@
     </script>
 
     <footer style="margin-top:20px;padding:16px 0;color:var(--dim);font-size:12px;border-top:1px solid var(--line)">
-      <a href="/weekly" onclick="return spaNav(event,'weekly')" style="color:var(--accent)">📰 주간 리포트</a> ·
-      <a href="/monthly" onclick="return spaNav(event,'monthly')" style="color:var(--accent)">🎯 월간 건강랭킹</a> ·
-      <a href="/sector-report" onclick="return spaNav(event,'sectorreport')" style="color:var(--accent)">📊 업종 밸류리포트</a> ·
-      <a href="/anomaly-report" onclick="return spaNav(event,'anomaly')" style="color:var(--accent)">🚩 이상신호 리포트</a> ·
-      <a href="/learn" onclick="return spaNav(event,'learn')" style="color:var(--accent)">📚 투자 용어 해설</a> ·
+      <a href="/weekly" onclick="return spaNav(event,'weekly')" style="color:var(--accent)">주간 리포트</a> ·
+      <a href="/monthly" onclick="return spaNav(event,'monthly')" style="color:var(--accent)">월간 건강랭킹</a> ·
+      <a href="/sector-report" onclick="return spaNav(event,'sectorreport')" style="color:var(--accent)">업종 밸류리포트</a> ·
+      <a href="/anomaly-report" onclick="return spaNav(event,'anomaly')" style="color:var(--accent)">이상신호 리포트</a> ·
+      <a href="/learn" onclick="return spaNav(event,'learn')" style="color:var(--accent)">투자 용어 해설</a> ·
       <a href="/themes-index" onclick="return spaNav(event,'themesall')" style="color:var(--accent)">테마 전체</a> ·
       <a href="/about" onclick="return spaNav(event,'about')" style="color:var(--accent)">소개·배경·방법론</a> ·
       <a href="/about#backtest" onclick="return spaNav(event,'about','backtest')" style="color:var(--accent)">백테스트 검증</a> ·
@@ -497,6 +501,39 @@ const sign=(v)=>v==null?'':(v>=0?'pos':'neg');
 const starsHtml=(n)=>n==null?'<span class="mut">–</span>':'★'.repeat(n)+'<span class="mut">'+'☆'.repeat(5-n)+'</span>';
 let RANK=[], sortK='rank', sortAsc=true, curView='home';
 
+/* 라인 아이콘 세트 - 컬러 이모지 대신 사용(currentColor 상속, .ic-svg로 크기 통일) */
+const ICONS={
+  home:'<svg class="ic-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 11.5 12 4l8 7.5"/><path d="M6 10v9a1 1 0 0 0 1 1h3.5v-6h3v6H17a1 1 0 0 0 1-1v-9"/></svg>',
+  barchart:'<svg class="ic-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M5 19V11"/><path d="M12 19V5"/><path d="M19 19v-7"/></svg>',
+  document:'<svg class="ic-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="6" y="3" width="12" height="18" rx="1.5"/><path d="M9 8h6M9 12h6M9 16h3.5"/></svg>',
+  shield:'<svg class="ic-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3.5 18.5 6v5.5c0 4.6-2.8 7.6-6.5 8.8-3.7-1.2-6.5-4.2-6.5-8.8V6z"/></svg>',
+  coin:'<svg class="ic-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8"/><path d="M9.3 14.2c.4.9 1.3 1.5 2.5 1.5 1.5 0 2.6-.9 2.6-2s-1-1.6-2.6-2c-1.5-.4-2.5-.9-2.5-2s1.1-2 2.5-2c1.2 0 2.1.6 2.5 1.5"/><path d="M12 7.3v1.2M12 15.7v1.2"/></svg>',
+  wallet:'<svg class="ic-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="7" width="17" height="12" rx="2"/><path d="M3.5 10h17"/><circle cx="16.2" cy="14" r="1" fill="currentColor" stroke="none"/></svg>',
+  trendUp:'<svg class="ic-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 16l5.5-5.5 3.5 3.5L20 7"/><path d="M14.5 7H20v5.5"/></svg>',
+  trendDown:'<svg class="ic-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8l5.5 5.5 3.5-3.5L20 17"/><path d="M14.5 17H20v-5.5"/></svg>',
+  target:'<svg class="ic-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="4.2"/><circle cx="12" cy="12" r="0.8" fill="currentColor" stroke="none"/></svg>',
+  search:'<svg class="ic-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="10.5" cy="10.5" r="6.5"/><path d="M20 20l-5-5"/></svg>',
+  flame:'<svg class="ic-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3c-1 3-4 4-4 8a4 4 0 0 0 8 0c0-1.5-.7-2.3-1.2-3.3.8.3 2.2 1.6 2.2 4.3a5 5 0 0 1-10 0c0-4 3-5 5-9z"/></svg>',
+  refresh:'<svg class="ic-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12a8 8 0 0 1 14-5.3M20 12a8 8 0 0 1-14 5.3"/><path d="M18 3v4h-4M6 21v-4h4"/></svg>',
+  list:'<svg class="ic-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6h11M9 12h11M9 18h11"/><circle cx="4.5" cy="6" r="1" fill="currentColor" stroke="none"/><circle cx="4.5" cy="12" r="1" fill="currentColor" stroke="none"/><circle cx="4.5" cy="18" r="1" fill="currentColor" stroke="none"/></svg>',
+  news:'<svg class="ic-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="5.5" width="12" height="14" rx="1.2"/><path d="M15.5 8.5h4.2a.8.8 0 0 1 .8.8v8.2a1.8 1.8 0 0 1-1.8 1.8h-3.2"/><path d="M6.3 9h6M6.3 12h6M6.3 15h4"/></svg>',
+  gem:'<svg class="ic-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3h12l3 5-9 13L3 8z"/><path d="M3 8h18M9 3l-2 5 5 13 5-13-2-5"/></svg>',
+  alert:'<svg class="ic-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3.5 21 19.5H3z"/><path d="M12 10v3.6"/><circle cx="12" cy="16.7" r="0.9" fill="currentColor" stroke="none"/></svg>',
+  calendar:'<svg class="ic-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="5.5" width="16" height="14.5" rx="1.8"/><path d="M4 10h16M8 3.5v3.5M16 3.5v3.5"/></svg>',
+  info:'<svg class="ic-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8"/><path d="M12 11v5"/><circle cx="12" cy="8" r=".3" fill="currentColor" stroke-width="2.4"/></svg>',
+  book:'<svg class="ic-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5.5A2 2 0 0 1 6 4h11a1 1 0 0 1 1 1v13a1 1 0 0 1-1 1H6a2 2 0 0 0-2 2z"/><path d="M4 18.5A2 2 0 0 1 6 17h12"/></svg>',
+  rocket:'<svg class="ic-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2c3 2 4.5 5.5 4.5 9 0 2-.5 3.5-1.2 4.7L12 18l-3.3-2.3C8 14.5 7.5 13 7.5 11c0-3.5 1.5-7 4.5-9z"/><path d="M9.5 14 7 16.5m9.5-2.5 2.5 2.5M10.5 17.5 10 20l2-1 2 1-.5-2.5"/></svg>',
+  sprout:'<svg class="ic-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21v-9"/><path d="M12 12C7 12 5 9 5 5c5 0 7 3 7 7z"/><path d="M12 12c0-4 2-7 7-7 0 4-2 7-7 7z"/></svg>',
+  xmark:'<svg class="ic-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 6l12 12M18 6 6 18"/></svg>',
+  mail:'<svg class="ic-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="m3.5 6 8.5 7 8.5-7"/></svg>',
+  pulse:'<svg class="ic-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12h4l2-6 4 12 2-6h6"/></svg>',
+  gear:'<svg class="ic-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M12 3.5v2.2M12 18.3v2.2M20.5 12h-2.2M5.7 12H3.5M17.8 6.2l-1.6 1.6M7.8 16.2l-1.6 1.6M17.8 17.8l-1.6-1.6M7.8 7.8 6.2 6.2"/></svg>',
+  calculator:'<svg class="ic-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="3" width="14" height="18" rx="1.5"/><path d="M8 7h8"/><path d="M8 11.5h.01M12 11.5h.01M16 11.5h.01M8 15h.01M12 15h.01M16 15h.01M8 18.5h.01M12 18.5h.01M16 18.5h.01"/></svg>',
+  ruler:'<svg class="ic-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M4 15.5 8.5 20 20 8.5 15.5 4z"/><path d="m9 11 2 2M12 8l2 2M15 5l2 2"/></svg>',
+  bank:'<svg class="ic-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9.5 12 4l8 5.5"/><path d="M5 9.5h14V19H5z"/><path d="M8 12.5V17M12 12.5V17M16 12.5V17"/><path d="M4 19h16"/></svg>',
+};
+function ic(name){return ICONS[name]||'';}
+
 let LIVE_UPDATED_AT=null;
 async function load(){
   const r=await fetch('/api/ranking').then(x=>x.json());
@@ -511,10 +548,10 @@ async function load(){
   loadCards(r.asof);
   renderScreener();
 }
-const LEARN_TERMS=[['per','📐','PER(주가수익비율)이란?'],['pbr','🏦','PBR(주가자산비율)이란?'],
-  ['roe','📈','ROE(자기자본이익률)란?'],['debt-ratio','🛡️','부채비율, 얼마가 안전할까?'],
-  ['growth-momentum','🌱','성장모멘텀이란?'],['op-margin','⚙️','영업이익률이란?'],
-  ['dividend-yield','💵','배당수익률이란?'],['psr','🧮','PSR(주가매출비율)이란?']];
+const LEARN_TERMS=[['per','ruler','PER(주가수익비율)이란?'],['pbr','bank','PBR(주가자산비율)이란?'],
+  ['roe','trendUp','ROE(자기자본이익률)란?'],['debt-ratio','shield','부채비율, 얼마가 안전할까?'],
+  ['growth-momentum','sprout','성장모멘텀이란?'],['op-margin','gear','영업이익률이란?'],
+  ['dividend-yield','coin','배당수익률이란?'],['psr','calculator','PSR(주가매출비율)이란?']];
 let INDICES_DATA={}, currentChartKey=null, currentChartRange='6mo';
 const INDEX_ORDER=['kospi','kosdaq','nasdaq','sp500','dji','nikkei','shanghai','gold','usdkrw','wti'];
 
@@ -636,7 +673,7 @@ function renderStatbar(asof){
     <div class="stat"><div class="l">KOSPI · KOSDAQ</div><div class="v">${kospi} · ${kosdaq}</div></div>
     ${liveStat}
     <div class="stat" style="cursor:pointer" onclick="switchView('anomaly')">
-      <div class="l">🚩 이상신호 발견</div><div class="v">${anomN}개 종목</div></div>`;
+      <div class="l">${ic('alert')} 이상신호 발견</div><div class="v">${anomN}개 종목</div></div>`;
 }
 async function loadCards(asof){
   const el=document.getElementById('cards'); if(!el)return;
@@ -653,20 +690,20 @@ async function loadCards(asof){
     : '<span class="mut" style="font-size:12px">현재 감지된 이상신호 없음</span>';
   const term=LEARN_TERMS[new Date(asof||Date.now()).getDate()%LEARN_TERMS.length];
   const learnHtml=`<div class="row" onclick="gotoLearnTerm('${term[0]}')">
-    <span class="nm">${term[1]} ${term[2]}</span><span>→</span></div>
+    <span class="nm">${ic(term[1])} ${term[2]}</span><span>→</span></div>
     <div class="row" onclick="switchView('learn')"><span class="nm mut">용어해설 전체 보기</span><span>→</span></div>`;
   el.innerHTML=`
-    <div class="scard"><h3>💎 저평가 우량주 TOP5 <span class="mut" style="font-weight:400">가치+퀄리티</span></h3>${val}</div>
-    <div class="scard" id="cardThemes"><h3>🔥 최근 1개월 강세 테마 TOP3</h3><span class="mut" style="font-size:12px">불러오는 중…</span></div>
-    <div class="scard"><h3>🛡️ 부채비율 낮은 안전주 TOP5</h3>${safe}</div>
+    <div class="scard"><h3>${ic('gem')} 저평가 우량주 TOP5 <span class="mut" style="font-weight:400">가치+퀄리티</span></h3>${val}</div>
+    <div class="scard" id="cardThemes"><h3>${ic('flame')} 최근 1개월 강세 테마 TOP3</h3><span class="mut" style="font-size:12px">불러오는 중…</span></div>
+    <div class="scard"><h3>${ic('shield')} 부채비율 낮은 안전주 TOP5</h3>${safe}</div>
     <div class="scard" style="cursor:pointer" onclick="switchView('anomaly')">
-      <h3>🚩 이상신호 발견 종목</h3>${anomHtml}</div>
-    <div class="scard"><h3>📚 오늘의 용어</h3>${learnHtml}</div>`;
+      <h3>${ic('alert')} 이상신호 발견 종목</h3>${anomHtml}</div>
+    <div class="scard"><h3>${ic('book')} 오늘의 용어</h3>${learnHtml}</div>`;
   try{
     const t=await fetch('/api/themes').then(x=>x.json());
     const top=t.rows.slice(0,3).map(x=>`<div class="row" onclick="openTheme('${x.no}')">
       <span class="nm">${x.name}</span><span class="${(x.ret_1m||0)>=0?'pos':'neg'}">${x.ret_1m>=0?'+':''}${x.ret_1m}%</span></div>`).join('');
-    document.getElementById('cardThemes').innerHTML=`<h3>🔥 최근 1개월 강세 테마 TOP3 <span class="mut" style="font-weight:400">구성종목 평균 주가등락</span></h3>${top}`;
+    document.getElementById('cardThemes').innerHTML=`<h3>${ic('flame')} 최근 1개월 강세 테마 TOP3 <span class="mut" style="font-weight:400">구성종목 평균 주가등락</span></h3>${top}`;
   }catch(e){}
 }
 
@@ -808,13 +845,13 @@ function moversRowsHtml(list){
 }
 function moversSectionHtml(mv, periodLabel){
   if(!mv)return '';
-  return `<h3>📊 종합점수 순위 변동 (${periodLabel} 대비)</h3>
+  return `<h3>${ic('barchart')} 종합점수 순위 변동 (${periodLabel} 대비)</h3>
     <p class="sub" style="margin-top:0">${periodLabel} 전 가격 기준으로 다시 계산한 점수와 비교했습니다
     (재무제표는 최신 값 그대로). 매매 추천이 아닙니다.</p>
-    <h4 style="margin-bottom:4px">🔼 순위 상승 TOP${mv.up.length}</h4>
+    <h4 style="margin-bottom:4px">${ic('trendUp')} 순위 상승 TOP${mv.up.length}</h4>
     <div class="tblscroll"><table><thead><tr><th style="text-align:left">종목</th><th>현재순위</th>
     <th>변동</th><th>점수변동</th></tr></thead><tbody>${moversRowsHtml(mv.up)}</tbody></table></div>
-    <h4 style="margin-bottom:4px">🔽 순위 하락 TOP${mv.down.length}</h4>
+    <h4 style="margin-bottom:4px">${ic('trendDown')} 순위 하락 TOP${mv.down.length}</h4>
     <div class="tblscroll"><table><thead><tr><th style="text-align:left">종목</th><th>현재순위</th>
     <th>변동</th><th>점수변동</th></tr></thead><tbody>${moversRowsHtml(mv.down)}</tbody></table></div>`;
 }
@@ -828,18 +865,18 @@ function renderWeeklyPanel(){
     <td style="text-align:left">${x.name}</td><td class="${sign(v1)}">${v1==null?'–':(v1>=0?'+':'')+v1}</td>
     <td class="${sign(v3)}">${v3==null?'–':(v3>=0?'+':'')+v3}</td>
     <td class="mut">${x.priced}/${x.count}</td></tr>`;};
-  let h=`<h3 style="margin-top:0">📰 주간 한국주식 시장 리포트 <span class="mut" style="font-weight:400;font-size:11px">
+  let h=`<h3 style="margin-top:0">${ic('news')} 주간 한국주식 시장 리포트 <span class="mut" style="font-weight:400;font-size:11px">
     기준일 ${document.getElementById('asof').textContent}</span></h3>
     ${themeSegHtml()}
     <p class="sub" style="margin-top:8px">최근 1개월 테마 강세·약세와 가치+퀄리티 상위 종목 정리입니다.
     코스피/코스닥 선택 시 해당 시장 종목만으로 다시 계산합니다. 매매 추천이 아닙니다.</p>
-    <h3>🔥 강세 테마 TOP10 (최근 1개월)</h3>
+    <h3>${ic('flame')} 강세 테마 TOP10 (최근 1개월)</h3>
     <div class="tblscroll"><table><thead><tr><th style="text-align:left">테마</th><th>1개월%</th><th>3개월%</th><th>종목수</th></tr></thead>
     <tbody>${strong.map(trow).join('')}</tbody></table></div>
-    <h3>❄️ 약세 테마 (최근 1개월)</h3>
+    <h3>${ic('trendDown')} 약세 테마 (최근 1개월)</h3>
     <div class="tblscroll"><table><thead><tr><th style="text-align:left">테마</th><th>1개월%</th><th>3개월%</th><th>종목수</th></tr></thead>
     <tbody>${weak.map(trow).join('')}</tbody></table></div>
-    <h3>💎 가치+퀄리티 팩터 상위 종목 <span class="mut" style="font-weight:400;font-size:11px">전체 시장 기준</span></h3>
+    <h3>${ic('gem')} 가치+퀄리티 팩터 상위 종목 <span class="mut" style="font-weight:400;font-size:11px">전체 시장 기준</span></h3>
     <div class="tblscroll"><table><thead><tr><th style="text-align:left">종목</th><th>점수</th><th>PER</th><th>PBR</th><th>ROE%</th></tr></thead>
     <tbody>${topValue.map(r=>`<tr style="cursor:pointer" onclick="openStock('${r.code}')">
       <td style="text-align:left">${r.name}</td><td class="score">${r.score}</td>
@@ -871,7 +908,7 @@ function renderThemesAllPanel(){
   for(const maj of GROUPS.groups)for(const mid of maj.mids)for(const t of mid.themes)
     flat.push({...t,major:maj.major,mid:mid.mid});
   flat.sort((a,b)=>(tval(b,'ret_1m')??-999)-(tval(a,'ret_1m')??-999));
-  let h=`<h3 style="margin-top:0">📋 테마 전체 목록 (${flat.length}개)</h3>
+  let h=`<h3 style="margin-top:0">${ic('list')} 테마 전체 목록 (${flat.length}개)</h3>
     ${themeSegHtml()}
     <p class="sub">각 테마를 클릭하면 구성 종목과 뉴스를 볼 수 있습니다. 코스피/코스닥 선택 시
     해당 시장 종목만 시총 상위 10개로 재계산합니다.</p>
@@ -901,7 +938,7 @@ function renderAnomalyPanel(){
   for(const r of RANK)for(const f of (r.flags||[]))
     (grouped[f.label]=grouped[f.label]||[]).push({...r,flagText:f.text,emoji:f.emoji});
   const total=Object.values(grouped).reduce((a,v)=>a+v.length,0);
-  let h=`<h3 style="margin-top:0">🚩 이상신호 리포트 <span class="mut" style="font-weight:400;font-size:11px">
+  let h=`<h3 style="margin-top:0">${ic('alert')} 이상신호 리포트 <span class="mut" style="font-weight:400;font-size:11px">
     ${document.getElementById('asof').textContent}</span></h3>
     <p class="sub">재무 데이터에서 규칙 기반으로 감지된 참고 신호입니다. 회계부정 진단이 아니며,
     매수·매도 추천도 아닙니다. 전체 ${total}건 감지.</p>`;
@@ -1093,7 +1130,7 @@ function renderScreener(){
 
 /* ── 종목 상세 서랍 ── */
 const BRK={_ey:'이익수익률',_by:'장부수익률',_sy:'매출수익률',_roe:'ROE',_opm:'영업이익률',_lowdebt:'저부채'};
-const DIM_META={value:['💰','밸류에이션'],profit:['📈','수익성'],safety:['🛡️','안정성'],growth:['🌱','성장성']};
+const DIM_META={value:['wallet','밸류에이션'],profit:['trendUp','수익성'],safety:['shield','안정성'],growth:['sprout','성장성']};
 function auditHtml(a){
   if(!a||!a.opinion)return '';
   const clean=a.opinion.includes('적정');
@@ -1105,9 +1142,9 @@ function auditHtml(a){
 }
 function dimsHtml(dims){
   if(!dims)return '';
-  let h='<h3>🩺 기업 건강검진 <span class="mut" style="font-weight:400;font-size:11px">업종·시총 내 상대평가, 최근 연간 재무제표 기준</span></h3><div class="dimgrid">';
-  for(const k in DIM_META){const [emoji,label]=DIM_META[k];const d=dims[k]||{};
-    h+=`<div class="dimcard"><div class="dimhead">${emoji} ${label}
+  let h=`<h3>${ic('pulse')} 기업 건강검진 <span class="mut" style="font-weight:400;font-size:11px">업종·시총 내 상대평가, 최근 연간 재무제표 기준</span></h3><div class="dimgrid">`;
+  for(const k in DIM_META){const [iconName,label]=DIM_META[k];const d=dims[k]||{};
+    h+=`<div class="dimcard"><div class="dimhead">${ic(iconName)} ${label}
       <span class="dimstars">${starsHtml(d.stars)}</span></div>
       <div class="dimlabel">${d.label||''}</div><p class="dimtext">${d.text||''}</p></div>`;}
   h+='</div>';
@@ -1167,7 +1204,7 @@ async function openStock(code,fromBack){
   html+=`<h3>가격 (최근)</h3>`+spark(d.prices)+periodPillsHtml(d.period_returns);
   html+=`<h3>재무 추이 (DART 연결/별도, 단위 억)</h3>`+finTable(d.financials);
   html+=quarterlyTable(d.quarterly);
-  html+=`<h3>📄 공시자료 <span class="mut" style="font-weight:400">· DART 전자공시 원문</span></h3>
+  html+=`<h3>${ic('document')} 공시자료 <span class="mut" style="font-weight:400">· DART 전자공시 원문</span></h3>
     <div id="disc"><span class="mut">불러오는 중…</span></div>`;
   html+=`<h3>관련 뉴스 <span class="mut" style="font-weight:400">· 구글뉴스</span></h3>
     <div id="news"><span class="mut">뉴스 불러오는 중…</span></div>`;
@@ -1178,7 +1215,7 @@ async function openStock(code,fromBack){
   loadDisclosures(d.code);
 }
 function flagsHtml(flags){
-  let h='<h3>🚩 참고할 점 <span class="mut" style="font-weight:400;font-size:11px">규칙기반 참고신호</span></h3>';
+  let h=`<h3>${ic('alert')} 참고할 점 <span class="mut" style="font-weight:400;font-size:11px">규칙기반 참고신호</span></h3>`;
   if(!flags||!flags.length)return h+'<p class="mut" style="font-size:12px">특별한 재무 이상신호는 없습니다.</p>';
   return h+flags.map(f=>`<div class="flagitem">${f.emoji} <b>${f.label}</b> — ${f.text}</div>`).join('');
 }

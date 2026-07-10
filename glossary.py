@@ -4,14 +4,14 @@
 일관성을 유지하고, 값은 매번 요청 시점 실데이터로 채워 자동 최신화된다.
 """
 from __future__ import annotations
-from content import layout, _esc, _fmt
+from content import layout, _esc, _fmt, _ic
 
 COMPARE_PAIR = [("005930", "삼성전자"), ("000660", "SK하이닉스")]
 
 TERMS = {
     "per": {
         "title": "PER(주가수익비율)이란?",
-        "emoji": "📐",
+        "emoji": "ruler",
         "metric": "per",
         "unit": "배",
         "lower_better": True,
@@ -43,7 +43,7 @@ TERMS = {
     },
     "pbr": {
         "title": "PBR(주가자산비율)이란?",
-        "emoji": "🏦",
+        "emoji": "bank",
         "metric": "pbr",
         "unit": "배",
         "lower_better": True,
@@ -73,7 +73,7 @@ TERMS = {
     },
     "roe": {
         "title": "ROE(자기자본이익률)란?",
-        "emoji": "📈",
+        "emoji": "trendUp",
         "metric": "roe",
         "unit": "%",
         "lower_better": False,
@@ -105,7 +105,7 @@ TERMS = {
     },
     "debt-ratio": {
         "title": "부채비율, 얼마가 안전할까?",
-        "emoji": "🛡️",
+        "emoji": "shield",
         "metric": "debt_ratio",
         "unit": "%",
         "lower_better": True,
@@ -137,7 +137,7 @@ TERMS = {
     },
     "growth-momentum": {
         "title": "성장모멘텀이란? 매출 성장 추세 읽는 법",
-        "emoji": "🌱",
+        "emoji": "sprout",
         "metric": "rev_growth",
         "unit": "%",
         "lower_better": False,
@@ -169,7 +169,7 @@ TERMS = {
     },
     "op-margin": {
         "title": "영업이익률이란? 본업으로 얼마나 남기나",
-        "emoji": "⚙️",
+        "emoji": "gear",
         "metric": "op_margin",
         "unit": "%",
         "lower_better": False,
@@ -200,7 +200,7 @@ TERMS = {
     },
     "dividend-yield": {
         "title": "배당수익률이란? 주식으로 받는 이자",
-        "emoji": "💵",
+        "emoji": "coin",
         "metric": "div_yield",
         "unit": "%",
         "lower_better": False,
@@ -231,7 +231,7 @@ TERMS = {
     },
     "psr": {
         "title": "PSR(주가매출비율)이란?",
-        "emoji": "🧮",
+        "emoji": "calculator",
         "metric": "psr",
         "unit": "배",
         "lower_better": True,
@@ -262,7 +262,7 @@ TERMS = {
     },
     "what-is-stock": {
         "title": "주식이란? 주주와 지분의 의미",
-        "emoji": "\U0001F4DC",
+        "emoji": "document",
         "lead": "회사의 주인이 되는 아주 작은 조각, 주식이 뭔지부터 짚고 갑니다.",
         "sections": [
             ("주식이란 무엇인가",
@@ -285,7 +285,7 @@ TERMS = {
     },
     "kospi-kosdaq": {
         "title": "코스피(KOSPI) vs 코스닥(KOSDAQ), 뭐가 다를까",
-        "emoji": "\U0001F3DB️",
+        "emoji": "barchart",
         "lead": "둘 다 한국 주식시장인데, 상장 기준과 주로 모이는 기업 성격이 다릅니다.",
         "sections": [
             ("코스피와 코스닥이란",
@@ -308,7 +308,7 @@ TERMS = {
     },
     "market-cap": {
         "title": "시가총액이란? 회사의 몸값",
-        "emoji": "\U0001F4B0",
+        "emoji": "wallet",
         "lead": "지금 이 회사 전체를 사려면 얼마가 필요한지 보여주는 숫자입니다.",
         "sections": [
             ("시가총액이란 무엇인가",
@@ -330,7 +330,7 @@ TERMS = {
     },
     "volume-value": {
         "title": "거래량과 거래대금이란?",
-        "emoji": "\U0001F4F6",
+        "emoji": "barchart",
         "lead": "그날 그 종목이 얼마나 활발하게 사고팔렸는지 보여주는 숫자입니다.",
         "sections": [
             ("거래량과 거래대금이란 무엇인가",
@@ -351,7 +351,7 @@ TERMS = {
     },
     "surge-plunge": {
         "title": "급등 급락, 몇 %부터 부를까",
-        "emoji": "\U0001F3A2",
+        "emoji": "flame",
         "lead": "주가가 크게 뛰거나 빠졌을 때 뉴스에서 흔히 쓰는 표현, 정확한 기준을 알아봅니다.",
         "sections": [
             ("급등 급락이란 무엇인가",
@@ -373,7 +373,7 @@ TERMS = {
     },
     "price-limit": {
         "title": "상한가 하한가란? 하루 최대 등락폭",
-        "emoji": "\U0001F6A6",
+        "emoji": "alert",
         "lead": "하루에 주가가 오르내릴 수 있는 한계선, 상한가와 하한가를 알아봅니다.",
         "sections": [
             ("상한가 하한가란 무엇인가",
@@ -394,7 +394,7 @@ TERMS = {
     },
     "gap-up-down": {
         "title": "갭상승 갭하락이란?",
-        "emoji": "\U0001F309",
+        "emoji": "trendUp",
         "lead": "전날 종가와 오늘 시초가 사이에 빈 공간(갭)이 생기는 현상입니다.",
         "sections": [
             ("갭상승 갭하락이란 무엇인가",
@@ -416,7 +416,7 @@ TERMS = {
     },
     "order-book": {
         "title": "호가와 매수 매도 잔량이란?",
-        "emoji": "\U0001F4CB",
+        "emoji": "list",
         "lead": "지금 이 가격에 사고 싶은 사람, 팔고 싶은 사람이 얼마나 있는지 보여주는 창입니다.",
         "sections": [
             ("호가란 무엇인가",
@@ -439,7 +439,7 @@ TERMS = {
     },
     "order-types": {
         "title": "시장가 주문과 지정가 주문, 뭐가 다를까",
-        "emoji": "\U0001F5B1️",
+        "emoji": "target",
         "lead": "주식을 살 때 가격을 직접 정할지, 지금 가격에 바로 살지를 정하는 주문 방식입니다.",
         "sections": [
             ("시장가 지정가란 무엇인가",
@@ -459,7 +459,7 @@ TERMS = {
     },
     "trade-execution": {
         "title": "체결이란? 주문이 거래로 완성되는 순간",
-        "emoji": "✅",
+        "emoji": "check",
         "lead": "내가 낸 주문이 상대방 주문과 만나 실제 거래로 확정되는 것을 말합니다.",
         "sections": [
             ("체결이란 무엇인가",
@@ -479,7 +479,7 @@ TERMS = {
     },
     "rights-issue": {
         "title": "유상증자와 무상증자, 뭐가 다를까",
-        "emoji": "\U0001F4C4",
+        "emoji": "document",
         "lead": "회사가 새 주식을 발행하는 두 가지 방법인데, 주주 입장에서는 정반대로 받아들여지곤 합니다.",
         "sections": [
             ("유상증자 무상증자란 무엇인가",
@@ -501,7 +501,7 @@ TERMS = {
     },
     "stock-split": {
         "title": "액면분할과 액면병합이란?",
-        "emoji": "✂️",
+        "emoji": "refresh",
         "lead": "주식 한 주를 잘게 쪼개거나 합치는 것으로, 회사의 실질 가치에는 변화가 없습니다.",
         "sections": [
             ("액면분할 액면병합이란 무엇인가",
@@ -523,7 +523,7 @@ TERMS = {
     },
     "buyback": {
         "title": "자사주매입과 소각이란?",
-        "emoji": "\U0001F504",
+        "emoji": "flame",
         "lead": "회사가 자기 회사 주식을 직접 사들이거나 아예 없애버리는 주주환원 방법입니다.",
         "sections": [
             ("자사주매입 소각이란 무엇인가",
@@ -544,7 +544,7 @@ TERMS = {
     },
     "delisting": {
         "title": "상장폐지와 관리종목이란?",
-        "emoji": "⚠️",
+        "emoji": "alert",
         "lead": "거래소에서 더 이상 거래할 수 없게 되거나, 그 직전 경고 단계에 들어간 상태를 말합니다.",
         "sections": [
             ("상장폐지 관리종목이란 무엇인가",
@@ -566,7 +566,7 @@ TERMS = {
     },
     "disclosure": {
         "title": "공시란? 전자공시(DART) 보는 법",
-        "emoji": "\U0001F4E2",
+        "emoji": "document",
         "lead": "상장회사가 투자자에게 반드시 알려야 하는 중요 정보를 공개하는 제도입니다.",
         "sections": [
             ("공시란 무엇인가",
@@ -587,7 +587,7 @@ TERMS = {
     },
     "what-is-dividend": {
         "title": "배당이란? 회사가 주주와 이익을 나누는 방법",
-        "emoji": "\U0001F4B8",
+        "emoji": "coin",
         "lead": "회사가 벌어들인 이익의 일부를 현금이나 주식으로 주주에게 돌려주는 것입니다.",
         "sections": [
             ("배당이란 무엇인가",
@@ -619,7 +619,7 @@ def _compare_html(term, compare):
     best = (min(vals) if lower_better else max(vals)) if vals else None
     for c in compare:
         v = c.get("value")
-        mark = " 🏅" if (v is not None and v == best) else ""
+        mark = f" {_ic('check')}" if (v is not None and v == best) else ""
         rows += (f'<tr><td style="text-align:left"><a href="/s/{_esc(c["code"])}">'
                 f'{_esc(c["name"])}</a></td>'
                 f'<td>{_fmt(v, 2 if unit == "배" else 1)}{unit}{mark}</td>'
@@ -627,7 +627,7 @@ def _compare_html(term, compare):
     return (f'<div class="wrap"><table><thead><tr><th style="text-align:left">기업</th>'
             f'<th>{_esc(term["title"].split("(")[0])}</th><th>종합점수</th></tr></thead>'
             f'<tbody>{rows}</tbody></table></div>'
-            f'<p class="muted" style="font-size:12px">🏅 = 이 지표만 보면 '
+            f'<p class="muted" style="font-size:12px">{_ic("check")} = 이 지표만 보면 '
             f'{"더 낮은" if lower_better else "더 높은"} 쪽이 유리. 데이터는 매 요청 시 '
             f'최신 값으로 자동 갱신됩니다.</p>')
 
@@ -648,7 +648,7 @@ def render_glossary(slug, compare, canonical):
             f'style="font-size:13px;font-weight:400">· 실시간 데이터</span></h2>'
             f'{_compare_html(term, compare)}')
     body = f"""
-<h1>{term["emoji"]} {_esc(term["title"])}</h1>
+<h1>{_ic(term["emoji"])} {_esc(term["title"])}</h1>
 <p class="muted">{_esc(term["lead"])}</p>
 {compare_block}
 {sections_html}
@@ -664,10 +664,10 @@ def render_glossary(slug, compare, canonical):
 
 def render_learn_index(canonical):
     items = "".join(
-        f'<li><a href="/learn/{_esc(slug)}">{t["emoji"]} {_esc(t["title"])}</a> '
+        f'<li><a href="/learn/{_esc(slug)}">{_ic(t["emoji"])} {_esc(t["title"])}</a> '
         f'<span class="muted">— {_esc(t["lead"])}</span></li>'
         for slug, t in TERMS.items())
-    body = (f'<h1>📚 투자 용어 해설</h1>'
+    body = (f'<h1>{_ic("book")} 투자 용어 해설</h1>'
             f'<p class="muted">삼성전자·SK하이닉스 실제 데이터로 배우는 재무·밸류에이션 용어 '
             f'시리즈입니다.</p><ul style="line-height:2.2;font-size:14.5px">{items}</ul>')
     return layout("투자 용어 해설 전체 목록 — PER·PBR·ROE·부채비율·성장모멘텀",
