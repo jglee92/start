@@ -129,19 +129,14 @@
   .chart-head .cn{font-weight:700;font-size:13.5px}
   .chart-head .cp{font-size:19px;font-weight:800}
   .chart-head .cc{font-size:13px;font-weight:700}
-  .chart-svg{width:100%;max-width:480px;height:118px;display:block}
+  .chart-svg{width:100%;max-width:760px;height:96px;display:block}
   .chart-grid{stroke:var(--line);stroke-width:1}
   .chart-axis-label{font-size:9px;fill:var(--dim);font-family:ui-monospace,"SF Mono","Cascadia Code",Consolas,monospace}
-  .chart-row{display:flex;align-items:center;gap:16px}
-  #chartWrap{flex:1;min-width:0}
-  .chart-range{display:flex;flex-direction:column;justify-content:center;gap:6px;flex:none}
+  #chartWrap{min-width:0}
+  .chart-range{display:flex;gap:4px;margin-left:auto}
   .range-btn{font-size:11px;font-weight:700;color:var(--dim);background:none;border:1px solid transparent;
     border-radius:6px;padding:3px 8px;cursor:pointer}
   .range-btn.active{color:var(--accent);background:var(--panel2)}
-  @media(max-width:640px){
-    .chart-row{flex-direction:column;align-items:stretch}
-    .chart-range{flex-direction:row;justify-content:flex-end;margin-top:4px}
-  }
   .chart-loading{color:var(--dim);font-size:12.5px;text-align:center;padding:40px 0}
   .stat{background:var(--panel);border:1px solid var(--line);border-radius:10px;
     padding:10px 16px;min-width:110px}
@@ -325,24 +320,22 @@
             <span class="cn" id="chartName"></span>
             <span class="cp mut" id="chartPrice"></span>
             <span class="cc" id="chartChg"></span>
-          </div>
-          <div class="chart-row">
-            <div id="chartWrap">
-              <svg class="chart-svg" id="chartSvg" viewBox="0 0 560 118">
-                <defs>
-                  <linearGradient id="areaFill" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stop-color="var(--accent)" stop-opacity="0.22"/>
-                    <stop offset="100%" stop-color="var(--accent)" stop-opacity="0"/>
-                  </linearGradient>
-                </defs>
-                <g id="chartContent"></g>
-              </svg>
-            </div>
             <div class="chart-range" id="chartRange">
               <button class="range-btn" data-r="1mo">1개월</button>
               <button class="range-btn active" data-r="6mo">6개월</button>
               <button class="range-btn" data-r="1y">1년</button>
             </div>
+          </div>
+          <div id="chartWrap">
+            <svg class="chart-svg" id="chartSvg" viewBox="0 0 560 96">
+              <defs>
+                <linearGradient id="areaFill" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stop-color="var(--accent)" stop-opacity="0.22"/>
+                  <stop offset="100%" stop-color="var(--accent)" stop-opacity="0"/>
+                </linearGradient>
+              </defs>
+              <g id="chartContent"></g>
+            </svg>
           </div>
         </div>
       </div>
@@ -583,10 +576,14 @@ function smoothPath(pts){
   return d;
 }
 
+let lastChartPoints=null;
 function drawChart(points){
   const svg=document.getElementById('chartSvg'), g=document.getElementById('chartContent');
+  const wrap=document.getElementById('chartWrap');
   if(!g)return;
-  const w=560,h=118,padL=38,padR=8,padT=8,padB=16;
+  lastChartPoints=points;
+  const w=wrap.clientWidth||560,h=96,padL=38,padR=8,padT=8,padB=16;
+  svg.setAttribute('viewBox',`0 0 ${w} ${h}`);
   const closes=points.map(p=>p.c);
   const min=Math.min(...closes), max=Math.max(...closes);
   const x=i=>padL+(i/(closes.length-1))*(w-padL-padR);
@@ -625,6 +622,11 @@ document.getElementById('chartRange')?.addEventListener('click',(e)=>{
   currentChartRange=btn.dataset.r;
   document.querySelectorAll('.range-btn').forEach(b=>b.classList.toggle('active',b===btn));
   if(currentChartKey) loadChartHistory(currentChartKey, currentChartRange);
+});
+let chartResizeTimer=null;
+window.addEventListener('resize',()=>{
+  clearTimeout(chartResizeTimer);
+  chartResizeTimer=setTimeout(()=>{ if(lastChartPoints)drawChart(lastChartPoints); },150);
 });
 function renderStatbar(asof){
   const el=document.getElementById('statbar'); if(!el)return;
