@@ -165,6 +165,25 @@ def api_indices():
     return {"indices": get_market_indices()}
 
 
+@app.get("/api/indices/{key}/history")
+def api_indices_history(key: str, range: str = "6mo"):
+    import market_indices
+    if range not in ("1mo", "6mo", "1y"):
+        range = "6mo"
+    cache_key = f"idx_hist_{key}_{range}"
+    cached = _cache.get(cache_key)
+    from datetime import datetime, timezone, timedelta
+    KST = timezone(timedelta(hours=9))
+    now_kst = datetime.now(KST)
+    if cached and (now_kst - cached["ts"]).total_seconds() < 900:
+        return cached["data"]
+    data = market_indices.fetch_history(key, range)
+    if not data:
+        raise HTTPException(404, "지수 없음")
+    _cache[cache_key] = {"data": data, "ts": now_kst}
+    return data
+
+
 def _rank_movers(rk_now, rk_past, top_n=8):
     """현재 랭킹과 과거(가격만 되돌린) 랭킹을 비교한 순위 상승/하락 상위 top_n.
     재무는 최신 그대로 쓰므로 순수 가격 변동에 의한 밸류에이션 변화가 원인."""

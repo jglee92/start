@@ -14,8 +14,14 @@ INDICES = [
     {"key": "kosdaq", "name": "코스닥", "symbol": "^KQ11"},
     {"key": "nasdaq", "name": "나스닥", "symbol": "^IXIC"},
     {"key": "sp500", "name": "S&P 500", "symbol": "^GSPC"},
+    {"key": "dji", "name": "다우존스", "symbol": "^DJI"},
+    {"key": "nikkei", "name": "니케이225", "symbol": "^N225"},
+    {"key": "shanghai", "name": "상해종합", "symbol": "000001.SS"},
     {"key": "gold", "name": "국제 금", "symbol": "GC=F"},
+    {"key": "usdkrw", "name": "원/달러", "symbol": "KRW=X"},
+    {"key": "wti", "name": "WTI유가", "symbol": "CL=F"},
 ]
+INDEX_BY_KEY = {ix["key"]: ix for ix in INDICES}
 
 
 def _fetch_one(symbol):
@@ -48,3 +54,23 @@ def fetch_indices():
             if data:
                 out[ix["key"]] = {"name": ix["name"], **data}
     return out
+
+
+_RANGE_INTERVAL = {"1mo": "1d", "6mo": "1d", "1y": "1wk"}
+
+
+def fetch_history(key, range_="6mo"):
+    """지수 클릭시 차트용 히스토리(날짜,종가). range: 1mo/6mo/1y."""
+    ix = INDEX_BY_KEY.get(key)
+    if not ix:
+        return None
+    interval = _RANGE_INTERVAL.get(range_, "1d")
+    url = (f"https://query1.finance.yahoo.com/v8/finance/chart/{urllib.parse.quote(ix['symbol'])}"
+           f"?range={range_}&interval={interval}")
+    r = requests.get(url, headers={"User-Agent": "Mozilla/5.0"}, timeout=10)
+    r.raise_for_status()
+    result = r.json()["chart"]["result"][0]
+    ts = result.get("timestamp") or []
+    closes = result["indicators"]["quote"][0].get("close") or []
+    points = [{"t": t, "c": round(c, 4)} for t, c in zip(ts, closes) if c is not None]
+    return {"key": key, "name": ix["name"], "points": points}
