@@ -72,6 +72,15 @@
   .nav-title{font-size:10.5px;letter-spacing:.04em;color:var(--dim);text-transform:uppercase;
     font-weight:700;margin:16px 8px 6px;padding:0}
   .nav-title:first-child{margin-top:2px}
+  .nav-group{border:none;margin:0}
+  .nav-group > summary{font-size:10.5px;letter-spacing:.04em;color:var(--dim);text-transform:uppercase;
+    font-weight:700;margin:16px 8px 6px;padding:0;cursor:pointer;list-style:none;
+    display:flex;align-items:center;gap:6px}
+  .nav-group:first-of-type > summary{margin-top:2px}
+  .nav-group > summary::-webkit-details-marker{display:none}
+  .nav-group > summary:hover{color:var(--txt)}
+  .nav-group > summary .chev{margin-left:auto;transition:transform .15s;flex:none}
+  .nav-group[open] > summary .chev{transform:rotate(90deg)}
   .nav-item{display:flex;justify-content:space-between;align-items:center;gap:6px;
     padding:8px 10px;border-radius:8px;cursor:pointer;color:var(--txt);text-decoration:none;
     font-size:14.5px;margin:1px 0}
@@ -87,6 +96,9 @@
       gap:2px;padding:8px;white-space:nowrap;border-right:none;border-bottom:1px solid var(--line)}
     .nav-title{display:none}
     .nav-item{flex:0 0 auto}
+    .nav-group{display:contents}
+    .nav-group > summary{display:none}
+    .nav-group > .nav-item{display:flex !important}
   }
 
   .hero{padding:0 0 10px}
@@ -227,30 +239,42 @@
 <div class="applayout">
   <aside class="sidenav" id="sidenav">
     <div class="nav-item active" data-v="home">🏠 홈</div>
-    <div class="nav-title">기본 지표</div>
-    <div class="nav-item" data-v="price">📊 시세</div>
-    <div class="nav-item" data-v="fin">🧾 재무제표</div>
-    <div class="nav-item" data-v="safety">🛡️ 자산건전성</div>
-    <div class="nav-item" data-v="div">💵 배당</div>
-    <div class="nav-title">심화 분석</div>
-    <div class="nav-item" data-v="value">💰 밸류에이션 <span class="mut" style="font-size:11px">(저평가?)</span></div>
-    <div class="nav-item" data-v="profit">📈 수익성 <span class="mut" style="font-size:11px">(돈 잘 버나)</span></div>
-    <div class="nav-item" data-v="score">🎯 종합 건강점수</div>
-    <div class="nav-title">스크리너</div>
-    <div class="nav-item" data-v="screener">🔍 조건검색 <span class="newbadge">NEW</span></div>
-    <div class="nav-title">시장 동향</div>
-    <div class="nav-item" data-v="theme">🔥 테마 강세</div>
-    <div class="nav-item" data-v="sec">🔄 섹터 로테이션</div>
-    <div class="nav-item" data-v="themesall">📋 테마 전체목록</div>
-    <div class="nav-title">리포트</div>
-    <div class="nav-item" data-v="weekly">📰 주간 리포트</div>
-    <div class="nav-item" data-v="monthly">🎯 월간 건강랭킹</div>
-    <div class="nav-item" data-v="sectorreport">📊 업종 밸류리포트</div>
-    <div class="nav-item" data-v="anomaly">🚩 이상신호 리포트</div>
-    <div class="nav-item" data-v="earnings">📅 실적발표 현황</div>
-    <div class="nav-title">정보</div>
-    <div class="nav-item" data-v="about">ℹ️ 소개·방법론</div>
-    <div class="nav-item" data-v="learn">📚 투자 용어 해설</div>
+    <details class="nav-group" open>
+      <summary>기본 지표<svg class="chev" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5l7 7-7 7"/></svg></summary>
+      <div class="nav-item" data-v="price">📊 시세</div>
+      <div class="nav-item" data-v="fin">🧾 재무제표</div>
+      <div class="nav-item" data-v="safety">🛡️ 자산건전성</div>
+      <div class="nav-item" data-v="div">💵 배당</div>
+    </details>
+    <details class="nav-group">
+      <summary>심화 분석<svg class="chev" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5l7 7-7 7"/></svg></summary>
+      <div class="nav-item" data-v="value">💰 밸류에이션 <span class="mut" style="font-size:11px">(저평가?)</span></div>
+      <div class="nav-item" data-v="profit">📈 수익성 <span class="mut" style="font-size:11px">(돈 잘 버나)</span></div>
+      <div class="nav-item" data-v="score">🎯 종합 건강점수</div>
+    </details>
+    <details class="nav-group">
+      <summary>스크리너<svg class="chev" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5l7 7-7 7"/></svg></summary>
+      <div class="nav-item" data-v="screener">🔍 조건검색 <span class="newbadge">NEW</span></div>
+    </details>
+    <details class="nav-group">
+      <summary>시장 동향<svg class="chev" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5l7 7-7 7"/></svg></summary>
+      <div class="nav-item" data-v="theme">🔥 테마 강세</div>
+      <div class="nav-item" data-v="sec">🔄 섹터 로테이션</div>
+      <div class="nav-item" data-v="themesall">📋 테마 전체목록</div>
+    </details>
+    <details class="nav-group">
+      <summary>리포트<svg class="chev" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5l7 7-7 7"/></svg></summary>
+      <div class="nav-item" data-v="weekly">📰 주간 리포트</div>
+      <div class="nav-item" data-v="monthly">🎯 월간 건강랭킹</div>
+      <div class="nav-item" data-v="sectorreport">📊 업종 밸류리포트</div>
+      <div class="nav-item" data-v="anomaly">🚩 이상신호 리포트</div>
+      <div class="nav-item" data-v="earnings">📅 실적발표 현황</div>
+    </details>
+    <details class="nav-group">
+      <summary>정보<svg class="chev" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5l7 7-7 7"/></svg></summary>
+      <div class="nav-item" data-v="about">ℹ️ 소개·방법론</div>
+      <div class="nav-item" data-v="learn">📚 투자 용어 해설</div>
+    </details>
   </aside>
 
   <main class="content">
