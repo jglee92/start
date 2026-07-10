@@ -827,6 +827,32 @@ def _earning_tag(pct):
     return ""
 
 
+def _prev_day_movers(conn, codes, n=3):
+    """직전 거래일 종가 vs 그 전날 종가로 급등·급락 TOP N (ranking 유니버스 한정)."""
+    dates = [r[0] for r in conn.execute(
+        "SELECT DISTINCT date FROM daily_prices WHERE close IS NOT NULL "
+        "ORDER BY date DESC LIMIT 2").fetchall()]
+    if len(dates) < 2:
+        return [], [], None
+    d_now, d_prev = dates
+    now_map = dict(conn.execute(
+        "SELECT code,close FROM daily_prices WHERE date=? AND close IS NOT NULL", (d_now,)).fetchall())
+    prev_map = dict(conn.execute(
+        "SELECT code,close FROM daily_prices WHERE date=? AND close IS NOT NULL", (d_prev,)).fetchall())
+    codeset = set(codes)
+    changes = []
+    for code, close in now_map.items():
+        if code not in codeset:
+            continue
+        p = prev_map.get(code)
+        if p:
+            changes.append((code, (close / p - 1) * 100))
+    changes.sort(key=lambda x: x[1])
+    losers = changes[:n]
+    gainers = list(reversed(changes[-n:]))
+    return gainers, losers, d_now
+
+
 def _blog_draft_text():
     """'장 열리기전 체크포인트' 블로그 초안(제목+본문) 생성.
     네이버 블로그 자동 포스팅 API는 2020년에 종료되어(직접 확인함) 발행은 수동으로
@@ -843,9 +869,15 @@ def _blog_draft_text():
     conn = _conn()
     disclosures = db.get_recent_disclosures(conn, limit=8)
     rk = get_ranking()
+    gainers, losers, movers_date = _prev_day_movers(conn, [r["code"] for r in rk])
     if _cache.get("theme_perf") is None:
         from factor.themes import compute_theme_perf
         _cache["theme_perf"] = compute_theme_perf(conn, get_tmap())
+    if _cache.get("theme_groups") is None:
+        from factor.themes import compute_group_hierarchy
+        if _cache["master"] is None:
+            _cache["master"] = build_master()
+        _cache["theme_groups"] = compute_group_hierarchy(conn, get_tmap(), master=_cache["master"])
     conn.close()
 
     for it in disclosures:
@@ -856,6 +888,14 @@ def _blog_draft_text():
         "코스피·코스닥 실적 발표랑 특징테마 위주로 정리해봤어요.",
         "",
     ]
+
+    if gainers or losers:
+        lines.append(f"\U0001F4C8 어제({movers_date}) 급등·급락 TOP{len(gainers) or len(losers)}")
+        for code, pct in gainers:
+            lines.append(f"- (급등) {_name_of(code)}({code}): {pct:+.1f}%")
+        for code, pct in losers:
+            lines.append(f"- (급락) {_name_of(code)}({code}): {pct:+.1f}%")
+        lines.append("")
 
     lines.append("\U0001F4CA 실적 발표 브리핑 (어닝서프라이즈·어닝쇼크 체크)")
     for it in disclosures[:5]:
@@ -877,12 +917,17 @@ def _blog_draft_text():
             lines.append(f"- {name}({code}) {f['label']}: {f['text']}")
         lines.append("")
 
-    themes = [r for r in _cache["theme_perf"] if r.get("used", 0) >= 3 and r["count"] >= 8]
-    themes.sort(key=lambda r: (r["ret_1m"] is not None, r["ret_1m"]), reverse=True)
-    if themes:
+    mids = [m for maj in _cache["theme_groups"] for m in maj["mids"]
+            if m.get("used", 0) >= 3 and m.get("theme_count", 0) >= 1]
+    mids.sort(key=lambda m: (m["ret_1m"] is not None, m["ret_1m"]), reverse=True)
+    if mids:
         lines.append("\U0001F525 요즘 주도테마 · 특징테마 (최근 1개월 수익률)")
-        for t in themes[:3]:
-            lines.append(f"- {t['name']}: {t['ret_1m']:+.1f}%")
+        for m in mids[:3]:
+            lines.append(f"- {m['mid']}: {m['ret_1m']:+.1f}%")
+            sub = [t for t in m["themes"] if t.get("used", 0) >= 3 and t["count"] >= 8]
+            sub.sort(key=lambda t: (t["ret_1m"] is not None, t["ret_1m"]), reverse=True)
+            for t in sub[:3]:
+                lines.append(f"  - {t['name']}: {t['ret_1m']:+.1f}%")
         lines.append("")
 
     lines.append("전 종목 스크리닝, 재무제표, 회계감사의견까지 더 자세한 데이터는")
