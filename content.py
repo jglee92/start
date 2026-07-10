@@ -17,6 +17,7 @@ def _esc(s):
 
 _ICON_SVG = {
     "mail": '<rect x="3" y="5" width="18" height="14" rx="2"/><path d="m3.5 6 8.5 7 8.5-7"/>',
+    "news": '<rect x="3.5" y="5.5" width="12" height="14" rx="1.2"/><path d="M15.5 8.5h4.2a.8.8 0 0 1 .8.8v8.2a1.8 1.8 0 0 1-1.8 1.8h-3.2"/><path d="M6.3 9h6M6.3 12h6M6.3 15h4"/>',
     "wallet": '<rect x="3.5" y="7" width="17" height="12" rx="2"/><path d="M3.5 10h17"/><circle cx="16.2" cy="14" r="1" fill="currentColor" stroke="none"/>',
     "trendUp": '<path d="M4 16l5.5-5.5 3.5 3.5L20 7"/><path d="M14.5 7H20v5.5"/>',
     "trendDown": '<path d="M4 8l5.5 5.5 3.5-3.5L20 17"/><path d="M14.5 17H20v-5.5"/>',
@@ -370,7 +371,7 @@ def render_stock_page(code, name, summary, financials, prices, news, themes,
                       disclosures, period_returns, canonical, audit=None, quarterly=None):
     def eok(v):
         return "–" if v is None else f"{round(v/1e8):,}"
-    head = f'<h1>{_esc(name)} <span class="muted" style="font-size:15px">{_esc(code)}</span></h1>'
+    head = f'<h1>{_ic("barchart")} {_esc(name)} <span class="muted" style="font-size:15px">{_esc(code)}</span></h1>'
     head += '<p class="muted">재무제표·건강검진 점수·밸류에이션과 관련 뉴스를 한 페이지에서.</p>'
     head += _audit_html(audit)
     kpi = ""
@@ -444,7 +445,7 @@ def render_theme_page(name, stocks, perf, canonical):
                     f"3개월은 {_fmt(r3)}% 입니다.")
 
     body = f"""
-<h1>{_esc(name)} 관련주 — 가치·퀄리티 분석</h1>
+<h1>{_ic('gem')} {_esc(name)} 관련주 — 가치·퀄리티 분석</h1>
 <p class="muted">구성종목 {n_total}개 중 {n_ranked}개를 가치+퀄리티 팩터점수로 분석.
 점수↑ = 저평가·우량 상대순위.{perf_txt}</p>
 <p>{_esc(name)} 테마에서 <b>가치+퀄리티 종합 상위</b>는 {top_names} 입니다.
@@ -514,13 +515,13 @@ def render_anomaly_report(grouped, asof, canonical):
     if not sections:
         sections = '<p class="muted">현재 이상신호가 감지된 종목이 없습니다.</p>'
     body = f"""
-<h1>이상신호 리포트 <span class="muted" style="font-size:14px">({_esc(asof)} 기준)</span></h1>
+<h1>{_ic('alert')} 이상신호 리포트 <span class="muted" style="font-size:14px">({_esc(asof)} 기준)</span></h1>
+<p class="muted">시총 3,000억 이상 유니버스 기준, 규칙 기반으로 감지된 참고 신호 전체 {total}건.</p>
 <p>재무 데이터에서 <b>규칙 기반으로 감지된 참고 신호</b>를 모았습니다. 적자 전환, 부채비율
 급증, 영업외 손익 의존, 매출 2년 연속 감소 — 4가지 유형을 자동으로 스캔합니다.
 <b>회계부정을 진단하는 도구가 아니며</b>, "한번 확인해볼 만한 종목"을 걸러주는 참고 신호입니다.
 매수·매도 추천이 아닙니다. 심각도(적자전환 등) 높은 유형 순으로 정렬했으며, 신호가 뜬 종목은
 클릭해서 실제 재무제표·공시 원문을 직접 확인해보세요.</p>
-<p class="muted">전체 {total}건 감지 (시총 3,000억 이상 유니버스 기준)</p>
 {sections}
 <p class="muted footnote">데이터: DART 최신 사업보고서. 규칙 기반 참고 신호이며 회계부정 진단이 아닙니다.</p>
 """
@@ -596,9 +597,9 @@ def render_monthly_health(rows, anomaly_count, asof, canonical, movers_up=None, 
                          f'</tbody></table></div>')
     body = f"""
 <h1>{_ic('target')} 이번 달 건강점수 랭킹 <span class="muted" style="font-size:14px">({_esc(asof)} 기준)</span></h1>
-<p>가치+퀄리티 종합점수와, 밸류에이션·수익성·안정성·성장성 4차원 건강검진 별점을 기준으로
-이번 달 상위 기업을 정리했습니다. 매수·매도 추천이 아니라 <b>같은 유니버스 내 상대 비교</b>
-스냅샷입니다.</p>
+<p class="muted">시총 3,000억 이상 유니버스 기준, 가치+퀄리티 종합점수 TOP20과 4차원 건강검진 별점 랭킹입니다.</p>
+<p>밸류에이션·수익성·안정성·성장성 4차원 건강검진 별점을 기준으로 이번 달 상위 기업을 정리했습니다.
+매수·매도 추천이 아니라 <b>같은 유니버스 내 상대 비교</b> 스냅샷입니다.</p>
 
 <div class="warn" style="margin:12px 0">{_ic('alert')} 이번 달 재무 이상신호(적자전환·부채급증 등)가
 감지된 종목은 <b>{anomaly_count}개</b>입니다. <a href="/anomaly-report">→ 이상신호 리포트 먼저 보기</a></div>
@@ -629,7 +630,8 @@ def render_weekly(strong, weak, asof, canonical, movers_up=None, movers_down=Non
     top_theme = strong[0]["name"] if strong else "–"
 
     body = f"""
-<h1>주간 한국주식 시장 리포트 <span class="muted" style="font-size:14px">({_esc(asof)} 기준)</span></h1>
+<h1>{_ic('news')} 주간 한국주식 시장 리포트 <span class="muted" style="font-size:14px">({_esc(asof)} 기준)</span></h1>
+<p class="muted">시총 3,000억 이상 유니버스 기준, 최근 1개월 테마 동일가중 수익률 강세·약세 순위입니다.</p>
 <p>최근 1개월 기준 가장 강했던 테마는 <b>{_esc(top_theme)}</b> 입니다. 아래는 테마별
 구성종목 동일가중 수익률로 본 강세·약세 순위입니다. 가치+퀄리티 팩터 종합순위는
 <a href="/monthly">월간 건강랭킹</a>에서 확인하세요. 매매 추천이 아니라 데이터로 본
@@ -678,9 +680,9 @@ def render_earnings_report(items, canonical):
                     f'순이익 YoY <b>{ni_avg}</b> — 개별 종목 성장률과 비교해보세요.</p>')
     body = f"""
 <h1>{_ic('calendar')} 최근 실적발표 현황</h1>
-<p>DART에 최근 공시된 분기·반기 실적을 발표일 순으로 정리했습니다. 전년 동기 대비
-매출·순이익 성장률로 실적 흐름을 빠르게 훑어볼 수 있습니다(전년 동기 데이터가 없는
-분기는 직전 분기 대비 <b>QoQ</b>로 대체 표시). <b>"다음 주 발표 예정"같은
+<p class="muted">DART 최근 공시 기준, 분기·반기 실적을 발표일 순으로 정리한 목록입니다.</p>
+<p>전년 동기 대비 매출·순이익 성장률로 실적 흐름을 빠르게 훑어볼 수 있습니다(전년 동기 데이터가
+없는 분기는 직전 분기 대비 <b>QoQ</b>로 대체 표시). <b>"다음 주 발표 예정"같은
 사전 예측이 아니라 이미 공시된 실적만</b> 다룹니다 — DART는 공시 일정을 미리 알려주지
 않아 정확한 예정일을 제공할 수 없기 때문입니다.</p>
 {avg_note}

@@ -1138,7 +1138,8 @@ def themes_index():
         r1 = p.get("ret_1m")
         tag = "" if r1 is None else f' <span class="muted">({r1:+.1f}%/1M)</span>'
         lis += f'<li><a href="/t/{no}">{t["name"]}</a> <span class="muted">{len(t["codes"])}종목</span>{tag}</li>'
-    body = (f'<h1>테마별 관련주 전체 ({len(items)}개)</h1>'
+    from content import _ic
+    body = (f'<h1>{_ic("list")} 테마별 관련주 전체 ({len(items)}개)</h1>'
             f'<p class="muted">테마를 누르면 해당 테마의 저평가·우량 종목 랭킹을 볼 수 있습니다. '
             f'수익률이 가장 강했던 테마 순으로 정렬했습니다. 매매 추천이 아닙니다.</p>'
             f'<ul style="columns:2;line-height:2;font-size:14px">{lis}</ul>'
