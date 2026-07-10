@@ -4,7 +4,7 @@
 이미 계산된 랭킹(RANK)만으로 만들며 추가 수집이 필요 없다.
 """
 from __future__ import annotations
-from content import layout, _esc, _fmt
+from content import layout, _esc, _fmt, _ic
 from factor.sectors import SLUGS, SLUG_TO_SECTOR
 
 
@@ -79,7 +79,7 @@ def render_sector_report(sector_name, stats, market_avg, canonical):
                               for r in stats["quality"]) or "데이터 부족"
 
     body = f"""
-<h1>📊 {_esc(sector_name)} 업종 밸류에이션 리포트</h1>
+<h1>{_ic('barchart')} {_esc(sector_name)} 업종 밸류에이션 리포트</h1>
 <p class="muted">시총 3,000억 이상 상장기업 {stats['count']}개 기준. 테마(모멘텀) 관점이 아닌
 <b>밸류에이션(저평가·우량) 관점</b>의 업종 분석입니다.</p>
 <p>{summary}</p>
@@ -109,7 +109,7 @@ def render_sector_index(canonical):
     items = "".join(
         f'<li><a href="/sector-report/{_esc(slug)}">{_esc(name)}</a></li>'
         for name, slug in SLUGS.items())
-    body = (f'<h1>📊 업종별 밸류에이션 리포트</h1>'
+    body = (f'<h1>{_ic("barchart")} 업종별 밸류에이션 리포트</h1>'
             f'<p class="muted">각 업종의 평균 PER·PBR·ROE·부채비율과 저평가·우량 종목을 정리했습니다. '
             f'테마(모멘텀) 페이지와 달리 밸류에이션 관점입니다.</p>'
             f'<ul style="line-height:2.2;font-size:14.5px">{items}</ul>')
