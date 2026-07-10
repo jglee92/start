@@ -117,6 +117,21 @@
   .hero .lead{font-size:16px;margin:0 0 6px}
   .hero .why{color:var(--dim);font-size:14.5px;max-width:820px;margin:0;line-height:1.7}
   .hero .why a{color:var(--accent);text-decoration:none;white-space:nowrap}
+  .home-search{position:relative;margin:6px 0 2px;max-width:440px}
+  .home-search input{width:100%;padding:11px 14px;border-radius:9px;border:1px solid var(--line);
+    background:var(--panel2);color:var(--txt);font-size:14.5px}
+  .home-search input::placeholder{color:var(--dim)}
+  .home-search-results{display:none;position:absolute;top:calc(100% + 4px);left:0;width:100%;
+    background:var(--panel);border:1px solid var(--line);border-radius:9px;
+    box-shadow:0 8px 24px rgba(0,0,0,.18);z-index:6;max-height:280px;overflow-y:auto}
+  .hsr-item{display:flex;justify-content:space-between;gap:10px;padding:9px 14px;cursor:pointer;font-size:14px}
+  .hsr-item:hover{background:var(--panel2)}
+  .hsr-item .code{color:var(--dim);font-size:12px}
+  .hsr-empty{padding:10px 14px;color:var(--dim);font-size:13px}
+  .start-guide{display:flex;gap:14px;flex-wrap:wrap;align-items:center;margin:10px 0 14px;
+    font-size:13px;color:var(--dim)}
+  .start-guide a{color:var(--accent);cursor:pointer;font-weight:600;text-decoration:none}
+  .start-guide a:hover{text-decoration:underline}
   .statbar{display:flex;gap:10px;flex-wrap:wrap;margin-top:14px}
   .chart-card{border:1px solid var(--line);border-radius:10px;margin-top:14px;overflow:hidden;background:var(--panel)}
   .idx-tabs{display:flex;gap:20px;overflow-x:auto;padding:10px 16px 0;border-bottom:1px solid var(--line)}
@@ -299,11 +314,6 @@
   </aside>
 
   <main class="content">
-    <div class="warn">
-      리서치·의사결정 지원용이며 매수·매도 추천이 아닙니다. 점수·별점은 같은 유니버스(시총 3,000억↑)
-      내 <b>상대 비교</b>이며 과거 성과가 미래를 보장하지 않습니다.
-    </div>
-
     <!-- 홈 -->
     <div id="view-home">
       <section class="hero">
@@ -315,6 +325,23 @@
           확인했습니다(매매 추천은 아닙니다).
           <a href="/about" onclick="return spaNav(event,'about')">→ 왜 이렇게 만들었나 · 방법론 · 검증결과</a></p>
       </section>
+
+      <form class="home-search" id="homeSearchWrap" onsubmit="return false">
+        <input type="search" id="homeSearch" placeholder="종목명 또는 코드로 검색 (예: 삼성전자, 005930)" autocomplete="off">
+        <div class="home-search-results" id="homeSearchResults"></div>
+      </form>
+
+      <div class="start-guide">
+        <span>처음이신가요?</span>
+        <a onclick="switchView('screener')">조건검색으로 종목 찾기 →</a>
+        <a onclick="switchView('learn')">투자 용어부터 보기 →</a>
+        <a href="/about" onclick="return spaNav(event,'about')">방법론·검증결과 →</a>
+      </div>
+
+      <div class="warn">
+        리서치·의사결정 지원용이며 매수·매도 추천이 아닙니다. 점수·별점은 같은 유니버스(시총 3,000억↑)
+        내 <b>상대 비교</b>이며 과거 성과가 미래를 보장하지 않습니다.
+      </div>
 
       <div class="statbar" id="statbar"></div>
       <div class="chart-card">
@@ -363,7 +390,7 @@
     <!-- 스크리너 -->
     <div id="view-screener" class="wrap" style="display:none">
       <p class="viewintro">원하는 조건을 입력하면 조건을 만족하는 종목만 즉시 걸러줍니다.
-        비워두면 해당 조건은 적용되지 않습니다.</p>
+        비워두면 해당 조건은 적용되지 않습니다. 매매 추천이 아닙니다.</p>
       <div class="chips">
         <span class="chip" data-p="value"><svg class="ic-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="7" width="17" height="12" rx="2"/><path d="M3.5 10h17"/><circle cx="16.2" cy="14" r="1" fill="currentColor" stroke="none"/></svg> 저평가 가치주</span>
         <span class="chip" data-p="dividend"><svg class="ic-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8"/><path d="M9.3 14.2c.4.9 1.3 1.5 2.5 1.5 1.5 0 2.6-.9 2.6-2s-1-1.6-2.6-2c-1.5-.4-2.5-.9-2.5-2s1.1-2 2.5-2c1.2 0 2.1.6 2.5 1.5"/><path d="M12 7.3v1.2M12 15.7v1.2"/></svg> 고배당 우량주</span>
@@ -770,7 +797,7 @@ function renderTable(){
   document.getElementById('cnt').textContent=`${rows.length}종목`;
   const liveNote=(LIVE_UPDATED_AT&&(curView==='price'||curView==='div'))
     ?` (장중 시세 ${LIVE_UPDATED_AT} 갱신)`:'';
-  document.getElementById('viewIntro').textContent=cfg.intro+liveNote;
+  document.getElementById('viewIntro').textContent=cfg.intro+liveNote+' 매매 추천이 아닙니다.';
   const thead=document.querySelector('#tbl thead'); const tbody=document.querySelector('#tbl tbody');
   thead.innerHTML='<tr>'+cfg.cols.map(c=>`<th${c.left?' style="text-align:left"':''} data-k="${c.key||''}">${c.label}</th>`).join('')+'</tr>';
   tbody.innerHTML='';
@@ -786,6 +813,37 @@ function renderTable(){
   });
 }
 document.getElementById('q').oninput=renderTable;
+
+/* ── 홈 화면 종목 검색 ── */
+function homeSearchSelect(code){
+  openStock(code);
+  const inp=document.getElementById('homeSearch'), box=document.getElementById('homeSearchResults');
+  inp.value=''; box.style.display='none'; box.innerHTML='';
+}
+document.getElementById('homeSearch')?.addEventListener('input',function(){
+  const q=this.value.trim().toLowerCase();
+  const box=document.getElementById('homeSearchResults');
+  if(!q){ box.style.display='none'; box.innerHTML=''; return; }
+  const matches=RANK.filter(r=>r.name.toLowerCase().includes(q)||r.code.includes(q)).slice(0,8);
+  box.innerHTML=matches.length
+    ? matches.map(r=>`<div class="hsr-item" onclick="homeSearchSelect('${r.code}')">
+        <span class="nm">${r.name}</span><span class="code">${r.code}</span></div>`).join('')
+    : '<div class="hsr-empty">검색 결과 없음</div>';
+  box.style.display='block';
+});
+document.getElementById('homeSearch')?.addEventListener('keydown',function(e){
+  if(e.key!=='Enter')return;
+  const q=this.value.trim().toLowerCase(); if(!q)return;
+  const first=RANK.find(r=>r.name.toLowerCase().includes(q)||r.code.includes(q));
+  if(first)homeSearchSelect(first.code);
+});
+document.addEventListener('click',function(e){
+  const wrap=document.getElementById('homeSearchWrap');
+  if(wrap && !wrap.contains(e.target)){
+    const box=document.getElementById('homeSearchResults');
+    box.style.display='none';
+  }
+});
 
 /* ── 사이드바 전환 ── */
 const ALL_PANELS=['view-home','view-screener','theme','sec','view-table',
