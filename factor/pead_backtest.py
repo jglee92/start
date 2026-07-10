@@ -106,15 +106,33 @@ def summarize(events, n_groups=5):
     print(line)
 
 
+def _full_universe_codes(conn):
+    """backfill_quarterly_pead_full.py와 동일한 유니버스(시총 3,000억 이상) 구성."""
+    from factor.universe import build_master, eligible_at
+    from factor.data import price_asof as _price_asof
+    master = build_master()
+    asof = conn.execute("SELECT MAX(date) FROM daily_prices").fetchone()[0]
+    elig = eligible_at(master, asof, cfg)
+    codes = []
+    for r in elig.itertuples(index=False):
+        if r.shares is None:
+            continue
+        p = _price_asof(conn, r.code, asof)
+        if p and r.shares * p[0] >= cfg.MIN_MARKET_CAP:
+            codes.append(r.code)
+    return codes
+
+
 if __name__ == "__main__":
     sys.stdout.reconfigure(encoding="utf-8")
-    from backfill_quarterly_pilot import PILOT_CODES
     conn = db.connect()
+    codes = _full_universe_codes(conn)
+    print(f"전체 유니버스 {len(codes)}종목 기준 PEAD 백테스트\n")
     for hold in (60, 90):
         print("=" * 70)
         print(f"보유기간 {hold}일")
         print("=" * 70)
-        events = collect_events(conn, PILOT_CODES, hold_days=hold)
+        events = collect_events(conn, codes, hold_days=hold)
         summarize(events)
         print()
     conn.close()
