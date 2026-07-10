@@ -117,6 +117,8 @@
   .hero .why a{color:var(--accent);text-decoration:none;white-space:nowrap}
   .home-toprow{display:flex;gap:18px;align-items:center;flex-wrap:wrap;margin:8px 0 8px}
   .home-search{position:relative;flex:1;min-width:200px;max-width:360px}
+  .home-search-label{display:flex;align-items:center;gap:4px;font-size:12px;font-weight:600;
+    color:var(--dim);margin-bottom:4px}
   .home-search input{width:100%;padding:9px 13px;border-radius:9px;border:1px solid var(--line);
     background:var(--panel2);color:var(--txt);font-size:14px}
   .home-search input::placeholder{color:var(--dim)}
@@ -329,6 +331,7 @@
 
       <div class="home-toprow">
         <form class="home-search" id="homeSearchWrap" onsubmit="return false">
+          <label for="homeSearch" class="home-search-label"><svg class="ic-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="10.5" cy="10.5" r="6.5"/><path d="M20 20l-5-5"/></svg> 빠른 종목 검색</label>
           <input type="search" id="homeSearch" placeholder="종목명 또는 코드로 검색" autocomplete="off">
           <div class="home-search-results" id="homeSearchResults"></div>
         </form>
