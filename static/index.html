@@ -84,6 +84,10 @@
   .ic-svg{width:15px;height:15px;flex:none;vertical-align:-3px;display:inline-block}
   .nav-item .ic-svg{margin-right:2px}
   h3 .ic-svg,.dimhead .ic-svg{width:14px;height:14px;vertical-align:-2px;margin-right:1px}
+  /* SSR 조각(월간·업종리포트·실적발표·소개·용어해설)이 SPA에 삽입될 때 쓰는 아이콘 클래스 */
+  .ic{width:14px;height:14px;vertical-align:-2px;margin-right:1px;flex:none;display:inline-block}
+  h1 .ic{width:20px;height:20px;vertical-align:-4px;margin-right:3px}
+  h2 .ic{width:16px;height:16px;vertical-align:-3px;margin-right:2px}
   .stat .l .ic-svg{width:11px;height:11px;vertical-align:-1px}
   .nav-group .nav-item{padding-left:26px;font-size:13.5px}
   .nav-item{display:flex;justify-content:space-between;align-items:center;gap:6px;
@@ -95,15 +99,17 @@
   .newbadge{font-size:9.5px;font-weight:700;color:var(--accent);border:1px solid var(--accent);
     border-radius:8px;padding:0 5px;line-height:1.5}
   .content{flex:1;min-width:0;padding:18px 22px 40px;overflow-x:hidden}
+  .navToggle{display:none}
   @media(max-width:780px){
     .applayout{flex-direction:column}
-    .sidenav{width:100%;flex:none;display:flex;flex-wrap:nowrap;overflow-x:auto;
-      gap:2px;padding:8px;white-space:nowrap;border-right:none;border-bottom:1px solid var(--line)}
+    .navToggle{display:inline-flex;align-items:center;justify-content:center;width:34px;height:34px;
+      border:1px solid var(--line);border-radius:8px;background:var(--panel);color:var(--txt);
+      cursor:pointer;flex:none;margin-right:2px}
+    .navToggle svg{width:18px;height:18px}
     .nav-title{display:none}
-    .nav-item{flex:0 0 auto}
-    .nav-group{display:contents}
-    .nav-group > summary{display:none}
-    .nav-group > .nav-item{display:flex !important;padding-left:10px}
+    .sidenav{display:none;position:fixed;top:49px;left:0;right:0;bottom:0;z-index:20;
+      overflow-y:auto;padding:10px;border-right:none;border-bottom:1px solid var(--line)}
+    .sidenav.mobopen{display:block}
   }
 
   .hero{padding:0 0 10px}
@@ -237,16 +243,21 @@
   .nmeta{color:var(--dim);font-size:12px;margin-top:3px}
   .backdrop{position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:15;display:none}
   .backdrop.on{display:block}
+  #navBd{z-index:19}
 </style>
 </head>
 <body>
 <header>
+  <button class="navToggle" id="navToggle" onclick="toggleMobileNav()" aria-label="메뉴 열기">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 6h16M4 12h16M4 18h16"/></svg>
+  </button>
   <h1><img src="/static/favicon-32.png" width="24" height="24" alt=""
     style="vertical-align:-5px;border-radius:6px;margin-right:2px"> 머니체크업
     <span style="font-weight:400;color:var(--dim);font-size:13px">Money Checkup</span></h1>
   <span class="sub" id="asof">로딩…</span>
 </header>
 
+<div class="backdrop" id="navBd" onclick="closeMobileNav()"></div>
 <div class="applayout">
   <aside class="sidenav" id="sidenav">
     <div class="nav-item active" data-v="home"><svg class="ic-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 11.5 12 4l8 7.5"/><path d="M6 10v9a1 1 0 0 0 1 1h3.5v-6h3v6H17a1 1 0 0 0 1-1v-9"/></svg> 홈</div>
@@ -489,6 +500,10 @@ const ICONS={
   bank:'<svg class="ic-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9.5 12 4l8 5.5"/><path d="M5 9.5h14V19H5z"/><path d="M8 12.5V17M12 12.5V17M16 12.5V17"/><path d="M4 19h16"/></svg>',
 };
 function ic(name){return ICONS[name]||'';}
+function sevDot(emoji){
+  const color=emoji==='🔴'?'#e0453f':'#e0a500';
+  return `<span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${color};margin-right:5px;vertical-align:1px;flex:none"></span>`;
+}
 
 let LIVE_UPDATED_AT=null;
 async function load(){
@@ -640,7 +655,7 @@ async function loadCards(asof){
   const anomalies=RANK.filter(r=>(r.flags||[]).length>0).slice(0,5);
   const anomHtml=anomalies.length
     ? anomalies.map(r=>`<div class="row" onclick="openStock('${r.code}')">
-        <span class="nm">${r.flags[0].emoji} ${r.name}</span><span class="mut" style="font-size:11px">${r.flags[0].label}</span></div>`).join('')
+        <span class="nm">${sevDot(r.flags[0].emoji)}${r.name}</span><span class="mut" style="font-size:11px">${r.flags[0].label}</span></div>`).join('')
     : '<span class="mut" style="font-size:12px">현재 감지된 이상신호 없음</span>';
   const term=LEARN_TERMS[new Date(asof||Date.now()).getDate()%LEARN_TERMS.length];
   const learnHtml=`<div class="row" onclick="gotoLearnTerm('${term[0]}')">
@@ -914,12 +929,12 @@ function renderAnomalyPanel(){
   if(!total)h+='<p class="mut">현재 이상신호가 감지된 종목이 없습니다.</p>';
   for(const label in grouped){
     const items=grouped[label];
-    h+=`<h3>${items[0].emoji} ${label} <span class="mut" style="font-weight:400;font-size:12px">· ${items.length}개 종목</span></h3>
+    h+=`<h3>${sevDot(items[0].emoji)}${label} <span class="mut" style="font-weight:400;font-size:12px">· ${items.length}개 종목</span></h3>
       <p class="sub">${FLAG_EXPLAIN[label]||''}</p>
       <div class="tblscroll"><table><thead><tr><th style="text-align:left">종목</th><th style="text-align:left">내용</th></tr></thead><tbody>`;
     for(const s of items)h+=`<tr style="cursor:pointer" onclick="openStock('${s.code}')">
-      <td style="text-align:left">${s.name} <span class="code">${s.code}</span></td>
-      <td style="text-align:left">${s.flagText}</td></tr>`;
+      <td style="text-align:left;white-space:nowrap">${s.name} <span class="code">${s.code}</span></td>
+      <td style="text-align:left;white-space:normal;min-width:180px">${s.flagText}</td></tr>`;
     h+='</tbody></table></div>';
   }
   el.innerHTML=h; el.dataset.done='1';
@@ -1037,7 +1052,15 @@ function showPanel(panelId,navKey){
   curView=navKey;
 }
 function gotoLearnTerm(slug){ showPanel('view-learn','learn'); openLearnTerm(slug); }
-document.querySelectorAll('.nav-item[data-v]').forEach(n=>n.onclick=()=>switchView(n.dataset.v));
+document.querySelectorAll('.nav-item[data-v]').forEach(n=>n.onclick=()=>{switchView(n.dataset.v);closeMobileNav();});
+function toggleMobileNav(){
+  document.getElementById('sidenav').classList.toggle('mobopen');
+  document.getElementById('navBd').classList.toggle('on');
+}
+function closeMobileNav(){
+  document.getElementById('sidenav').classList.remove('mobopen');
+  document.getElementById('navBd').classList.remove('on');
+}
 let pendingScrollId=null;
 function scrollToPending(){
   if(!pendingScrollId)return;

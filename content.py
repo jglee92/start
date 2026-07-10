@@ -302,13 +302,19 @@ def _dims_html(dims):
             + (f'<p class="muted">{_esc(overall)}</p>' if overall else ""))
 
 
+def _sev_dot(emoji):
+    color = "#e0453f" if emoji == "\U0001F534" else "#e0a500"
+    return (f'<span style="display:inline-block;width:8px;height:8px;border-radius:50%;'
+            f'background:{color};margin-right:5px;vertical-align:1px"></span>')
+
+
 def _flags_html(flags):
     if flags is None:
         return ""
     if not flags:
         return (f'<h2>{_ic("alert")} 참고할 점</h2><p class="muted">규칙 기반으로 확인한 특별한 '
                 '재무 이상신호는 없습니다. (회계부정 진단이 아닌 참고 신호입니다)</p>')
-    items = "".join(f'<p style="margin:6px 0">{f["emoji"]} <b>{_esc(f["label"])}</b> — '
+    items = "".join(f'<p style="margin:6px 0">{_sev_dot(f["emoji"])}<b>{_esc(f["label"])}</b> — '
                     f'{_esc(f["text"])}</p>' for f in flags)
     return (f'<h2>{_ic("alert")} 참고할 점 <span class="muted" style="font-size:13px;font-weight:400">'
             f'· 규칙 기반 참고 신호, 회계부정 진단 아님</span></h2>{items}')
