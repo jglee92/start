@@ -875,6 +875,48 @@ def _earning_tag(pct):
     return ""
 
 
+def _overnight_us_line():
+    """장전 브리핑용: 간밤 미국증시(나스닥/S&P500)+원달러 한 줄. 데이터 못 가져오면 None.
+    get_market_indices()는 백그라운드 캐시라 일회성 배치에선 빈 값이 나올 수 있어
+    동기 fetch_indices()를 직접 호출한다(야후 장애 시 조용히 생략)."""
+    try:
+        import market_indices
+        ix = market_indices.fetch_indices()
+    except Exception:
+        return None
+    if not ix:
+        return None
+    parts = []
+    for key in ("nasdaq", "sp500"):
+        d = ix.get(key)
+        if d and d.get("chg_pct") is not None:
+            parts.append(f"{d['name']} {d['chg_pct']:+.1f}%")
+    if not parts:
+        return None
+    usd = ix.get("usdkrw")
+    fx = f" / 원달러 {usd['price']:,.1f}원" if usd and usd.get("price") else ""
+    return "\U0001F30F 간밤 미국증시 — " + " · ".join(parts) + fx
+
+
+def _weekly_index_line():
+    """주간 마무리용: 코스피·코스닥 주간 등락률 한 줄(1개월 히스토리에서 ~5거래일 전 대비).
+    데이터 못 가져오면 None."""
+    try:
+        import market_indices
+        parts = []
+        for key in ("kospi", "kosdaq"):
+            hist = market_indices.fetch_history(key, "1mo")
+            pts = hist["points"] if hist else []
+            if len(pts) >= 6 and pts[-6]["c"]:
+                chg = (pts[-1]["c"] / pts[-6]["c"] - 1) * 100
+                parts.append(f"{hist['name']} {chg:+.1f}%")
+        if not parts:
+            return None
+        return "\U0001F4CA 이번주 지수 — " + " · ".join(parts)
+    except Exception:
+        return None
+
+
 def _period_movers(conn, codes, offset=1, n=3):
     """N거래일 전 종가 대비 급등·급락 TOP N (ranking 유니버스 한정).
     offset=1이면 전거래일 대비(일간), offset=5면 1주일 전(주간) 비교."""
@@ -968,6 +1010,12 @@ def _blog_draft_text():
         "",
     ]
 
+    us_line = _overnight_us_line()
+    if us_line:
+        lines.append(us_line)
+        lines.append("(국내 증시는 간밤 미국장 흐름에 영향을 받는 편이에요.)")
+        lines.append("")
+
     if gainers or losers:
         lines.append(f"\U0001F4C8 어제({movers_date}) 급등·급락 TOP{len(gainers) or len(losers)}")
         for code, pct in gainers:
@@ -977,16 +1025,18 @@ def _blog_draft_text():
         lines.append("")
 
     lines.append("\U0001F4CA 실적 발표 브리핑 (어닝서프라이즈·어닝쇼크 체크)")
-    lines.append("(가장 최근 실적 발표 기준)")
+    lines.append("(가장 최근 실적 발표 기준 · 전년동기대비)")
     for it in disclosures[:5]:
-        yoy, qoq = it.get("rev_yoy"), it.get("rev_qoq")
-        if yoy is not None:
-            tag = f"매출 전년동기대비 {yoy:+.1f}%{_earning_tag(yoy)}"
-        elif qoq is not None:
-            tag = f"매출 전분기대비 {qoq:+.1f}%{_earning_tag(qoq)}"
+        rev, rev_q, ni = it.get("rev_yoy"), it.get("rev_qoq"), it.get("ni_yoy")
+        if rev is not None:
+            rev_tag = f"매출 {rev:+.1f}%"
+        elif rev_q is not None:
+            rev_tag = f"매출(전분기) {rev_q:+.1f}%"
         else:
-            tag = "매출 데이터 부족(금융업 등 업종 특성)"
-        lines.append(f"- {it['name']}({it['code']}) {it['year']}년 {it['quarter']}분기 실적: {tag}")
+            rev_tag = "매출 데이터 부족(금융업 등 업종 특성)"
+        # 어닝서프라이즈/쇼크 판정은 매출보다 이익이 핵심이라 순이익에 태그를 붙인다.
+        ni_tag = f" · 순이익 {ni:+.1f}%{_earning_tag(ni)}" if ni is not None else ""
+        lines.append(f"- {it['name']}({it['code']}) {it['year']}년 {it['quarter']}분기 실적: {rev_tag}{ni_tag}")
     lines.append("")
 
     anomalies = [(r["name"], r["code"], f) for r in rk for f in (r.get("flags") or [])]
@@ -1012,8 +1062,9 @@ def _blog_draft_text():
                 lines.append(f"  - {t['name']}: {t['ret_1m']:+.1f}%{ex}")
         lines.append("")
 
-    lines.append("전 종목 스크리닝, 재무제표, 회계감사의견까지 더 자세한 데이터는")
-    lines.append(f"머니체크업에서 무료로 확인하실 수 있어요 \U0001F449 {BASE_URL}/")
+    lines.append(f"\U0001F449 위에 나온 종목들 재무제표·회계감사의견(적정/한정)까지, "
+                  f"머니체크업에서 무료로 바로 확인하세요.")
+    lines.append(f"전 종목 스크리닝·이상신호도 함께 보실 수 있어요 {BASE_URL}/")
     lines.append("")
     lines.append("※ 이 글은 공개 데이터를 정리한 정보 제공용 콘텐츠이며, 특정 종목에 대한")
     lines.append("매수·매도 추천이 아닙니다. 투자 판단과 책임은 본인에게 있습니다.")
@@ -1052,6 +1103,11 @@ def _weekly_wrap_text():
         "",
     ]
 
+    idx_line = _weekly_index_line()
+    if idx_line:
+        lines.append(idx_line)
+        lines.append("")
+
     if week_gainers or week_losers:
         lines.append("\U0001F4C8 금주 가장 많이 오른 종목 · 하락한 종목")
         for code, pct in week_gainers:
@@ -1064,6 +1120,16 @@ def _weekly_wrap_text():
         lines.append("\U0001F525 이번주 강세 테마 TOP5")
         for t in strong_themes[:5]:
             lines.append(f"- {t['name']}: {t['ret_1m']:+.1f}%")
+        lines.append("")
+
+    # 지금 재무 이상신호가 떠 있는 종목(주간 리포트에도 이 차별 섹션을 노출). '이번주 새로'는
+    # 지난주 신호 상태를 따로 저장하지 않아 단정 못 하므로 '체크할'로 표현(허위 방지).
+    anomalies = [(r["name"], r["code"], f) for r in rk for f in (r.get("flags") or [])]
+    if anomalies:
+        anomalies.sort(key=lambda x: 0 if x[2]["emoji"] == "\U0001F534" else 1)
+        lines.append("\U0001F6A9 이번주 체크할 이상신호 종목")
+        for name, code, f in anomalies[:3]:
+            lines.append(f"- {name}({code}) {f['label']}: {f['text']}")
         lines.append("")
 
     if score_up:
@@ -1080,11 +1146,15 @@ def _weekly_wrap_text():
                          f"{m['score']:.1f}점 ({m['score_change']:+.1f})")
         lines.append("")
 
-    lines.append("전 종목 스크리닝, 재무제표, 회계감사의견까지 더 자세한 데이터는")
-    lines.append(f"머니체크업에서 무료로 확인하실 수 있어요 \U0001F449 {BASE_URL}/")
+    lines.append(f"\U0001F449 위에 나온 종목들 재무제표·회계감사의견(적정/한정)까지, "
+                  f"머니체크업에서 무료로 바로 확인하세요.")
+    lines.append(f"전 종목 스크리닝·이상신호도 함께 보실 수 있어요 {BASE_URL}/")
     lines.append("")
     lines.append("※ 이 글은 공개 데이터를 정리한 정보 제공용 콘텐츠이며, 특정 종목에 대한")
     lines.append("매수·매도 추천이 아닙니다. 투자 판단과 책임은 본인에게 있습니다.")
+    lines.append("")
+    lines.append("#국내증시 #코스피 #코스닥 #주간증시 #이번주증시 #주간결산 "
+                  "#강세테마 #실적발표 #특징주 #머니체크업")
     return title, "\n".join(lines)
 
 
