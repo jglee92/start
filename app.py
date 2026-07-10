@@ -1099,10 +1099,14 @@ def themes_index():
 
 
 def _extract_body(html: str) -> str:
-    """전체 HTML 문서에서 <body> 내용만 추출(SPA 인라인 표시용 공용 헬퍼)."""
+    """전체 HTML 문서에서 <body> 내용만 추출(SPA 인라인 표시용 공용 헬퍼).
+    뉴스레터 구독 폼은 SPA 쉘(static/index.html) 자체 풋터에 이미 있어서, 여기
+    포함시키면 SPA 안에서 리포트/용어해설 등을 열 때 폼이 두 번 뜨는 중복이
+    생긴다 - content.py의 <!--newsletter-block--> 마커 구간을 통째로 제거한다."""
     import re
     m = re.search(r"<body>(.*)</body>", html, re.S)
-    return m.group(1) if m else html
+    body = m.group(1) if m else html
+    return re.sub(r"<!--newsletter-block-->.*?<!--/newsletter-block-->", "", body, flags=re.S)
 
 
 @app.get("/api/about")

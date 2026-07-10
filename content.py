@@ -95,6 +95,7 @@ footer{{margin-top:32px;padding-top:16px;border-top:1px solid #8883;font-size:13
 </style></head><body>
 <nav><a href="/">← 대시보드</a> · <a href="/weekly">주간 리포트</a> · <a href="/themes-index">테마 전체</a> · <a href="/about">소개·면책</a>{extra_nav}</nav>
 {body}
+<!--newsletter-block-->
 <div style="margin-top:28px;padding:14px 16px;border:1px solid #8883;border-radius:10px">
 <div style="font-weight:700;margin-bottom:4px">📬 매일 아침 국내증시 체크포인트, 이메일로 받아보기</div>
 <div style="color:#4a5563;font-size:13px;margin-bottom:10px">실적발표·이상신호·강세테마 요약을 매일 아침 보내드려요.</div>
@@ -134,6 +135,7 @@ document.getElementById('newsletterForm').addEventListener('submit', async (e) =
   }}
 }});
 </script>
+<!--/newsletter-block-->
 <footer>본 콘텐츠는 공개 데이터를 정량 분석한 <b>정보 제공·교육용</b>이며 특정 종목의 매수·매도
 권유가 아닙니다. 데이터는 오류·지연이 있을 수 있고, 과거 성과는 미래를 보장하지 않습니다.
 투자 판단과 책임은 이용자 본인에게 있습니다. · <a href="/about#privacy">개인정보처리방침</a>
