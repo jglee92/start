@@ -2,8 +2,9 @@ name: 뉴스레터 자동 발송
 
 on:
   schedule:
-    # 매 평일(KST) 08:30 = UTC 전날 23:30. 일~목 UTC로 지정해야 월~금 KST 아침이 된다.
-    - cron: '30 23 * * 0-4'
+    # 매 평일+토요일(KST) 08:30 = UTC 전날 23:30. 일~금 UTC로 지정해야 월~토 KST 아침이 된다.
+    # 토요일 발송분은 send_newsletter.py 안에서 평일 브리핑 대신 '주간 마무리' 요약으로 분기됨.
+    - cron: '30 23 * * 0-5'
   workflow_dispatch: {}
 
 permissions:

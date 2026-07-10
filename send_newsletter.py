@@ -2,6 +2,9 @@
 """매일 아침 뉴스레터(블로그 초안과 동일 내용)를 Resend Broadcast로 자동 발송.
 GitHub Actions에서 평일 08:30 KST에 실행(daily-prices보다 늦게: 전날 저녁 갱신된
 데이터를 그대로 재사용). 휴장일에는 보낼 실질 내용이 없으므로 아예 스킵한다.
+토요일 08:30 KST에는 별도로 '주간 마무리' 요약 메일을 보낸다 — 금요일 종가까지
+반영된 데이터로 완성된 한 주를 정리하기 위해(금요일 아침엔 그날 장이 아직
+안 열려 반쪽짜리 주간요약이 되는 문제를 피함).
 
 구독취소 링크는 Resend가 {{{RESEND_UNSUBSCRIBE_URL}}} 플레이스홀더를 자동으로
 실제 구독취소 URL로 치환해준다(발신자가 직접 처리할 필요 없음)."""
@@ -42,7 +45,9 @@ def _to_html(title, body):
 
 def main():
     now = datetime.now(KST)
-    if A._is_market_holiday(now):
+    is_saturday = now.weekday() == 5
+
+    if not is_saturday and A._is_market_holiday(now):
         print(f"{now.date()}는 휴장일이라 뉴스레터를 보내지 않습니다.")
         return
 
@@ -52,7 +57,7 @@ def main():
         print("RESEND_API_KEY / RESEND_AUDIENCE_ID 미설정 - 발송 스킵")
         return
 
-    title, body = A._blog_draft_text()
+    title, body = A._weekly_wrap_text() if is_saturday else A._blog_draft_text()
     r = requests.post(
         "https://api.resend.com/broadcasts",
         headers={"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"},

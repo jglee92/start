@@ -947,7 +947,6 @@ def _blog_draft_text():
     rk = get_ranking()
     codes = [r["code"] for r in rk]
     gainers, losers, movers_date = _period_movers(conn, codes, offset=1, n=3)
-    week_gainers, week_losers, week_date = _period_movers(conn, codes, offset=5, n=3)
     if _cache.get("theme_perf") is None:
         from factor.themes import compute_theme_perf
         _cache["theme_perf"] = compute_theme_perf(conn, get_tmap())
@@ -1013,44 +1012,6 @@ def _blog_draft_text():
                 lines.append(f"  - {t['name']}: {t['ret_1m']:+.1f}%{ex}")
         lines.append("")
 
-    if now.weekday() == 4:  # 금요일엔 주간 마무리 섹션 추가
-        rk_past = get_ranking_asof(7)
-        score_up, score_down = _score_movers(rk, rk_past)
-        strong_themes = [t for t in _cache["theme_perf"]
-                         if t.get("priced", 0) >= 5 and t.get("ret_1m") is not None]
-        strong_themes.sort(key=lambda t: t["ret_1m"], reverse=True)
-
-        lines.append("\U0001F4C5 이번주 마감! 주간증시 정리")
-        lines.append("")
-
-        if week_gainers or week_losers:
-            lines.append(f"\U0001F4C8 금주 가장 많이 오른 종목 · 하락한 종목")
-            for code, pct in week_gainers:
-                lines.append(f"- (상승) {_name_of(code)}({code}): {pct:+.1f}%")
-            for code, pct in week_losers:
-                lines.append(f"- (하락) {_name_of(code)}({code}): {pct:+.1f}%")
-            lines.append("")
-
-        if strong_themes:
-            lines.append("\U0001F525 이번주 강세 테마 TOP5")
-            for t in strong_themes[:5]:
-                lines.append(f"- {t['name']}: {t['ret_1m']:+.1f}%")
-            lines.append("")
-
-        if score_up:
-            lines.append("\U0001F4C8 이번주 종합점수 급상승 종목")
-            for m in score_up:
-                lines.append(f"- {m['name']}({m['code']}): {m['prev_score']:.1f}점 → "
-                             f"{m['score']:.1f}점 ({m['score_change']:+.1f})")
-            lines.append("")
-
-        if score_down:
-            lines.append("\U0001F4C9 이번주 종합점수 급하락 종목")
-            for m in score_down:
-                lines.append(f"- {m['name']}({m['code']}): {m['prev_score']:.1f}점 → "
-                             f"{m['score']:.1f}점 ({m['score_change']:+.1f})")
-            lines.append("")
-
     lines.append("전 종목 스크리닝, 재무제표, 회계감사의견까지 더 자세한 데이터는")
     lines.append(f"머니체크업에서 무료로 확인하실 수 있어요 \U0001F449 {BASE_URL}/")
     lines.append("")
@@ -1059,6 +1020,71 @@ def _blog_draft_text():
     lines.append("")
     lines.append("#국내증시 #코스피 #코스닥 #오늘의증시 #장전브리핑 #실적발표 "
                   "#어닝서프라이즈 #특징주 #특징테마 #머니체크업")
+    return title, "\n".join(lines)
+
+
+def _weekly_wrap_text():
+    """토요일 아침 전용 '주간 마무리' 메일(평일 브리핑과 별개). 금요일 종가까지 반영된
+    데이터로 발송하므로(daily-prices.yml이 금요일 저녁에 갱신) 평일 아침에 미리 만들면
+    당일 장이 아직 안 열려 생기던 '반쪽짜리 주간 요약' 문제를 피한다."""
+    from datetime import datetime, timezone, timedelta
+    KST = timezone(timedelta(hours=9))
+    now = datetime.now(KST)
+    title = f"{now.month}월 {now.day}일 이번주 국내증시 마무리 | 머니체크업"
+
+    conn = _conn()
+    rk = get_ranking()
+    codes = [r["code"] for r in rk]
+    week_gainers, week_losers, week_date = _period_movers(conn, codes, offset=5, n=3)
+    if _cache.get("theme_perf") is None:
+        from factor.themes import compute_theme_perf
+        _cache["theme_perf"] = compute_theme_perf(conn, get_tmap())
+    conn.close()
+
+    rk_past = get_ranking_asof(7)
+    score_up, score_down = _score_movers(rk, rk_past)
+    strong_themes = [t for t in _cache["theme_perf"]
+                     if t.get("priced", 0) >= 5 and t.get("ret_1m") is not None]
+    strong_themes.sort(key=lambda t: t["ret_1m"], reverse=True)
+
+    lines = [
+        "이번주도 고생 많으셨어요 \U0001F44B 이번주 국내증시, 이것만 보고 가세요.",
+        "",
+    ]
+
+    if week_gainers or week_losers:
+        lines.append("\U0001F4C8 금주 가장 많이 오른 종목 · 하락한 종목")
+        for code, pct in week_gainers:
+            lines.append(f"- (상승) {_name_of(code)}({code}): {pct:+.1f}%")
+        for code, pct in week_losers:
+            lines.append(f"- (하락) {_name_of(code)}({code}): {pct:+.1f}%")
+        lines.append("")
+
+    if strong_themes:
+        lines.append("\U0001F525 이번주 강세 테마 TOP5")
+        for t in strong_themes[:5]:
+            lines.append(f"- {t['name']}: {t['ret_1m']:+.1f}%")
+        lines.append("")
+
+    if score_up:
+        lines.append("\U0001F4C8 이번주 종합점수 급상승 종목")
+        for m in score_up:
+            lines.append(f"- {m['name']}({m['code']}): {m['prev_score']:.1f}점 → "
+                         f"{m['score']:.1f}점 ({m['score_change']:+.1f})")
+        lines.append("")
+
+    if score_down:
+        lines.append("\U0001F4C9 이번주 종합점수 급하락 종목")
+        for m in score_down:
+            lines.append(f"- {m['name']}({m['code']}): {m['prev_score']:.1f}점 → "
+                         f"{m['score']:.1f}점 ({m['score_change']:+.1f})")
+        lines.append("")
+
+    lines.append("전 종목 스크리닝, 재무제표, 회계감사의견까지 더 자세한 데이터는")
+    lines.append(f"머니체크업에서 무료로 확인하실 수 있어요 \U0001F449 {BASE_URL}/")
+    lines.append("")
+    lines.append("※ 이 글은 공개 데이터를 정리한 정보 제공용 콘텐츠이며, 특정 종목에 대한")
+    lines.append("매수·매도 추천이 아닙니다. 투자 판단과 책임은 본인에게 있습니다.")
     return title, "\n".join(lines)
 
 
