@@ -106,21 +106,22 @@ def layout(title, desc, canonical, body, extra_nav=""):
 <link rel="stylesheet" as="style" crossorigin
   href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.css">
 <style>
-body{{max-width:900px;margin:0 auto;padding:20px 18px 60px;line-height:1.75;font-size:15.5px;
+body{{max-width:900px;margin:0 auto;padding:20px 18px 60px;line-height:1.7;font-size:14.5px;
  font-family:'Pretendard Variable',Pretendard,-apple-system,"Segoe UI",Roboto,
  "Apple SD Gothic Neo","Malgun Gothic",sans-serif;color:#12161c;background:#fff}}
 @media (prefers-color-scheme:dark){{body{{background:#0f1216;color:#f1f4f8}}a{{color:#5a9bdb}}
  th{{color:#aab6c2}} tr:hover{{background:#171c23}} .muted{{color:#aab6c2}}}}
 a{{color:#1a63cf;text-decoration:none;font-weight:600}}a:hover{{text-decoration:underline}}
-h1{{font-size:24px}}h2{{font-size:19px;margin-top:28px}}
-nav{{font-size:14px;margin-bottom:14px}}
+h1{{font-size:20px}}h2{{font-size:16.5px;margin-top:26px}}
+nav{{font-size:13px;margin-bottom:14px}}
 .ic{{width:14px;height:14px;vertical-align:-2px;margin-right:1px;flex:none;display:inline-block}}
-h1 .ic{{width:20px;height:20px;vertical-align:-4px;margin-right:3px}}
-h2 .ic{{width:16px;height:16px;vertical-align:-3px;margin-right:2px}}
-table{{border-collapse:collapse;width:100%;font-size:14.5px;margin:10px 0}}
+h1 .ic{{width:17px;height:17px;vertical-align:-3px;margin-right:3px}}
+h2 .ic{{width:15px;height:15px;vertical-align:-2px;margin-right:2px}}
+table{{border-collapse:collapse;width:100%;font-size:13.5px;margin:10px 0}}
 th,td{{padding:8px 10px;border-bottom:1px solid #8883;text-align:right;white-space:nowrap}}
 th:first-child,td:first-child{{text-align:left}}
 .wrap{{overflow-x:auto}} .muted{{color:#4a5563}} .pos{{color:#c8333a}} .neg{{color:#1f6fd1}}
+.footnote{{font-size:12px}}
 .badge{{display:inline-block;padding:1px 8px;border-radius:10px;background:#8881;font-size:12.5px;margin:2px 3px 0 0}}
 .dimgrid{{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin:10px 0}}
 @media(max-width:560px){{.dimgrid{{grid-template-columns:1fr}}}}
@@ -129,7 +130,7 @@ th:first-child,td:first-child{{text-align:left}}
 .dimstars{{color:#e0a500;letter-spacing:1px;font-size:13px}}
 .dimlabel{{font-size:12.5px;color:#4a5563;margin:2px 0 4px}}
 .dimtext{{font-size:13.5px;margin:0;line-height:1.6}}
-footer{{margin-top:32px;padding-top:16px;border-top:1px solid #8883;font-size:13px;color:#5a6472}}
+footer{{margin-top:32px;padding-top:16px;border-top:1px solid #8883;font-size:11.5px;color:#5a6472}}
 </style></head><body>
 <nav><a href="/">← 대시보드</a> · <a href="/weekly">주간 리포트</a> · <a href="/themes-index">테마 전체</a> · <a href="/about">소개·면책</a>{extra_nav}</nav>
 {body}
@@ -450,7 +451,7 @@ def render_theme_page(name, stocks, perf, canonical):
 <tbody>{_stock_rows(sorted(ranked, key=lambda s: s.get("score") or 0, reverse=True))}</tbody>
 </table></div>
 {_others_note(stocks)}
-<p class="muted">※ 팩터점수는 시총 3,000억 이상 유니버스 내 백분위 기준. 재무=DART 최신
+<p class="muted footnote">※ 팩터점수는 시총 3,000억 이상 유니버스 내 백분위 기준. 재무=DART 최신
 사업보고서. 테마 분류는 공개 테마 데이터를 참고했으며, 종목 선별·정렬·분석은 본 사이트의
 자체 팩터 모델에 의한 것입니다.</p>
 """
@@ -634,7 +635,7 @@ def render_weekly(strong, weak, top_value, asof, canonical, movers_up=None, move
 <div class="wrap"><table><thead><tr><th>종목</th><th>점수</th><th>PER</th><th>PBR</th><th>ROE%</th><th>섹터</th></tr></thead>
 <tbody>{val_rows}</tbody></table></div>
 {_movers_section(movers_up, movers_down, "일주일")}
-<p class="muted">데이터: FinanceDataReader·DART·공개 테마/뉴스 피드. 분석·정렬은 자체 팩터 모델.</p>
+<p class="muted footnote">데이터: FinanceDataReader·DART·공개 테마/뉴스 피드. 분석·정렬은 자체 팩터 모델.</p>
 """
     desc = (f"{asof} 기준 한국주식 주간 리포트 — 최근 1개월 강세/약세 테마와 "
             f"가치+퀄리티 팩터 상위 종목 정리.")
@@ -670,7 +671,7 @@ def render_earnings_report(items, canonical):
 <div class="wrap"><table><thead><tr><th style="text-align:left">종목</th><th>분기</th>
 <th>발표일</th><th>매출 YoY</th><th>순이익 YoY</th></tr></thead>
 <tbody>{rows}</tbody></table></div>
-<p class="muted">데이터: DART 분기·반기보고서(단독분기 환산). 매매 추천이 아닙니다.</p>
+<p class="muted footnote">데이터: DART 분기·반기보고서(단독분기 환산). 매매 추천이 아닙니다.</p>
 """
     desc = "최근 공시된 한국 상장기업 분기 실적 발표 현황과 전년 동기 대비 매출·순이익 성장률 정리."
     return layout("최근 실적발표 현황 — 분기 실적 발표일·전년동기 성장률",
