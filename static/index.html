@@ -57,6 +57,8 @@
     Roboto,"Apple SD Gothic Neo","Malgun Gothic",sans-serif;font-size:15.5px}
   a{color:var(--accent);text-decoration:none;font-weight:600}
   a:hover{text-decoration:underline}
+  a.entity-link{color:var(--txt);font-weight:400;text-decoration:none;cursor:pointer}
+  a.entity-link:hover{text-decoration:underline}
   header{padding:12px 20px;border-bottom:1px solid var(--line);
     display:flex;align-items:center;gap:12px;flex-wrap:wrap}
   header h1{font-size:18px;margin:0;font-weight:700}
@@ -84,6 +86,8 @@
   .nav-group[open] > summary .chev{transform:rotate(90deg)}
   .ic-svg{width:15px;height:15px;flex:none;vertical-align:-3px;display:inline-block}
   .nav-item .ic-svg{margin-right:2px}
+  h1 .ic-svg{width:20px;height:20px;vertical-align:-4px;margin-right:3px}
+  h2 .ic-svg{width:16px;height:16px;vertical-align:-3px;margin-right:2px}
   h3 .ic-svg,.dimhead .ic-svg{width:14px;height:14px;vertical-align:-2px;margin-right:1px}
   /* SSR 조각(월간·업종리포트·실적발표·소개·용어해설)이 SPA에 삽입될 때 쓰는 아이콘 클래스 */
   .ic{width:14px;height:14px;vertical-align:-2px;margin-right:1px;flex:none;display:inline-block}
@@ -1044,10 +1048,12 @@ function wireInlineLinks(el){
   });
   el.querySelectorAll('a[href^="/s/"]').forEach(a=>{
     const code=a.getAttribute('href').split('/').filter(Boolean).pop();
+    a.classList.add('entity-link');
     a.onclick=(e)=>{e.preventDefault();openStock(code);};
   });
   el.querySelectorAll('a[href^="/sector-report/"]').forEach(a=>{
     const slug=a.getAttribute('href').split('/').filter(Boolean).pop();
+    a.classList.add('entity-link');
     a.onclick=(e)=>{e.preventDefault();openSectorReport(slug);};
   });
   el.querySelectorAll('a[href="/sector-report"]').forEach(a=>{
@@ -1068,14 +1074,16 @@ async function loadSectorReportIndex(){
   el.innerHTML=SECTOR_REPORT_INDEX_HTML;
   wireInlineLinks(el);
 }
-async function openSectorReport(slug){
-  const el=document.getElementById('view-sectorreport');
-  el.innerHTML='<span class="mut">불러오는 중…</span>';
+async function openSectorReport(slug,fromBack){
+  if(!fromBack&&drawerCurrent)drawerHistory.push(drawerCurrent);
+  drawerCurrent={type:'sectorreport',id:slug};
+  document.getElementById('drc').innerHTML=`${backHtml()}<span class="mut">불러오는 중…</span>`;
+  document.getElementById('dr').classList.add('on');document.getElementById('bd').classList.add('on');
   try{
     const d=await fetch('/api/sector-report/'+slug).then(x=>x.json());
-    el.innerHTML='<button class="backbtn" onclick="loadSectorReportIndex()">← 업종 목록으로</button>'+d.html;
-    wireInlineLinks(el);
-  }catch(e){ el.innerHTML='<p class="mut">불러오지 못했습니다.</p>'; }
+    document.getElementById('drc').innerHTML=backHtml()+d.html;
+    wireInlineLinks(document.getElementById('drc'));
+  }catch(e){ document.getElementById('drc').innerHTML=backHtml()+'<p class="mut">불러오지 못했습니다.</p>'; }
 }
 async function loadMonthly(){
   const el=document.getElementById('view-monthly');
@@ -1228,6 +1236,7 @@ function drawerBack(){
   if(prev.type==='theme')openTheme(prev.id,true);
   else if(prev.type==='stock')openStock(prev.id,true);
   else if(prev.type==='sector')openSector(prev.id,true);
+  else if(prev.type==='sectorreport')openSectorReport(prev.id,true);
 }
 async function openStock(code,fromBack){
   if(!fromBack&&drawerCurrent)drawerHistory.push(drawerCurrent);
