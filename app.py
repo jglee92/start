@@ -800,14 +800,45 @@ def _earnings_items():
     return items
 
 
+# 2026년 KRX 휴장일(설날/추석/대체공휴일 포함) - 매년 갱신 필요.
+# 출처: upward-curve.co.kr 2026년 주식시장 휴장일 정리(2차 자료) - 공식 KRX 공지로
+# 한 번 더 대조 확인 권장. 주말은 now.weekday()로 별도 처리하므로 여기엔 평일 휴장일만.
+KR_MARKET_HOLIDAYS_2026 = {
+    "2026-01-01", "2026-02-16", "2026-02-17", "2026-02-18",
+    "2026-03-02", "2026-05-01", "2026-05-05", "2026-05-25",
+    "2026-06-03", "2026-08-17", "2026-09-24", "2026-09-25",
+    "2026-10-05", "2026-10-09", "2026-12-25", "2026-12-31",
+}
+
+
+def _is_market_holiday(now) -> bool:
+    if now.weekday() >= 5:  # 토(5)/일(6)
+        return True
+    return now.strftime("%Y-%m-%d") in KR_MARKET_HOLIDAYS_2026
+
+
+def _earning_tag(pct):
+    if pct is None:
+        return ""
+    if pct >= 20:
+        return " (어닝서프라이즈 \U0001F389)"
+    if pct <= -20:
+        return " (어닝쇼크 \U0001F631)"
+    return ""
+
+
 def _blog_draft_text():
     """'장 열리기전 체크포인트' 블로그 초안(제목+본문) 생성.
     네이버 블로그 자동 포스팅 API는 2020년에 종료되어(직접 확인함) 발행은 수동으로
-    해야 하지만, 초안은 매일 최신 데이터로 자동 완성해 복사만 하면 되게 한다."""
+    해야 하지만, 초안은 매일 최신 데이터로 자동 완성해 복사만 하면 되게 한다.
+    주말/공휴일(휴장일)에는 장 소식이 없으므로 별도 안내 문구만 반환한다."""
     from datetime import datetime, timezone, timedelta
     KST = timezone(timedelta(hours=9))
     now = datetime.now(KST)
-    title = f"{now.month}월 {now.day}일 장 열리기전 체크포인트"
+    title = f"{now.month}월 {now.day}일 장전 체크포인트 | 국내증시 브리핑"
+
+    if _is_market_holiday(now):
+        return title, "오늘은 국내증시 휴장일이라 특별히 정리할 소식이 없어요. 다음 개장일에 다시 올게요!"
 
     conn = _conn()
     disclosures = db.get_recent_disclosures(conn, limit=8)
@@ -820,24 +851,28 @@ def _blog_draft_text():
     for it in disclosures:
         it["name"] = _name_of(it["code"])
 
-    lines = ["어제까지 새로 공시된 실적과 시장 신호를 정리했습니다.", ""]
+    lines = [
+        "좋은 아침입니다 \U0001F44B 오늘 장 시작 전에 체크하면 좋을 국내증시 소식,",
+        "코스피·코스닥 실적 발표랑 특징테마 위주로 정리해봤어요.",
+        "",
+    ]
 
-    lines.append("[실적 발표]")
+    lines.append("\U0001F4CA 실적 발표 브리핑 (어닝서프라이즈·어닝쇼크 체크)")
     for it in disclosures[:5]:
         yoy, qoq = it.get("rev_yoy"), it.get("rev_qoq")
         if yoy is not None:
-            tag = f"매출 YoY {yoy:+.1f}%"
+            tag = f"매출 전년동기대비 {yoy:+.1f}%{_earning_tag(yoy)}"
         elif qoq is not None:
-            tag = f"매출 QoQ {qoq:+.1f}%"
+            tag = f"매출 전분기대비 {qoq:+.1f}%{_earning_tag(qoq)}"
         else:
-            tag = "매출 데이터 부족(금융업 등)"
-        lines.append(f"- {it['name']}({it['code']}) {it['year']}년 {it['quarter']}분기: {tag}")
+            tag = "매출 데이터 부족(금융업 등 업종 특성)"
+        lines.append(f"- {it['name']}({it['code']}) {it['year']}년 {it['quarter']}분기 실적: {tag}")
     lines.append("")
 
     anomalies = [(r["name"], r["code"], f) for r in rk for f in (r.get("flags") or [])]
     if anomalies:
         anomalies.sort(key=lambda x: 0 if x[2]["emoji"] == "\U0001F534" else 1)
-        lines.append("[이상신호 포착]")
+        lines.append("\U0001F6A9 조심해서 봐야 할 이상신호 종목")
         for name, code, f in anomalies[:3]:
             lines.append(f"- {name}({code}) {f['label']}: {f['text']}")
         lines.append("")
@@ -845,15 +880,19 @@ def _blog_draft_text():
     themes = [r for r in _cache["theme_perf"] if r.get("used", 0) >= 3 and r["count"] >= 8]
     themes.sort(key=lambda r: (r["ret_1m"] is not None, r["ret_1m"]), reverse=True)
     if themes:
-        lines.append("[요즘 강세 테마 (최근 1개월)]")
+        lines.append("\U0001F525 요즘 주도테마 · 특징테마 (최근 1개월 수익률)")
         for t in themes[:3]:
             lines.append(f"- {t['name']}: {t['ret_1m']:+.1f}%")
         lines.append("")
 
-    lines.append(f"더 많은 종목과 상세 데이터는 머니체크업에서 무료로 확인하실 수 있습니다.")
-    lines.append(f"\U0001F449 {BASE_URL}/")
+    lines.append("전 종목 스크리닝, 재무제표, 회계감사의견까지 더 자세한 데이터는")
+    lines.append(f"머니체크업에서 무료로 확인하실 수 있어요 \U0001F449 {BASE_URL}/")
     lines.append("")
-    lines.append("※ 본 내용은 공개 데이터를 정리한 정보 제공이며 특정 종목의 매수·매도 권유가 아닙니다.")
+    lines.append("※ 이 글은 공개 데이터를 정리한 정보 제공용 콘텐츠이며, 특정 종목에 대한")
+    lines.append("매수·매도 추천이 아닙니다. 투자 판단과 책임은 본인에게 있습니다.")
+    lines.append("")
+    lines.append("#국내증시 #코스피 #코스닥 #오늘의증시 #장전브리핑 #실적발표 "
+                  "#어닝서프라이즈 #특징주 #특징테마 #머니체크업")
     return title, "\n".join(lines)
 
 
