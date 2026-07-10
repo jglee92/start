@@ -74,9 +74,54 @@ def _fmt(v, nd=1):
         return "–"
 
 
-def layout(title, desc, canonical, body, extra_nav=""):
+def layout(title, desc, canonical, body, extra_nav="", show_subscribe=True):
     parts = urlsplit(canonical)
     og_image = f"{parts.scheme}://{parts.netloc}/static/og-image.png"
+    subscribe_html = f"""<!--newsletter-block-->
+<div style="margin-top:28px;padding:14px 16px;border:1px solid #8883;border-radius:10px">
+<div style="font-weight:700;margin-bottom:4px">{_ic('mail')} 매일 아침 국내증시 체크포인트, 이메일로 받아보기</div>
+<div style="color:#4a5563;font-size:13px;margin-bottom:10px">실적발표·이상신호·강세테마 요약을 매일 아침 보내드려요.</div>
+<form id="newsletterForm" style="display:flex;gap:8px;flex-wrap:wrap">
+<input type="email" id="newsletterEmail" placeholder="이메일 주소" required
+ style="flex:1;min-width:180px;padding:9px 12px;border-radius:7px;border:1px solid #8883">
+<button type="submit" style="padding:9px 18px;border-radius:7px;border:none;background:#1a63cf;color:#fff;font-weight:700;cursor:pointer">구독하기</button>
+</form>
+<label style="display:flex;align-items:flex-start;gap:6px;font-size:11.5px;color:#4a5563;margin-top:8px;cursor:pointer">
+<input type="checkbox" id="newsletterConsent" required style="margin-top:2px">
+<span>이메일 뉴스레터 수신 및 개인정보 처리(발송 위탁: Resend)에 동의합니다.
+<a href="/about#privacy">개인정보처리방침 보기</a></span>
+</label>
+<div id="newsletterMsg" style="font-size:12.5px;margin-top:6px"></div>
+<div style="color:#4a5563;font-size:11.5px;margin-top:8px">구독 취소는 매일 받으시는 메일 맨 아래 "구독 취소" 링크로 언제든 가능합니다.</div>
+</div>
+<script>
+document.getElementById('newsletterForm').addEventListener('submit', async (e) => {{
+  e.preventDefault();
+  const email = document.getElementById('newsletterEmail').value.trim();
+  const msg = document.getElementById('newsletterMsg');
+  msg.style.color = '#4a5563'; msg.textContent = '처리중...';
+  try {{
+    const r = await fetch('/api/newsletter/subscribe', {{
+      method: 'POST', headers: {{'Content-Type': 'application/json'}},
+      body: JSON.stringify({{email}})
+    }});
+    if (r.ok) {{
+      msg.style.color = '#178a56'; msg.textContent = '구독 완료! 감사합니다 \U0001F64C';
+      document.getElementById('newsletterEmail').value = '';
+    }} else {{
+      const d = await r.json().catch(() => ({{}}));
+      msg.style.color = '#c8333a'; msg.textContent = d.detail || '구독 처리 중 문제가 발생했어요.';
+    }}
+  }} catch (err) {{
+    msg.style.color = '#c8333a'; msg.textContent = '네트워크 오류, 잠시 후 다시 시도해주세요.';
+  }}
+}});
+</script>
+<!--/newsletter-block-->
+<footer>본 콘텐츠는 공개 데이터를 정량 분석한 <b>정보 제공·교육용</b>이며 특정 종목의 매수·매도
+권유가 아닙니다. 데이터는 오류·지연이 있을 수 있고, 과거 성과는 미래를 보장하지 않습니다.
+투자 판단과 책임은 이용자 본인에게 있습니다. · <a href="/about#privacy">개인정보처리방침</a>
+· <a href="/about#disclaimer">면책조항</a></footer>""" if show_subscribe else ""
     return f"""<!doctype html><html lang="ko"><head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
 <script async src="https://www.googletagmanager.com/gtag/js?id=G-0C72PQQH21"></script>
@@ -123,6 +168,8 @@ th,td{{padding:8px 10px;border-bottom:1px solid #8883;text-align:right;white-spa
 th:first-child,td:first-child{{text-align:left}}
 .wrap{{overflow-x:auto}} .muted{{color:#4a5563}} .pos{{color:#c8333a}} .neg{{color:#1f6fd1}}
 .footnote{{font-size:12px}}
+.warn{{background:rgba(242,85,90,.08);border:1px solid rgba(242,85,90,.3);padding:8px 14px;
+  border-radius:7px;font-size:13.5px}}
 .badge{{display:inline-block;padding:1px 8px;border-radius:10px;background:#8881;font-size:12.5px;margin:2px 3px 0 0}}
 .dimgrid{{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin:10px 0}}
 @media(max-width:560px){{.dimgrid{{grid-template-columns:1fr}}}}
@@ -135,51 +182,7 @@ footer{{margin-top:32px;padding-top:16px;border-top:1px solid #8883;font-size:11
 </style></head><body>
 <nav><a href="/">← 대시보드</a> · <a href="/weekly">주간 리포트</a> · <a href="/themes-index">테마 전체</a> · <a href="/about">소개·면책</a>{extra_nav}</nav>
 {body}
-<!--newsletter-block-->
-<div style="margin-top:28px;padding:14px 16px;border:1px solid #8883;border-radius:10px">
-<div style="font-weight:700;margin-bottom:4px">{_ic('mail')} 매일 아침 국내증시 체크포인트, 이메일로 받아보기</div>
-<div style="color:#4a5563;font-size:13px;margin-bottom:10px">실적발표·이상신호·강세테마 요약을 매일 아침 보내드려요.</div>
-<form id="newsletterForm" style="display:flex;gap:8px;flex-wrap:wrap">
-<input type="email" id="newsletterEmail" placeholder="이메일 주소" required
- style="flex:1;min-width:180px;padding:9px 12px;border-radius:7px;border:1px solid #8883">
-<button type="submit" style="padding:9px 18px;border-radius:7px;border:none;background:#1a63cf;color:#fff;font-weight:700;cursor:pointer">구독하기</button>
-</form>
-<label style="display:flex;align-items:flex-start;gap:6px;font-size:11.5px;color:#4a5563;margin-top:8px;cursor:pointer">
-<input type="checkbox" id="newsletterConsent" required style="margin-top:2px">
-<span>이메일 뉴스레터 수신 및 개인정보 처리(발송 위탁: Resend)에 동의합니다.
-<a href="/about#privacy">개인정보처리방침 보기</a></span>
-</label>
-<div id="newsletterMsg" style="font-size:12.5px;margin-top:6px"></div>
-<div style="color:#4a5563;font-size:11.5px;margin-top:8px">구독 취소는 매일 받으시는 메일 맨 아래 "구독 취소" 링크로 언제든 가능합니다.</div>
-</div>
-<script>
-document.getElementById('newsletterForm').addEventListener('submit', async (e) => {{
-  e.preventDefault();
-  const email = document.getElementById('newsletterEmail').value.trim();
-  const msg = document.getElementById('newsletterMsg');
-  msg.style.color = '#4a5563'; msg.textContent = '처리중...';
-  try {{
-    const r = await fetch('/api/newsletter/subscribe', {{
-      method: 'POST', headers: {{'Content-Type': 'application/json'}},
-      body: JSON.stringify({{email}})
-    }});
-    if (r.ok) {{
-      msg.style.color = '#178a56'; msg.textContent = '구독 완료! 감사합니다 \U0001F64C';
-      document.getElementById('newsletterEmail').value = '';
-    }} else {{
-      const d = await r.json().catch(() => ({{}}));
-      msg.style.color = '#c8333a'; msg.textContent = d.detail || '구독 처리 중 문제가 발생했어요.';
-    }}
-  }} catch (err) {{
-    msg.style.color = '#c8333a'; msg.textContent = '네트워크 오류, 잠시 후 다시 시도해주세요.';
-  }}
-}});
-</script>
-<!--/newsletter-block-->
-<footer>본 콘텐츠는 공개 데이터를 정량 분석한 <b>정보 제공·교육용</b>이며 특정 종목의 매수·매도
-권유가 아닙니다. 데이터는 오류·지연이 있을 수 있고, 과거 성과는 미래를 보장하지 않습니다.
-투자 판단과 책임은 이용자 본인에게 있습니다. · <a href="/about#privacy">개인정보처리방침</a>
-· <a href="/about#disclaimer">면책조항</a></footer>
+{subscribe_html}
 </body></html>"""
 
 
@@ -493,8 +496,11 @@ _FLAG_EXPLAIN = {
 def render_anomaly_report(grouped, asof, canonical):
     """flags(이상신호)가 감지된 종목을 유형별로 모은 리포트."""
     total = sum(len(v) for v in grouped.values())
+    labels = sorted(grouped.keys(), key=lambda label: (
+        0 if grouped[label][0]["emoji"] == "\U0001F534" else 1, -len(grouped[label])))
     sections = ""
-    for label, items in grouped.items():
+    for label in labels:
+        items = sorted(grouped[label], key=lambda s: s.get("marcap_eok") or 0, reverse=True)
         rows = "".join(
             f'<tr><td style="text-align:left"><a href="/s/{_esc(s["code"])}">{_esc(s["name"])}</a> '
             f'<span class="muted">{_esc(s["code"])}</span></td>'
@@ -512,13 +518,14 @@ def render_anomaly_report(grouped, asof, canonical):
 <p>재무 데이터에서 <b>규칙 기반으로 감지된 참고 신호</b>를 모았습니다. 적자 전환, 부채비율
 급증, 영업외 손익 의존, 매출 2년 연속 감소 — 4가지 유형을 자동으로 스캔합니다.
 <b>회계부정을 진단하는 도구가 아니며</b>, "한번 확인해볼 만한 종목"을 걸러주는 참고 신호입니다.
-매수·매도 추천이 아닙니다.</p>
+매수·매도 추천이 아닙니다. 심각도(적자전환 등) 높은 유형 순으로 정렬했으며, 신호가 뜬 종목은
+클릭해서 실제 재무제표·공시 원문을 직접 확인해보세요.</p>
 <p class="muted">전체 {total}건 감지 (시총 3,000억 이상 유니버스 기준)</p>
 {sections}
 """
     desc = f"{asof} 기준 적자전환·부채비율급증·영업외손익의존·매출감소 등 재무 이상신호가 감지된 한국 상장기업 리포트."
     return layout(f"이상신호 리포트 ({asof}) — 적자전환·부채급증 감지 기업",
-                  desc, canonical, body)
+                  desc, canonical, body, show_subscribe=False)
 
 
 def _movers_rows(movers):
@@ -551,18 +558,24 @@ def _movers_section(movers_up, movers_down, period_label):
 """
 
 
-_DIM_LABELS = [("value", "wallet", "밸류에이션"), ("profit", "trendUp", "수익성"),
-              ("safety", "shield", "안정성"), ("growth", "sprout", "성장성")]
+_DIM_LABELS = [("value", "wallet", "밸류에이션", "per", "PER", "배", True),
+              ("profit", "trendUp", "수익성", "roe", "ROE", "%", False),
+              ("safety", "shield", "안정성", "debt_ratio", "부채비율", "%", True),
+              ("growth", "sprout", "성장성", "rev_growth", "매출성장률", "%", False)]
 
 
-def _dim_leader_table(rows, dim_key):
+def _dim_leader_table(rows, dim_key, metric_key, metric_label, unit, lower_better):
     scored = [r for r in rows if r.get("dims", {}).get(dim_key, {}).get("stars") is not None]
-    scored.sort(key=lambda r: (r["dims"][dim_key]["stars"], r.get("score") or 0), reverse=True)
+    scored.sort(key=lambda r: (r["dims"][dim_key]["stars"],
+                                -(r.get(metric_key) or 0) if lower_better else (r.get(metric_key) or 0)),
+                reverse=True)
     top = scored[:5]
+    nd = 2 if unit == "배" else 1
     trs = "".join(
         f'<tr><td style="text-align:left"><a href="/s/{_esc(r["code"])}">{_esc(r["name"])}</a></td>'
-        f'<td>{"★"*r["dims"][dim_key]["stars"]}</td></tr>' for r in top)
-    return trs or '<tr><td colspan=2 class="muted">데이터 부족</td></tr>'
+        f'<td>{"★"*r["dims"][dim_key]["stars"]}</td>'
+        f'<td>{_fmt(r.get(metric_key), nd)}{unit}</td></tr>' for r in top)
+    return trs or '<tr><td colspan=3 class="muted">데이터 부족</td></tr>'
 
 
 def render_monthly_health(rows, anomaly_count, asof, canonical, movers_up=None, movers_down=None):
@@ -574,10 +587,11 @@ def render_monthly_health(rows, anomaly_count, asof, canonical, movers_up=None, 
         f'<td>{_fmt(r.get("per"))}</td><td>{_fmt(r.get("pbr"),2)}</td>'
         f'<td>{_fmt(r.get("roe"))}</td></tr>' for r in top20)
     dim_sections = ""
-    for key, icon_name, label in _DIM_LABELS:
+    for key, icon_name, label, metric_key, metric_label, unit, lower_better in _DIM_LABELS:
         dim_sections += (f'<h3>{_ic(icon_name)} {label} 최고 TOP5</h3>'
                          f'<div class="wrap"><table><thead><tr><th style="text-align:left">종목</th>'
-                         f'<th>별점</th></tr></thead><tbody>{_dim_leader_table(rows, key)}'
+                         f'<th>별점</th><th>{metric_label}</th></tr></thead>'
+                         f'<tbody>{_dim_leader_table(rows, key, metric_key, metric_label, unit, lower_better)}'
                          f'</tbody></table></div>')
     body = f"""
 <h1>{_ic('target')} 이번 달 건강점수 랭킹 <span class="muted" style="font-size:14px">({_esc(asof)} 기준)</span></h1>
@@ -585,23 +599,24 @@ def render_monthly_health(rows, anomaly_count, asof, canonical, movers_up=None, 
 이번 달 상위 기업을 정리했습니다. 매수·매도 추천이 아니라 <b>같은 유니버스 내 상대 비교</b>
 스냅샷입니다.</p>
 
+<div class="warn" style="margin:12px 0">{_ic('alert')} 이번 달 재무 이상신호(적자전환·부채급증 등)가
+감지된 종목은 <b>{anomaly_count}개</b>입니다. <a href="/anomaly-report">→ 이상신호 리포트 먼저 보기</a></div>
+
 <h2>{_ic('trophy')} 종합점수 TOP20</h2>
 <div class="wrap"><table><thead><tr><th style="text-align:left">종목</th><th>점수</th>
 <th>PER</th><th>PBR</th><th>ROE%</th></tr></thead><tbody>{top_rows}</tbody></table></div>
 
 <h2>차원별 최고 기업</h2>
+<p class="muted footnote">같은 별점 안에서도 실제 수치는 다를 수 있어 지표 값을 함께 표시했습니다.</p>
 {dim_sections}
 {_movers_section(movers_up, movers_down, "한 달")}
-<h2>{_ic('alert')} 참고: 이상신호</h2>
-<p>이번 달 재무 이상신호(적자전환·부채급증 등)가 감지된 종목은 <b>{anomaly_count}개</b>입니다.
-<a href="/anomaly-report">→ 이상신호 리포트 전체 보기</a></p>
 """
     desc = f"{asof} 기준 가치+퀄리티 건강점수 TOP20과 밸류에이션·수익성·안정성·성장성 4차원 최고 기업 랭킹."
     return layout(f"이번 달 건강점수 랭킹 ({asof}) — 종합점수 TOP20 + 4차원 우수기업",
-                  desc, canonical, body)
+                  desc, canonical, body, show_subscribe=False)
 
 
-def render_weekly(strong, weak, top_value, asof, canonical, movers_up=None, movers_down=None):
+def render_weekly(strong, weak, asof, canonical, movers_up=None, movers_down=None):
     def theme_li(t):
         cls = "pos" if (t["ret_1m"] or 0) >= 0 else "neg"
         return (f'<tr><td><a href="/t/{t["no"]}">{_esc(t["name"])}</a></td>'
@@ -609,19 +624,14 @@ def render_weekly(strong, weak, top_value, asof, canonical, movers_up=None, move
                 f'<td>{_fmt(t["ret_3m"])}</td><td class="muted">{t["priced"]}/{t["count"]}</td></tr>')
     strong_rows = "".join(theme_li(t) for t in strong)
     weak_rows = "".join(theme_li(t) for t in weak)
-    val_rows = "".join(
-        f'<tr><td><a href="/s/{s["code"]}">{_esc(s["name"])}</a> '
-        f'<span class="muted">{_esc(s["code"])}</span></td>'
-        f'<td><b>{_fmt(s["score"])}</b></td><td>{_fmt(s.get("per"))}</td>'
-        f'<td>{_fmt(s.get("pbr"),2)}</td><td>{_fmt(s.get("roe"))}</td>'
-        f'<td class="muted">{_esc(s.get("sector") or "")}</td></tr>' for s in top_value)
     top_theme = strong[0]["name"] if strong else "–"
 
     body = f"""
 <h1>주간 한국주식 시장 리포트 <span class="muted" style="font-size:14px">({_esc(asof)} 기준)</span></h1>
 <p>최근 1개월 기준 가장 강했던 테마는 <b>{_esc(top_theme)}</b> 입니다. 아래는 테마별
-구성종목 동일가중 수익률로 본 강세·약세 순위와, 가치+퀄리티 팩터 상위 종목입니다.
-매매 추천이 아니라 데이터로 본 흐름 정리입니다.</p>
+구성종목 동일가중 수익률로 본 강세·약세 순위입니다. 가치+퀄리티 팩터 종합순위는
+<a href="/monthly">월간 건강랭킹</a>에서 확인하세요. 매매 추천이 아니라 데이터로 본
+흐름 정리입니다.</p>
 
 <h2>{_ic('flame')} 강세 테마 TOP 10 (최근 1개월)</h2>
 <div class="wrap"><table><thead><tr><th>테마</th><th>1개월%</th><th>3개월%</th><th>종목수</th></tr></thead>
@@ -630,18 +640,12 @@ def render_weekly(strong, weak, top_value, asof, canonical, movers_up=None, move
 <h2>{_ic('trendDown')} 약세 테마 (최근 1개월)</h2>
 <div class="wrap"><table><thead><tr><th>테마</th><th>1개월%</th><th>3개월%</th><th>종목수</th></tr></thead>
 <tbody>{weak_rows}</tbody></table></div>
-
-<h2>{_ic('gem')} 가치+퀄리티 팩터 상위 종목</h2>
-<p class="muted">저평가(가치) + 우량(퀄리티) 종합점수 상위. 시총 3,000억 이상.</p>
-<div class="wrap"><table><thead><tr><th>종목</th><th>점수</th><th>PER</th><th>PBR</th><th>ROE%</th><th>섹터</th></tr></thead>
-<tbody>{val_rows}</tbody></table></div>
 {_movers_section(movers_up, movers_down, "일주일")}
 <p class="muted footnote">데이터: FinanceDataReader·DART·공개 테마/뉴스 피드. 분석·정렬은 자체 팩터 모델.</p>
 """
-    desc = (f"{asof} 기준 한국주식 주간 리포트 — 최근 1개월 강세/약세 테마와 "
-            f"가치+퀄리티 팩터 상위 종목 정리.")
-    return layout(f"주간 한국주식 시장 리포트 ({asof}) — 강세 테마·저평가 우량주",
-                  desc, canonical, body)
+    desc = f"{asof} 기준 한국주식 주간 리포트 — 최근 1개월 강세/약세 테마와 종합점수 순위 변동 정리."
+    return layout(f"주간 한국주식 시장 리포트 ({asof}) — 강세 테마·순위 변동",
+                  desc, canonical, body, show_subscribe=False)
 
 
 def render_earnings_report(items, canonical):
@@ -662,6 +666,14 @@ def render_earnings_report(items, canonical):
         f'<td>{growth_cell(it["rev_yoy"], it.get("rev_qoq"))}</td>'
         f'<td>{growth_cell(it["ni_yoy"], it.get("ni_qoq"))}</td></tr>'
         for it in items) or '<tr><td colspan=5 class="muted">데이터 없음</td></tr>'
+    rev_yoys = [it["rev_yoy"] for it in items if it.get("rev_yoy") is not None]
+    ni_yoys = [it["ni_yoy"] for it in items if it.get("ni_yoy") is not None]
+    avg_note = ""
+    if rev_yoys or ni_yoys:
+        rev_avg = f"{sum(rev_yoys)/len(rev_yoys):+.1f}%" if rev_yoys else "–"
+        ni_avg = f"{sum(ni_yoys)/len(ni_yoys):+.1f}%" if ni_yoys else "–"
+        avg_note = (f'<p class="muted">이 목록 평균: 매출 YoY <b>{rev_avg}</b> · '
+                    f'순이익 YoY <b>{ni_avg}</b> — 개별 종목 성장률과 비교해보세요.</p>')
     body = f"""
 <h1>{_ic('calendar')} 최근 실적발표 현황</h1>
 <p>DART에 최근 공시된 분기·반기 실적을 발표일 순으로 정리했습니다. 전년 동기 대비
@@ -669,6 +681,7 @@ def render_earnings_report(items, canonical):
 분기는 직전 분기 대비 <b>QoQ</b>로 대체 표시). <b>"다음 주 발표 예정"같은
 사전 예측이 아니라 이미 공시된 실적만</b> 다룹니다 — DART는 공시 일정을 미리 알려주지
 않아 정확한 예정일을 제공할 수 없기 때문입니다.</p>
+{avg_note}
 <div class="wrap"><table><thead><tr><th style="text-align:left">종목</th><th>분기</th>
 <th>발표일</th><th>매출 YoY</th><th>순이익 YoY</th></tr></thead>
 <tbody>{rows}</tbody></table></div>
@@ -676,4 +689,4 @@ def render_earnings_report(items, canonical):
 """
     desc = "최근 공시된 한국 상장기업 분기 실적 발표 현황과 전년 동기 대비 매출·순이익 성장률 정리."
     return layout("최근 실적발표 현황 — 분기 실적 발표일·전년동기 성장률",
-                  desc, canonical, body)
+                  desc, canonical, body, show_subscribe=False)

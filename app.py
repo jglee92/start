@@ -721,23 +721,20 @@ def _weekly_ctx():
     strong, weak = perf[:10], perf[-5:][::-1]
     rk = get_ranking()
     asof = get_asof()
-    top_value = [{"code": r["code"], "name": r["name"], "score": r["score"],
-                  "per": _r(r["per"]), "pbr": _r(r["pbr"], 2), "roe": _r(r["roe"]),
-                  "sector": r.get("sector")} for r in rk[:15]]
     movers_up, movers_down = _rank_movers(rk, get_ranking_asof(7))
-    return render_weekly, strong, weak, top_value, asof, movers_up, movers_down
+    return render_weekly, strong, weak, asof, movers_up, movers_down
 
 
 @app.get("/weekly", response_class=HTMLResponse)
 def weekly():
-    render_weekly, strong, weak, top_value, asof, movers_up, movers_down = _weekly_ctx()
-    return render_weekly(strong, weak, top_value, asof, f"{BASE_URL}/weekly", movers_up, movers_down)
+    render_weekly, strong, weak, asof, movers_up, movers_down = _weekly_ctx()
+    return render_weekly(strong, weak, asof, f"{BASE_URL}/weekly", movers_up, movers_down)
 
 
 @app.get("/api/weekly")
 def api_weekly():
-    render_weekly, strong, weak, top_value, asof, movers_up, movers_down = _weekly_ctx()
-    html = render_weekly(strong, weak, top_value, asof, f"{BASE_URL}/weekly", movers_up, movers_down)
+    render_weekly, strong, weak, asof, movers_up, movers_down = _weekly_ctx()
+    html = render_weekly(strong, weak, asof, f"{BASE_URL}/weekly", movers_up, movers_down)
     return {"html": _extract_body(html)}
 
 
@@ -767,7 +764,7 @@ def learn_page(slug: str):
 @app.get("/sector-report", response_class=HTMLResponse)
 def sector_report_index():
     from sector_report import render_sector_index
-    return render_sector_index(f"{BASE_URL}/sector-report")
+    return render_sector_index(get_ranking(), f"{BASE_URL}/sector-report")
 
 
 @app.get("/sector-report/{slug}", response_class=HTMLResponse)
@@ -787,7 +784,7 @@ def sector_report_detail(slug: str):
 @app.get("/api/sector-report")
 def api_sector_report_index():
     from sector_report import render_sector_index
-    return {"html": _extract_body(render_sector_index(f"{BASE_URL}/sector-report"))}
+    return {"html": _extract_body(render_sector_index(get_ranking(), f"{BASE_URL}/sector-report"))}
 
 
 @app.get("/api/sector-report/{slug}")
@@ -814,7 +811,7 @@ def anomaly_report():
     for r in rk:
         for f in (r.get("flags") or []):
             grouped.setdefault(f["label"], []).append({
-                "code": r["code"], "name": r["name"],
+                "code": r["code"], "name": r["name"], "marcap_eok": r.get("marcap_eok"),
                 "text": f["text"], "emoji": f["emoji"]})
     return render_anomaly_report(grouped, asof, f"{BASE_URL}/anomaly-report")
 
@@ -1107,7 +1104,8 @@ def themes_index():
     tmap = get_tmap()
     perf = _theme_perf_map()
     items = sorted(tmap["themes"].items(),
-                   key=lambda kv: len(kv[1]["codes"]), reverse=True)
+                   key=lambda kv: perf.get(kv[0], {}).get("ret_1m") if perf.get(kv[0], {}).get("ret_1m") is not None else -999,
+                   reverse=True)
     lis = ""
     for no, t in items:
         p = perf.get(no, {})
@@ -1115,11 +1113,12 @@ def themes_index():
         tag = "" if r1 is None else f' <span class="muted">({r1:+.1f}%/1M)</span>'
         lis += f'<li><a href="/t/{no}">{t["name"]}</a> <span class="muted">{len(t["codes"])}종목</span>{tag}</li>'
     body = (f'<h1>테마별 관련주 전체 ({len(items)}개)</h1>'
-            f'<p class="muted">각 테마를 가치+퀄리티 팩터로 분석한 페이지입니다.</p>'
+            f'<p class="muted">테마를 누르면 해당 테마의 저평가·우량 종목 랭킹을 볼 수 있습니다. '
+            f'수익률이 가장 강했던 테마 순으로 정렬했습니다. 매매 추천이 아닙니다.</p>'
             f'<ul style="columns:2;line-height:2;font-size:14px">{lis}</ul>')
     return layout("한국주식 테마 전체 목록 — 관련주 가치·퀄리티 분석",
                   "266개 시장 테마별 관련주를 가치+퀄리티 팩터로 분석한 목록.",
-                  f"{BASE_URL}/themes-index", body)
+                  f"{BASE_URL}/themes-index", body, show_subscribe=False)
 
 
 def _extract_body(html: str) -> str:

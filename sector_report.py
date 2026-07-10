@@ -95,24 +95,34 @@ def render_sector_report(sector_name, stats, market_avg, canonical):
 <th>점수</th><th>PER</th><th>PBR</th><th>ROE%</th></tr></thead>
 <tbody>{top_rows}</tbody></table></div>
 
-<p class="muted" style="margin-top:16px">
+<p class="muted footnote">매매 추천이 아닙니다. 데이터: 시총 3,000억 이상 유니버스 기준.
 <a href="/learn/per">PER</a>·<a href="/learn/pbr">PBR</a>·<a href="/learn/roe">ROE</a>
 용어가 익숙하지 않다면 용어해설을 참고하세요.
 <a href="/sector-report">← 업종별 리포트 전체</a></p>
 """
     desc = f"{sector_name} 업종의 평균 PER·PBR·ROE·부채비율과 저평가·우량 종목 TOP10 밸류에이션 분석."
     return layout(f"{sector_name} 업종 밸류에이션 리포트 — 저평가·우량 종목 분석",
-                  desc, canonical, body)
+                  desc, canonical, body, show_subscribe=False)
 
 
-def render_sector_index(canonical):
-    items = "".join(
-        f'<li><a href="/sector-report/{_esc(slug)}">{_esc(name)}</a></li>'
-        for name, slug in SLUGS.items())
+def render_sector_index(rk, canonical):
+    rows = []
+    for name, slug in SLUGS.items():
+        stats = compute_sector_stats(rk, name)
+        rows.append((name, slug, stats))
+    rows.sort(key=lambda x: x[2]["per"] if x[2]["per"] is not None else 1e9)
+    trs = "".join(
+        f'<tr><td style="text-align:left"><a href="/sector-report/{_esc(slug)}">{_esc(name)}</a></td>'
+        f'<td>{stats["count"]}</td><td>{_fmt(stats["per"])}</td><td>{_fmt(stats["pbr"],2)}</td>'
+        f'<td>{_fmt(stats["roe"])}</td><td>{_fmt(stats["debt_ratio"],0)}</td></tr>'
+        for name, slug, stats in rows)
     body = (f'<h1>{_ic("barchart")} 업종별 밸류에이션 리포트</h1>'
-            f'<p class="muted">각 업종의 평균 PER·PBR·ROE·부채비율과 저평가·우량 종목을 정리했습니다. '
-            f'테마(모멘텀) 페이지와 달리 밸류에이션 관점입니다.</p>'
-            f'<ul style="line-height:2.2;font-size:14.5px">{items}</ul>')
+            f'<p class="muted">각 업종의 평균 PER·PBR·ROE·부채비율입니다. 업종명을 누르면 '
+            f'저평가·우량 종목 TOP10까지 볼 수 있습니다. PER 낮은 순(저평가) 정렬입니다. '
+            f'매매 추천이 아닙니다.</p>'
+            f'<div class="wrap"><table><thead><tr><th style="text-align:left">업종</th>'
+            f'<th>종목수</th><th>평균PER</th><th>평균PBR</th><th>평균ROE%</th><th>평균부채%</th>'
+            f'</tr></thead><tbody>{trs}</tbody></table></div>')
     return layout("업종별 밸류에이션 리포트 전체 — 저평가·우량 종목 분석",
                   "반도체·2차전지·바이오 등 16개 업종의 평균 밸류에이션과 저평가·우량 종목을 "
-                  "정리한 업종별 리포트 목록.", canonical, body)
+                  "정리한 업종별 리포트 목록.", canonical, body, show_subscribe=False)

@@ -654,22 +654,31 @@ def render_glossary(slug, compare, canonical):
 {sections_html}
 <h2>함께 보면 좋은 용어</h2>
 <p>{related_html or '–'}</p>
-<p class="muted" style="margin-top:16px"><a href="/learn">← 투자 용어 해설 전체 목록</a> ·
+<p class="muted footnote" style="margin-top:16px">매매 추천이 아닙니다.
+<a href="/learn">← 투자 용어 해설 전체 목록</a> ·
 <a href="/">대시보드에서 직접 스크리닝해보기 →</a></p>
 """
     desc = (f"{term['title']} 개념, 계산법, 해석 방법을 {names} 실제 데이터로 알아봅니다." if has_metric
             else f"{term['title']} — 주식 초보자를 위한 기초 개념 설명.")
-    return layout(f"{term['title']} | 투자 용어 해설", desc, canonical, body)
+    return layout(f"{term['title']} | 투자 용어 해설", desc, canonical, body, show_subscribe=False)
 
 
 def render_learn_index(canonical):
-    items = "".join(
-        f'<li><a href="/learn/{_esc(slug)}">{_ic(t["emoji"])} {_esc(t["title"])}</a> '
-        f'<span class="muted">— {_esc(t["lead"])}</span></li>'
-        for slug, t in TERMS.items())
+    basics = [(slug, t) for slug, t in TERMS.items() if not t.get("metric")]
+    metrics = [(slug, t) for slug, t in TERMS.items() if t.get("metric")]
+
+    def li(slug, t):
+        return (f'<li><a href="/learn/{_esc(slug)}">{_ic(t["emoji"])} {_esc(t["title"])}</a> '
+                f'<span class="muted">— {_esc(t["lead"])}</span></li>')
+    basics_html = "".join(li(s, t) for s, t in basics)
+    metrics_html = "".join(li(s, t) for s, t in metrics)
     body = (f'<h1>{_ic("book")} 투자 용어 해설</h1>'
-            f'<p class="muted">삼성전자·SK하이닉스 실제 데이터로 배우는 재무·밸류에이션 용어 '
-            f'시리즈입니다.</p><ul style="line-height:2.2;font-size:14.5px">{items}</ul>')
+            f'<p class="muted">주식이 처음이라면 기초 개념부터, 숫자 지표(PER·PBR·ROE 등)는 '
+            f'삼성전자·SK하이닉스 실제 데이터로 비교하며 설명합니다. 매매 추천이 아닙니다.</p>'
+            f'<h2>기초 개념부터 ({len(basics)}개)</h2>'
+            f'<ul style="line-height:2.2;font-size:14.5px">{basics_html}</ul>'
+            f'<h2>숫자로 보는 지표 ({len(metrics)}개)</h2>'
+            f'<ul style="line-height:2.2;font-size:14.5px">{metrics_html}</ul>')
     return layout("투자 용어 해설 전체 목록 — PER·PBR·ROE·부채비율·성장모멘텀",
                   "PER, PBR, ROE, 부채비율, 성장모멘텀 등 투자 필수 용어를 실제 기업 데이터로 "
-                  "쉽게 설명하는 해설 시리즈.", canonical, body)
+                  "쉽게 설명하는 해설 시리즈.", canonical, body, show_subscribe=False)
