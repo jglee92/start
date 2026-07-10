@@ -1336,7 +1336,7 @@ function renderThemesPanel(){
   const majSorted=[...g.groups].sort((a,b)=>(tval(b,'ret_1m')??-999)-(tval(a,'ret_1m')??-999));
   for(const maj of majSorted){
     h+=`<div style="margin:14px 0 4px;font-weight:700;font-size:15px">${maj.major}
-      <span style="font-weight:400;font-size:12px" class="mut">1M ${rpill(tval(maj,'ret_1m'))}<br>3M ${rpill(tval(maj,'ret_3m'))}</span></div>`;
+      <span style="font-weight:400;font-size:12px" class="mut">1M ${rpill(tval(maj,'ret_1m'))} / 3M ${rpill(tval(maj,'ret_3m'))}</span></div>`;
     const midSorted=[...maj.mids].sort((a,b)=>(tval(b,'ret_1m')??-999)-(tval(a,'ret_1m')??-999));
     for(const mid of midSorted){
       const themesSorted=[...mid.themes].sort((a,b)=>(tval(b,'ret_1m')??-999)-(tval(a,'ret_1m')??-999));
