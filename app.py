@@ -941,59 +941,22 @@ def _blog_draft_text():
     return title, "\n".join(lines)
 
 
-@app.get("/internal/blog-draft", response_class=HTMLResponse)
-def blog_draft(key: str = "", format: str = "html"):
+@app.get("/internal/blog-draft")
+def blog_draft(key: str = ""):
+    """메모장에 바로 옮겨서 쓰기 좋게 .txt 파일로 다운로드.
+    브라우저에서 HTML을 복사하면 네이버 블로그 에디터에 붙여넣을 때 줄바꿈이
+    씹히는 경우가 있어(실측 확인), 메모장 경유가 더 안정적이라 이 방식으로 굳힘."""
     expected = os.getenv("BLOG_DRAFT_KEY")
     if not expected or key != expected:
         raise HTTPException(404)
+    from datetime import datetime, timezone, timedelta
+    KST = timezone(timedelta(hours=9))
     title, body = _blog_draft_text()
-    if format == "text":
-        return PlainTextResponse(f"{title}\n{'=' * len(title)}\n\n{body}")
-
-    import html as html_mod
-    paras = [f"<p><b>{html_mod.escape(title)}</b></p>"]
-    for line in body.split("\n"):
-        if not line.strip():
-            paras.append('<p class="blank">&nbsp;</p>')
-            continue
-        indent = len(line) - len(line.lstrip(" "))
-        escaped = html_mod.escape(line.lstrip(" "))
-        paras.append(f"<p>{'&nbsp;' * indent}{escaped}</p>")
-    draft_html = "\n".join(paras)
-    return f"""<!doctype html><html lang="ko"><head><meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<title>블로그 초안 - {html_mod.escape(title)}</title>
-<style>
- body{{font-family:'Malgun Gothic','Apple SD Gothic Neo',sans-serif;max-width:640px;
-   margin:24px auto;padding:0 16px;line-height:1.7;color:#12161c}}
- h1{{font-size:17px;color:#5a6472;margin:0 0 14px}}
- button{{padding:11px 20px;font-size:15px;font-weight:700;border-radius:8px;border:none;
-   background:#1a63cf;color:#fff;cursor:pointer}}
- button:active{{opacity:.8}}
- .toast{{display:none;color:#178a56;font-weight:700;margin-left:10px}}
- #draft{{border:1px solid #dde3ea;border-radius:10px;padding:16px 18px;margin-top:16px;background:#fafbfc}}
- #draft p{{margin:0 0 4px}}
- #draft p.blank{{margin:0 0 10px}}
-</style></head><body>
-<h1>\U0001F4DD 오늘의 블로그 초안 - 아래 버튼으로 복사해서 네이버 블로그에 붙여넣으세요</h1>
-<button id="copyBtn">\U0001F4CB 서식 유지해서 복사하기</button><span class="toast" id="toast">복사 완료!</span>
-<div id="draft">{draft_html}</div>
-<script>
-document.getElementById('copyBtn').onclick = async () => {{
-  const el = document.getElementById('draft');
-  try {{
-    await navigator.clipboard.write([new ClipboardItem({{
-      'text/html': new Blob([el.innerHTML], {{type:'text/html'}}),
-      'text/plain': new Blob([el.innerText], {{type:'text/plain'}})
-    }})]);
-    const t = document.getElementById('toast'); t.style.display='inline';
-    setTimeout(() => t.style.display='none', 2000);
-  }} catch (e) {{
-    alert('복사에 실패했어요. 아래 내용을 직접 드래그해서 복사해주세요.\\n' + e);
-  }}
-}};
-</script>
-</body></html>"""
+    content = f"{title}\n{'=' * len(title)}\n\n{body}"
+    data = ("﻿" + content).encode("utf-8")  # BOM: 메모장 한글 인코딩 오인식 방지
+    fname = f"blog-draft-{datetime.now(KST).strftime('%m%d')}.txt"
+    return Response(content=data, media_type="text/plain; charset=utf-8",
+                     headers={"Content-Disposition": f'attachment; filename="{fname}"'})
 
 
 @app.get("/earnings-report", response_class=HTMLResponse)
