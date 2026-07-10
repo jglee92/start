@@ -42,7 +42,7 @@
 <style>
   :root{
     --bg:#0f1216; --panel:#171c23; --panel2:#1e252e; --line:#2a323d;
-    --txt:#f1f4f8; --dim:#aab6c2; --accent:#5ba3ff; --good:#37c281; --bad:#f2555a;
+    --txt:#f1f4f8; --dim:#aab6c2; --accent:#4a8fd4; --good:#37c281; --bad:#f2555a;
     --up:#f2555a; --down:#4d90ff;
   }
   @media (prefers-color-scheme: light){
@@ -579,10 +579,9 @@ function smoothPath(pts){
 let lastChartPoints=null;
 function drawChart(points){
   const svg=document.getElementById('chartSvg'), g=document.getElementById('chartContent');
-  const wrap=document.getElementById('chartWrap');
   if(!g)return;
   lastChartPoints=points;
-  const w=wrap.clientWidth||560,h=96,padL=38,padR=8,padT=8,padB=16;
+  const w=svg.clientWidth||560,h=96,padL=38,padR=8,padT=8,padB=16;
   svg.setAttribute('viewBox',`0 0 ${w} ${h}`);
   const closes=points.map(p=>p.c);
   const min=Math.min(...closes), max=Math.max(...closes);
@@ -1337,7 +1336,7 @@ function renderThemesPanel(){
   const majSorted=[...g.groups].sort((a,b)=>(tval(b,'ret_1m')??-999)-(tval(a,'ret_1m')??-999));
   for(const maj of majSorted){
     h+=`<div style="margin:14px 0 4px;font-weight:700;font-size:15px">${maj.major}
-      <span style="font-weight:400;font-size:12px" class="mut">1M ${rpill(tval(maj,'ret_1m'))} · 3M ${rpill(tval(maj,'ret_3m'))}</span></div>`;
+      <span style="font-weight:400;font-size:12px" class="mut">1M ${rpill(tval(maj,'ret_1m'))}<br>3M ${rpill(tval(maj,'ret_3m'))}</span></div>`;
     const midSorted=[...maj.mids].sort((a,b)=>(tval(b,'ret_1m')??-999)-(tval(a,'ret_1m')??-999));
     for(const mid of midSorted){
       const themesSorted=[...mid.themes].sort((a,b)=>(tval(b,'ret_1m')??-999)-(tval(a,'ret_1m')??-999));
@@ -1345,7 +1344,7 @@ function renderThemesPanel(){
         <span class="nm">· ${t.name}</span><span>${rpill(tval(t,'ret_1m'))}</span></div>`).join('');
       h+=`<details class="midbox"><summary>
         <span class="nm">${mid.mid} <span class="mut" style="font-size:11px">${mid.theme_count}테마</span></span>
-        <span>1M ${rpill(tval(mid,'ret_1m'))} · 3M ${rpill(tval(mid,'ret_3m'))}</span></summary>
+        <span style="text-align:right">1M ${rpill(tval(mid,'ret_1m'))}<br>3M ${rpill(tval(mid,'ret_3m'))}</span></summary>
         <div class="themes">${themes}</div></details>`;
     }
   }

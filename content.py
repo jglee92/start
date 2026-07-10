@@ -109,7 +109,7 @@ def layout(title, desc, canonical, body, extra_nav=""):
 body{{max-width:900px;margin:0 auto;padding:20px 18px 60px;line-height:1.75;font-size:15.5px;
  font-family:'Pretendard Variable',Pretendard,-apple-system,"Segoe UI",Roboto,
  "Apple SD Gothic Neo","Malgun Gothic",sans-serif;color:#12161c;background:#fff}}
-@media (prefers-color-scheme:dark){{body{{background:#0f1216;color:#f1f4f8}}a{{color:#6fb0ff}}
+@media (prefers-color-scheme:dark){{body{{background:#0f1216;color:#f1f4f8}}a{{color:#5a9bdb}}
  th{{color:#aab6c2}} tr:hover{{background:#171c23}} .muted{{color:#aab6c2}}}}
 a{{color:#1a63cf;text-decoration:none;font-weight:600}}a:hover{{text-decoration:underline}}
 h1{{font-size:24px}}h2{{font-size:19px;margin-top:28px}}
