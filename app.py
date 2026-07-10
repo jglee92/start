@@ -898,6 +898,7 @@ def _blog_draft_text():
         lines.append("")
 
     lines.append("\U0001F4CA 실적 발표 브리핑 (어닝서프라이즈·어닝쇼크 체크)")
+    lines.append("(가장 최근 실적 발표 기준)")
     for it in disclosures[:5]:
         yoy, qoq = it.get("rev_yoy"), it.get("rev_qoq")
         if yoy is not None:
