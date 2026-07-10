@@ -1025,6 +1025,8 @@ def api_about():
 
 
 def _learn_compare(term):
+    if not term.get("metric"):
+        return []
     from glossary import COMPARE_PAIR
     rk = {r["code"]: r for r in get_ranking()}
     compare = []
