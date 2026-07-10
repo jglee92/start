@@ -827,14 +827,15 @@ def _earning_tag(pct):
     return ""
 
 
-def _prev_day_movers(conn, codes, n=3):
-    """직전 거래일 종가 vs 그 전날 종가로 급등·급락 TOP N (ranking 유니버스 한정)."""
+def _period_movers(conn, codes, offset=1, n=3):
+    """N거래일 전 종가 대비 급등·급락 TOP N (ranking 유니버스 한정).
+    offset=1이면 전거래일 대비(일간), offset=5면 1주일 전(주간) 비교."""
     dates = [r[0] for r in conn.execute(
         "SELECT DISTINCT date FROM daily_prices WHERE close IS NOT NULL "
-        "ORDER BY date DESC LIMIT 2").fetchall()]
-    if len(dates) < 2:
+        "ORDER BY date DESC LIMIT ?", (offset + 1,)).fetchall()]
+    if len(dates) <= offset:
         return [], [], None
-    d_now, d_prev = dates
+    d_now, d_prev = dates[0], dates[offset]
     now_map = dict(conn.execute(
         "SELECT code,close FROM daily_prices WHERE date=? AND close IS NOT NULL", (d_now,)).fetchall())
     prev_map = dict(conn.execute(
@@ -853,6 +854,33 @@ def _prev_day_movers(conn, codes, n=3):
     return gainers, losers, d_now
 
 
+def _score_movers(rk_now, rk_past, n=3):
+    """지난주 대비 종합점수(팩터 스코어) 급상승·급하락 TOP N."""
+    past_score = {r["code"]: r["score"] for r in rk_past}
+    diffs = []
+    for r in rk_now:
+        ps = past_score.get(r["code"])
+        if ps is None:
+            continue
+        diffs.append({"code": r["code"], "name": r["name"], "score": r["score"],
+                      "prev_score": ps, "score_change": round(r["score"] - ps, 1)})
+    up = sorted([d for d in diffs if d["score_change"] > 0],
+                key=lambda d: d["score_change"], reverse=True)[:n]
+    down = sorted([d for d in diffs if d["score_change"] < 0],
+                  key=lambda d: d["score_change"])[:n]
+    return up, down
+
+
+def _theme_examples(tmap, rk_by_code, no, n=3):
+    """테마 구성종목 중 시총 상위 n개 이름(블로그 초안용 예시 종목)."""
+    t = tmap.get("themes", {}).get(no)
+    if not t:
+        return []
+    pool = [rk_by_code[c] for c in t.get("codes", []) if c in rk_by_code]
+    pool.sort(key=lambda r: r.get("marcap", 0), reverse=True)
+    return [r["name"] for r in pool[:n]]
+
+
 def _blog_draft_text():
     """'장 열리기전 체크포인트' 블로그 초안(제목+본문) 생성.
     네이버 블로그 자동 포스팅 API는 2020년에 종료되어(직접 확인함) 발행은 수동으로
@@ -869,7 +897,9 @@ def _blog_draft_text():
     conn = _conn()
     disclosures = db.get_recent_disclosures(conn, limit=8)
     rk = get_ranking()
-    gainers, losers, movers_date = _prev_day_movers(conn, [r["code"] for r in rk])
+    codes = [r["code"] for r in rk]
+    gainers, losers, movers_date = _period_movers(conn, codes, offset=1, n=3)
+    week_gainers, week_losers, week_date = _period_movers(conn, codes, offset=5, n=3)
     if _cache.get("theme_perf") is None:
         from factor.themes import compute_theme_perf
         _cache["theme_perf"] = compute_theme_perf(conn, get_tmap())
@@ -882,6 +912,8 @@ def _blog_draft_text():
 
     for it in disclosures:
         it["name"] = _name_of(it["code"])
+    tmap = get_tmap()
+    rk_by_code = {r["code"]: r for r in rk}
 
     lines = [
         "좋은 아침입니다 \U0001F44B 오늘 장 시작 전에 체크하면 좋을 국내증시 소식,",
@@ -928,25 +960,48 @@ def _blog_draft_text():
             sub = [t for t in m["themes"] if t.get("used", 0) >= 3 and t["count"] >= 8]
             sub.sort(key=lambda t: (t["ret_1m"] is not None, t["ret_1m"]), reverse=True)
             for t in sub[:3]:
-                lines.append(f"  - {t['name']}: {t['ret_1m']:+.1f}%")
+                examples = _theme_examples(tmap, rk_by_code, t["no"], 3)
+                ex = f" (예: {', '.join(examples)})" if examples else ""
+                lines.append(f"  - {t['name']}: {t['ret_1m']:+.1f}%{ex}")
         lines.append("")
 
     if now.weekday() == 4:  # 금요일엔 주간 마무리 섹션 추가
-        _, strong, _weak, _top_value, _asof, movers_up, movers_down = _weekly_ctx()
+        rk_past = get_ranking_asof(7)
+        score_up, score_down = _score_movers(rk, rk_past)
+        strong_themes = [t for t in _cache["theme_perf"]
+                         if t.get("priced", 0) >= 5 and t.get("ret_1m") is not None]
+        strong_themes.sort(key=lambda t: t["ret_1m"], reverse=True)
+
         lines.append("\U0001F4C5 이번주 마감! 주간증시 정리")
-        if strong:
-            lines.append("이번주 강세 테마 TOP5")
-            for t in strong[:5]:
-                lines.append(f"- {t['name']}: {t['ret_1m']:+.1f}%")
-        if movers_up:
-            lines.append("이번주 순위 급상승 종목")
-            for m in movers_up[:3]:
-                lines.append(f"- {m['name']}({m['code']}): {m['prev_rank']}위 → {m['rank']}위")
-        if movers_down:
-            lines.append("이번주 순위 급하락 종목")
-            for m in movers_down[:3]:
-                lines.append(f"- {m['name']}({m['code']}): {m['prev_rank']}위 → {m['rank']}위")
         lines.append("")
+
+        if week_gainers or week_losers:
+            lines.append(f"\U0001F4C8 금주 가장 많이 오른 종목 · 하락한 종목")
+            for code, pct in week_gainers:
+                lines.append(f"- (상승) {_name_of(code)}({code}): {pct:+.1f}%")
+            for code, pct in week_losers:
+                lines.append(f"- (하락) {_name_of(code)}({code}): {pct:+.1f}%")
+            lines.append("")
+
+        if strong_themes:
+            lines.append("\U0001F525 이번주 강세 테마 TOP5")
+            for t in strong_themes[:5]:
+                lines.append(f"- {t['name']}: {t['ret_1m']:+.1f}%")
+            lines.append("")
+
+        if score_up:
+            lines.append("\U0001F4C8 이번주 종합점수 급상승 종목")
+            for m in score_up:
+                lines.append(f"- {m['name']}({m['code']}): {m['prev_score']:.1f}점 → "
+                             f"{m['score']:.1f}점 ({m['score_change']:+.1f})")
+            lines.append("")
+
+        if score_down:
+            lines.append("\U0001F4C9 이번주 종합점수 급하락 종목")
+            for m in score_down:
+                lines.append(f"- {m['name']}({m['code']}): {m['prev_score']:.1f}점 → "
+                             f"{m['score']:.1f}점 ({m['score_change']:+.1f})")
+            lines.append("")
 
     lines.append("전 종목 스크리닝, 재무제표, 회계감사의견까지 더 자세한 데이터는")
     lines.append(f"머니체크업에서 무료로 확인하실 수 있어요 \U0001F449 {BASE_URL}/")
