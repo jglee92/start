@@ -17,7 +17,7 @@ from email.utils import parsedate_to_datetime
 
 import requests
 from fastapi import FastAPI, HTTPException
-from fastapi.responses import HTMLResponse, JSONResponse, PlainTextResponse, Response
+from fastapi.responses import HTMLResponse, JSONResponse, PlainTextResponse, RedirectResponse, Response
 from fastapi.staticfiles import StaticFiles
 
 import db
@@ -536,9 +536,27 @@ def api_sector(name: str):
 
 
 # 배포 시 실제 도메인으로: 예) SITE_BASE_URL=https://mydomain.com
-BASE_URL = os.getenv("SITE_BASE_URL", "https://example.com").rstrip("/")
+_SITE_BASE_URL_ENV = os.getenv("SITE_BASE_URL")
+BASE_URL = (_SITE_BASE_URL_ENV or "https://example.com").rstrip("/")
 _STATIC = os.path.join(os.path.dirname(__file__), "static")
 app.mount("/static", StaticFiles(directory=_STATIC), name="static")
+
+# 구 도메인(onrender.com)/www -> 대표 도메인 301 리다이렉트. SITE_BASE_URL이 실제로
+# 설정되기 전에는(로컬 개발 등) _LEGACY_HOSTS가 비어 있어 아무 동작도 하지 않는다 —
+# 환경변수 반영 전에 배포되어도 예전 도메인이 example.com으로 잘못 리다이렉트되는 사고 방지.
+_CANONICAL_HOST = urllib.parse.urlsplit(BASE_URL).netloc
+_LEGACY_HOSTS = {"kr-screener.onrender.com", f"www.{_CANONICAL_HOST}"} if _SITE_BASE_URL_ENV else set()
+
+
+@app.middleware("http")
+async def _redirect_legacy_host(request, call_next):
+    host = request.headers.get("host", "").split(":")[0]
+    if host in _LEGACY_HOSTS:
+        target = f"{BASE_URL}{request.url.path}"
+        if request.url.query:
+            target += f"?{request.url.query}"
+        return RedirectResponse(target, status_code=301)
+    return await call_next(request)
 
 
 def _page(fname):
