@@ -119,14 +119,14 @@
   .idx-tab:hover{color:var(--txt)}
   .idx-tab.active{color:var(--accent);border-bottom-color:var(--accent)}
   .chart-body{padding:14px 16px 10px}
-  .chart-head{display:flex;align-items:baseline;gap:10px;margin-bottom:6px}
+  .chart-head{display:flex;align-items:baseline;gap:10px;margin-bottom:6px;flex-wrap:wrap}
   .chart-head .cn{font-weight:700;font-size:13.5px}
   .chart-head .cp{font-size:19px;font-weight:800}
   .chart-head .cc{font-size:13px;font-weight:700}
   .chart-svg{width:100%;max-width:480px;height:118px;display:block}
   .chart-grid{stroke:var(--line);stroke-width:1}
   .chart-axis-label{font-size:9px;fill:var(--dim);font-family:ui-monospace,"SF Mono","Cascadia Code",Consolas,monospace}
-  .chart-range{display:flex;gap:4px;margin:8px 0 0;justify-content:flex-end}
+  .chart-range{display:flex;gap:4px;margin-left:auto}
   .range-btn{font-size:11px;font-weight:700;color:var(--dim);background:none;border:1px solid transparent;
     border-radius:6px;padding:3px 8px;cursor:pointer}
   .range-btn.active{color:var(--accent);background:var(--panel2)}
@@ -308,6 +308,11 @@
             <span class="cn" id="chartName"></span>
             <span class="cp mut" id="chartPrice"></span>
             <span class="cc" id="chartChg"></span>
+            <div class="chart-range" id="chartRange">
+              <button class="range-btn" data-r="1mo">1개월</button>
+              <button class="range-btn active" data-r="6mo">6개월</button>
+              <button class="range-btn" data-r="1y">1년</button>
+            </div>
           </div>
           <div id="chartWrap">
             <svg class="chart-svg" id="chartSvg" viewBox="0 0 560 118">
@@ -319,11 +324,6 @@
               </defs>
               <g id="chartContent"></g>
             </svg>
-          </div>
-          <div class="chart-range" id="chartRange">
-            <button class="range-btn" data-r="1mo">1개월</button>
-            <button class="range-btn active" data-r="6mo">6개월</button>
-            <button class="range-btn" data-r="1y">1년</button>
           </div>
         </div>
       </div>
