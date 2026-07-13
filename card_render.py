@@ -91,18 +91,33 @@ def _wrap(draw, text, fnt, max_w):
     return lines
 
 
-def _brand_mark(draw, x, y, size=28):
-    """로고 대체용 브랜드 마크 — 원형 테두리 없이 상승 체크마크만(더 깔끔한 인상)."""
-    cx, cy, r = x + size / 2, y + size / 2, size * 0.32
-    draw.line([(cx - r, cy + r * 0.3), (cx - r * 0.2, cy + r), (cx + r, cy - r)],
-              fill=ACCENT, width=4, joint="curve")
+ICON_PATH = os.path.join(os.path.dirname(__file__), "static", "icon-512.png")
+_ICON_CACHE = {}
 
 
-def _footer(draw, date_str, page, total):
+def _load_icon(size):
+    """실제 머니체크업 브랜드 아이콘(static/icon-512.png) — 예전엔 이걸 확인 안 하고
+    체크마크를 새로 그려서 실제 마크와 다르다는 지적을 받았음. 이제 원본을 그대로 축소."""
+    if size not in _ICON_CACHE:
+        icon = Image.open(ICON_PATH).convert("RGBA")
+        icon = icon.crop(icon.getbbox())
+        scale = size / max(icon.size)
+        icon = icon.resize((max(1, int(icon.width * scale)), max(1, int(icon.height * scale))),
+                            Image.LANCZOS)
+        _ICON_CACHE[size] = icon
+    return _ICON_CACHE[size]
+
+
+def _brand_mark(img, x, y, size=28):
+    icon = _load_icon(size)
+    img.paste(icon, (int(x), int(y)), icon)
+
+
+def _footer(img, draw, date_str, page, total):
     y = H - PAD - 8
-    _brand_mark(draw, PAD, y - 22, size=26)
-    draw.text((PAD + 30, y - 24), "머니체크업", font=font("bold", 20), fill=TXT)
-    draw.text((PAD + 30, y + 2), date_str, font=font("regular", 16), fill=DIM)
+    _brand_mark(img, PAD, y - 24, size=30)
+    draw.text((PAD + 36, y - 24), "머니체크업", font=font("bold", 20), fill=TXT)
+    draw.text((PAD + 36, y + 2), date_str, font=font("regular", 16), fill=DIM)
     page_txt = f"{page:02d} / {total:02d}"
     tw = draw.textlength(page_txt, font=font("regular", 20))
     draw.text((W - PAD - tw, y - 10), page_txt, font=font("regular", 20), fill=DIM)
@@ -142,7 +157,7 @@ def render_cover(headline_lines, subtitle, date_str, page, total):
     eyebrow = f"{date_str} · 장전 브리핑"
     y = _header(d, eyebrow, headline_lines, subtitle, y=340)
     d.line([(PAD, y + 6), (PAD + 64, y + 6)], fill=ORANGE, width=5)
-    _footer(d, date_str, page, total)
+    _footer(img, d, date_str, page, total)
     return img
 
 
@@ -194,7 +209,7 @@ def render_market(data, date_str, page, total):
                 d.text((PAD + half, y + 34), _pct_text(loser[1]), font=font("bold", 30), fill=BAD)
             y += 92
 
-    _footer(d, date_str, page, total)
+    _footer(img, d, date_str, page, total)
     return img
 
 
@@ -249,7 +264,7 @@ def render_earnings(data, date_str, page, total):
                 d.text((bx, by - 14), f"매출 {_pct_text(e['rev_yoy'])}", font=font("regular", 20), fill=DIM)
         y += box_h + 28
 
-    _footer(d, date_str, page, total)
+    _footer(img, d, date_str, page, total)
     return img
 
 
@@ -274,7 +289,7 @@ def render_anomaly(data, date_str, page, total):
     if data["anomalies"]:
         d.text((PAD, y), data["anomalies"][0]["text"], font=font("regular", 20), fill=DIM)
 
-    _footer(d, date_str, page, total)
+    _footer(img, d, date_str, page, total)
     return img
 
 
@@ -310,7 +325,7 @@ def render_theme_cta(data, date_str, page, total, section_no):
     d.ellipse([tx, cta_y + 104, tx + 12, cta_y + 116], fill=ACCENT)
     d.text((tx + 24, cta_y + 100), "getmoneycheckup.com", font=font("bold", 26), fill=ACCENT)
 
-    _footer(d, date_str, page, total)
+    _footer(img, d, date_str, page, total)
     return img
 
 
