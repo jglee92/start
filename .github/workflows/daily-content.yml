@@ -1,0 +1,38 @@
+name: 블로그·인스타 콘텐츠 자동 생성
+
+on:
+  schedule:
+    # 매 평일 UTC 22:30 = KST 07:30 (다음날). 일~목 UTC로 지정해야 월~금 KST 아침이 된다.
+    # daily-prices.yml이 전날 저녁(KST 19:00)에 이미 최신 시세를 반영해두므로 이 시각에
+    # 실행해도 데이터는 최신 상태. 휴장일엔 daily_content.py가 자동으로 아무것도 안 만듦.
+    - cron: '30 22 * * 0-4'
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+
+jobs:
+  generate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: 의존성 설치
+        run: pip install -r requirements.txt
+
+      - name: 블로그 초안 + 인스타 카드뉴스·캡션 생성
+        env:
+          KR_DB_PATH: data/screener_deploy.db
+        run: python daily_content.py
+
+      - name: 변경사항 커밋 + 푸시
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add content_out/
+          git diff --staged --quiet && echo "변경 없음" || \
+            (git commit -m "chore: 오늘자 블로그·인스타 콘텐츠 생성 $(date -u +%Y-%m-%d)" && git push)

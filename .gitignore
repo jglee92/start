@@ -16,5 +16,6 @@ data/*.csv
 # 임시
 scratchpad/
 *.log
+cards_out/
 
 # 배포에 포함할 것(참고): data/screener_deploy.db, data/*.json

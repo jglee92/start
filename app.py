@@ -875,15 +875,26 @@ def _earning_tag(pct):
     return ""
 
 
-def _overnight_us_line():
-    """장전 브리핑용: 간밤 미국증시(나스닥/S&P500)+원달러 한 줄. 데이터 못 가져오면 None.
+def _overnight_us_indices():
+    """장전 브리핑/카드뉴스 공용: 간밤 미국증시(나스닥/S&P500)+원달러 원시 수치.
     get_market_indices()는 백그라운드 캐시라 일회성 배치에선 빈 값이 나올 수 있어
-    동기 fetch_indices()를 직접 호출한다(야후 장애 시 조용히 생략)."""
+    동기 fetch_indices()를 직접 호출한다(야후 장애 시 조용히 생략). 못 가져오면 None."""
     try:
         import market_indices
         ix = market_indices.fetch_indices()
     except Exception:
         return None
+    if not ix:
+        return None
+    nasdaq, sp500 = ix.get("nasdaq"), ix.get("sp500")
+    if not (nasdaq or sp500):
+        return None
+    return {"nasdaq": nasdaq, "sp500": sp500, "usdkrw": ix.get("usdkrw")}
+
+
+def _overnight_us_line():
+    """위 원시 수치를 뉴스레터용 한 줄 텍스트로 포맷."""
+    ix = _overnight_us_indices()
     if not ix:
         return None
     parts = []
@@ -971,18 +982,17 @@ def _theme_examples(tmap, rk_by_code, no, n=3):
     return [r["name"] for r in pool[:n]]
 
 
-def _blog_draft_text():
-    """'장 열리기전 체크포인트' 블로그 초안(제목+본문) 생성.
-    네이버 블로그 자동 포스팅 API는 2020년에 종료되어(직접 확인함) 발행은 수동으로
-    해야 하지만, 초안은 매일 최신 데이터로 자동 완성해 복사만 하면 되게 한다.
-    주말/공휴일(휴장일)에는 장 소식이 없으므로 별도 안내 문구만 반환한다."""
+def _blog_draft_data():
+    """'장 열리기전 체크포인트'의 원시(구조화) 데이터만 계산 — 텍스트 조립은 안 함.
+    뉴스레터 텍스트(_blog_draft_text)와 인스타 카드뉴스 생성기가 이 함수를 공유해서
+    쓴다(카드뉴스는 완성된 텍스트를 다시 정규식으로 파싱하는 대신 이 구조화 데이터를
+    바로 받아씀 — 포맷이 바뀌어도 안 깨지고, 이모지 대신 원시 수치라 폰트 의존도 없음).
+    주말/공휴일(휴장일)에는 is_holiday=True만 반환."""
     from datetime import datetime, timezone, timedelta
     KST = timezone(timedelta(hours=9))
     now = datetime.now(KST)
-    title = f"{now.month}월 {now.day}일 장전 체크포인트 | 국내증시 브리핑"
-
     if _is_market_holiday(now):
-        return title, "오늘은 국내증시 휴장일이라 특별히 정리할 소식이 없어요. 다음 개장일에 다시 올게요!"
+        return {"date": now, "is_holiday": True}
 
     conn = _conn()
     disclosures = db.get_recent_disclosures(conn, limit=8)
@@ -1004,17 +1014,68 @@ def _blog_draft_text():
     tmap = get_tmap()
     rk_by_code = {r["code"]: r for r in rk}
 
+    earnings = []
+    for it in disclosures[:5]:
+        ni = it.get("ni_yoy")
+        tag = "surprise" if (ni is not None and ni >= 20) else "shock" if (ni is not None and ni <= -20) else None
+        earnings.append({"name": it["name"], "code": it["code"], "year": it["year"],
+                          "quarter": it["quarter"], "rev_yoy": it.get("rev_yoy"),
+                          "rev_qoq": it.get("rev_qoq"), "ni_yoy": ni, "tag": tag})
+
+    anomalies = [{"name": r["name"], "code": r["code"], **f}
+                 for r in rk for f in (r.get("flags") or [])]
+    anomalies.sort(key=lambda x: 0 if x["emoji"] == "\U0001F534" else 1)
+
+    mids = [m for maj in _cache["theme_groups"] for m in maj["mids"]
+            if m.get("used", 0) >= 3 and m.get("theme_count", 0) >= 1]
+    mids.sort(key=lambda m: (m["ret_1m"] is not None, m["ret_1m"]), reverse=True)
+    themes = []
+    for m in mids[:3]:
+        sub = [t for t in m["themes"] if t.get("used", 0) >= 3 and t["count"] >= 8]
+        sub.sort(key=lambda t: (t["ret_1m"] is not None, t["ret_1m"]), reverse=True)
+        sub_out = []
+        for t in sub[:3]:
+            examples = _theme_examples(tmap, rk_by_code, t["no"], 3)
+            sub_out.append({"name": t["name"], "ret_1m": t["ret_1m"], "examples": examples})
+        themes.append({"mid": m["mid"], "ret_1m": m["ret_1m"], "sub": sub_out})
+
+    return {
+        "date": now, "is_holiday": False,
+        "us_indices": _overnight_us_indices(),
+        "movers_date": movers_date, "gainers": gainers, "losers": losers,
+        "earnings": earnings, "anomalies": anomalies[:3], "themes": themes,
+    }
+
+
+def _blog_draft_text():
+    """'장 열리기전 체크포인트' 블로그 초안(제목+본문) 생성.
+    네이버 블로그 자동 포스팅 API는 2020년에 종료되어(직접 확인함) 발행은 수동으로
+    해야 하지만, 초안은 매일 최신 데이터로 자동 완성해 복사만 하면 되게 한다."""
+    data = _blog_draft_data()
+    now = data["date"]
+    title = f"{now.month}월 {now.day}일 장전 체크포인트 | 국내증시 브리핑"
+
+    if data["is_holiday"]:
+        return title, "오늘은 국내증시 휴장일이라 특별히 정리할 소식이 없어요. 다음 개장일에 다시 올게요!"
+
+    gainers, losers, movers_date = data["gainers"], data["losers"], data["movers_date"]
+
     lines = [
         "좋은 아침입니다 \U0001F44B 오늘 장 시작 전에 체크하면 좋을 국내증시 소식,",
         "코스피·코스닥 실적 발표랑 특징테마 위주로 정리해봤어요.",
         "",
     ]
 
-    us_line = _overnight_us_line()
-    if us_line:
-        lines.append(us_line)
-        lines.append("(국내 증시는 간밤 미국장 흐름에 영향을 받는 편이에요.)")
-        lines.append("")
+    ix = data["us_indices"]
+    if ix:
+        parts = [f"{ix[k]['name']} {ix[k]['chg_pct']:+.1f}%" for k in ("nasdaq", "sp500")
+                 if ix.get(k) and ix[k].get("chg_pct") is not None]
+        if parts:
+            usd = ix.get("usdkrw")
+            fx = f" / 원달러 {usd['price']:,.1f}원" if usd and usd.get("price") else ""
+            lines.append("\U0001F30F 간밤 미국증시 — " + " · ".join(parts) + fx)
+            lines.append("(국내 증시는 간밤 미국장 흐름에 영향을 받는 편이에요.)")
+            lines.append("")
 
     if gainers or losers:
         lines.append(f"\U0001F4C8 어제({movers_date}) 급등·급락 TOP{len(gainers) or len(losers)}")
@@ -1026,7 +1087,7 @@ def _blog_draft_text():
 
     lines.append("\U0001F4CA 실적 발표 브리핑 (어닝서프라이즈·어닝쇼크 체크)")
     lines.append("(가장 최근 실적 발표 기준 · 전년동기대비)")
-    for it in disclosures[:5]:
+    for it in data["earnings"]:
         rev, rev_q, ni = it.get("rev_yoy"), it.get("rev_qoq"), it.get("ni_yoy")
         if rev is not None:
             rev_tag = f"매출 {rev:+.1f}%"
@@ -1039,26 +1100,18 @@ def _blog_draft_text():
         lines.append(f"- {it['name']}({it['code']}) {it['year']}년 {it['quarter']}분기 실적: {rev_tag}{ni_tag}")
     lines.append("")
 
-    anomalies = [(r["name"], r["code"], f) for r in rk for f in (r.get("flags") or [])]
-    if anomalies:
-        anomalies.sort(key=lambda x: 0 if x[2]["emoji"] == "\U0001F534" else 1)
+    if data["anomalies"]:
         lines.append("\U0001F6A9 조심해서 봐야 할 이상신호 종목")
-        for name, code, f in anomalies[:3]:
-            lines.append(f"- {name}({code}) {f['label']}: {f['text']}")
+        for a in data["anomalies"]:
+            lines.append(f"- {a['name']}({a['code']}) {a['label']}: {a['text']}")
         lines.append("")
 
-    mids = [m for maj in _cache["theme_groups"] for m in maj["mids"]
-            if m.get("used", 0) >= 3 and m.get("theme_count", 0) >= 1]
-    mids.sort(key=lambda m: (m["ret_1m"] is not None, m["ret_1m"]), reverse=True)
-    if mids:
+    if data["themes"]:
         lines.append("\U0001F525 요즘 주도테마 · 특징테마 (최근 1개월 수익률)")
-        for m in mids[:3]:
+        for m in data["themes"]:
             lines.append(f"- {m['mid']}: {m['ret_1m']:+.1f}%")
-            sub = [t for t in m["themes"] if t.get("used", 0) >= 3 and t["count"] >= 8]
-            sub.sort(key=lambda t: (t["ret_1m"] is not None, t["ret_1m"]), reverse=True)
-            for t in sub[:3]:
-                examples = _theme_examples(tmap, rk_by_code, t["no"], 3)
-                ex = f" (예: {', '.join(examples)})" if examples else ""
+            for t in m["sub"]:
+                ex = f" (예: {', '.join(t['examples'])})" if t["examples"] else ""
                 lines.append(f"  - {t['name']}: {t['ret_1m']:+.1f}%{ex}")
         lines.append("")
 
