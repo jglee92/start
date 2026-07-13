@@ -876,9 +876,11 @@ def _earning_tag(pct):
 
 
 def _overnight_us_indices():
-    """장전 브리핑/카드뉴스 공용: 간밤 미국증시(나스닥/S&P500)+원달러 원시 수치.
-    get_market_indices()는 백그라운드 캐시라 일회성 배치에선 빈 값이 나올 수 있어
-    동기 fetch_indices()를 직접 호출한다(야후 장애 시 조용히 생략). 못 가져오면 None."""
+    """장전 브리핑/카드뉴스 공용: 나스닥/S&P500/원달러 + 코스피/코스닥 당일 등락 원시 수치.
+    코스피·코스닥은 인스타 표지 헤드라인에서 '오늘 코스피 급락' 같은, 실적(분기 전 데이터)
+    보다 훨씬 시의성 있는 소재로 쓰려고 추가함. get_market_indices()는 백그라운드 캐시라
+    일회성 배치에선 빈 값이 나올 수 있어 동기 fetch_indices()를 직접 호출한다(야후 장애
+    시 조용히 생략). 못 가져오면 None."""
     try:
         import market_indices
         ix = market_indices.fetch_indices()
@@ -889,7 +891,27 @@ def _overnight_us_indices():
     nasdaq, sp500 = ix.get("nasdaq"), ix.get("sp500")
     if not (nasdaq or sp500):
         return None
-    return {"nasdaq": nasdaq, "sp500": sp500, "usdkrw": ix.get("usdkrw")}
+    return {"nasdaq": nasdaq, "sp500": sp500, "usdkrw": ix.get("usdkrw"),
+            "kospi": ix.get("kospi"), "kosdaq": ix.get("kosdaq")}
+
+
+def _kr_index_streak(key):
+    """코스피/코스닥의 최근 며칠 연속 등락 흐름 — '며칠 하락하다 오늘 반등?',
+    '상승장에서 오늘 조정?' 같은 카드 헤드라인용. 최근 6거래일 종가로 일별
+    등락률 5개를 계산해 반환(마지막 값이 오늘). 실패하면 None."""
+    try:
+        import market_indices
+        hist = market_indices.fetch_history(key, "1mo")
+    except Exception:
+        return None
+    pts = hist["points"] if hist else []
+    if len(pts) < 6:
+        return None
+    closes = [p["c"] for p in pts[-6:]]
+    rets = [(closes[i] / closes[i - 1] - 1) * 100 for i in range(1, len(closes)) if closes[i - 1]]
+    if len(rets) < 5:
+        return None
+    return {"name": hist["name"], "returns": rets}
 
 
 def _overnight_us_line():
@@ -1067,8 +1089,9 @@ def _blog_draft_data():
     return {
         "date": now, "is_holiday": False,
         "us_indices": _overnight_us_indices(),
+        "kr_trend": {"kospi": _kr_index_streak("kospi"), "kosdaq": _kr_index_streak("kosdaq")},
         "movers_date": movers_date, "gainers": gainers, "losers": losers,
-        "earnings": earnings, "anomalies": anomalies[:3], "themes": themes,
+        "earnings": earnings, "anomalies": anomalies, "themes": themes,
     }
 
 

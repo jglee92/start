@@ -1,46 +1,22 @@
 [
  {
-  "date": "2026-07-13",
-  "template_id": "dont_miss"
- },
- {
-  "date": "2026-07-13",
-  "template_id": "gainer_pct"
- },
- {
-  "date": "2026-07-13",
-  "template_id": "theme_hot"
- },
- {
-  "date": "2026-07-13",
+  "date": "2026-07-14",
   "template_id": "earnings_extreme"
  },
  {
-  "date": "2026-07-13",
+  "date": "2026-07-15",
+  "template_id": "correction"
+ },
+ {
+  "date": "2026-07-16",
   "template_id": "anomaly_count"
  },
  {
-  "date": "2026-07-13",
-  "template_id": "earnings_split"
- },
- {
-  "date": "2026-07-13",
-  "template_id": "us_market"
- },
- {
-  "date": "2026-07-13",
-  "template_id": "five_things"
- },
- {
-  "date": "2026-07-13",
-  "template_id": "earnings_extreme"
- },
- {
-  "date": "2026-07-13",
-  "template_id": "five_things"
+  "date": "2026-07-14",
+  "template_id": "kospi_move"
  },
  {
   "date": "2026-07-14",
-  "template_id": "earnings_extreme"
+  "template_id": "gainer_pct"
  }
 ]

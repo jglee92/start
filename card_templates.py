@@ -30,13 +30,16 @@ def _t_gainer_pct(data):
 
 def _t_earnings_extreme(data):
     """실적 중 순이익 증감률(ni_yoy)이 가장 극단적인(서프라이즈든 쇼크든) 1건을 헤드라인에.
-    +457% 같은 압도적인 숫자가 있는데 earnings_split(건수 요약)이 뽑혀서 묻히는 걸 방지."""
+    +457% 같은 압도적인 숫자가 있는데 earnings_split(건수 요약)이 뽑혀서 묻히는 걸 방지.
+    임팩트는 80에서 상한(실적은 최근 1개월 내 '과거' 공시라, 코스피 폭락처럼 '오늘'
+    일어난 시장 전체 이슈보다 과하게 세게 잡히면 안 돼서 — 퍼센트가 아무리 커도
+    개별종목 실적 하나가 시장 급락보다 항상 이기는 건 부자연스러움)."""
     cands = [e for e in data["earnings"] if e.get("ni_yoy") is not None]
     top = max(cands, key=lambda e: abs(e["ni_yoy"]))
     sign = "+" if top["ni_yoy"] >= 0 else ""
     word = "실적 서프라이즈" if top["ni_yoy"] >= 0 else "어닝쇼크"
     return ([f"{top['name']} 순이익 {sign}{top['ni_yoy']:.0f}%", word],
-            "오늘 실적 발표, 서프라이즈부터 쇼크까지 총정리", abs(top["ni_yoy"]))
+            "오늘 실적 발표, 서프라이즈부터 쇼크까지 총정리", min(abs(top["ni_yoy"]), 80))
 
 
 def _t_earnings_split(data):
@@ -68,6 +71,78 @@ def _t_us_market(data):
             "장 시작 전 5분, 미국장·환율 체크", 6)
 
 
+KOSPI_MOVE_MIN = 1.0   # 이 이상 움직여야 후보에 듦(평범한 ±0.수%는 아예 후보 제외)
+FX_MOVE_MIN = 0.5
+
+
+def _t_kospi_move(data):
+    """코스피/코스닥 당일 등락 — 실적(분기 전 데이터)보다 훨씬 시의성 있는 '오늘'
+    소식이라, 크게 흔들린 날엔 다른 템플릿보다 우선 뽑히도록 임팩트에 배율(18배)을
+    준다. _eligible()에서 KOSPI_MOVE_MIN 이상일 때만 후보로 들어오므로, 사소한
+    변동에는 아예 뽑히지 않고(다른 템플릿에 자리를 내줌) 진짜 급등락일 때만 경쟁."""
+    ix = data["us_indices"]
+    cands = [(ix[k]["name"], ix[k]["chg_pct"]) for k in ("kospi", "kosdaq")
+             if ix.get(k) and ix[k].get("chg_pct") is not None]
+    name, pct = max(cands, key=lambda c: abs(c[1]))
+    mood = "급등" if pct >= 0 else "급락"
+    sign = "+" if pct >= 0 else ""
+    return ([f"{name} 오늘 {sign}{pct:.1f}%", f"{mood}, 무슨 일이?"],
+            "오늘 국내 증시 흐름 한눈에 정리", abs(pct) * 30)
+
+
+def _t_fx_move(data):
+    """원달러 환율 급변 — 이것도 '오늘' 소식이라 실적류보다 우선순위를 높게(28배).
+    FX_MOVE_MIN 미만이면 애초에 후보로 안 들어옴."""
+    usd = data["us_indices"]["usdkrw"]
+    pct = usd["chg_pct"]
+    mood = "급등" if pct >= 0 else "급락"
+    sign = "+" if pct >= 0 else ""
+    return ([f"원달러 환율 오늘 {sign}{pct:.1f}%", mood],
+            f"{usd['price']:,.1f}원 — 오늘 환율·증시 체크", abs(pct) * 35)
+
+
+def _detect_trend(data):
+    """kr_trend(app.py::_kr_index_streak 결과)에서 '며칠 하락 끝에 반등' /
+    '상승 흐름 속 오늘 조정' 패턴을 찾는다. returns의 마지막 값이 오늘, 그 앞 4개가
+    최근 4거래일. 오늘이 그 앞 연속 흐름과 반대 방향이고 그 연속이 2일 이상이면 감지.
+    코스피·코스닥 둘 다 감지되면 연속일수가 더 긴 쪽을 우선. 없으면 None."""
+    best = None
+    for key in ("kospi", "kosdaq"):
+        t = (data.get("kr_trend") or {}).get(key)
+        if not t or len(t["returns"]) < 5:
+            continue
+        today = t["returns"][-1]
+        prior = t["returns"][:-1]
+        if today > 0:
+            streak, kind = 0, "rebound"
+        elif today < 0:
+            streak, kind = 0, "correction"
+        else:
+            continue
+        opposite = (lambda r: r < 0) if kind == "rebound" else (lambda r: r > 0)
+        for r in reversed(prior):
+            if opposite(r):
+                streak += 1
+            else:
+                break
+        if streak >= 2 and (best is None or streak > best[2]):
+            best = (t["name"], kind, streak, today)
+    return best
+
+
+def _t_rebound(data):
+    name, _kind, streak, today = data["_trend"]
+    sign = "+" if today >= 0 else ""
+    return ([f"{name} {streak}일 하락 끝에", f"오늘 {sign}{today:.1f}% 반등"],
+            "며칠간 눌렸던 지수, 드디어 반등하나", 10 + streak * 6)
+
+
+def _t_correction(data):
+    name, _kind, streak, today = data["_trend"]
+    return ([f"{name} {streak}일 연속 상승 후", f"오늘 {today:.1f}%, 조정 시작?"],
+            "상승장 속 첫 흔들림, 조정일까 숨고르기일까", 10 + streak * 6)
+
+
 def _t_five_things(data):
     return (["오늘 장 시작 전", "꼭 봐야 할 5가지"],
             "코스피·코스닥 실적·특징테마 한눈에 정리", 5)
@@ -86,6 +161,10 @@ TEMPLATES = [
     ("anomaly_count", ["anomalies"], _t_anomaly_count),
     ("theme_hot", ["themes"], _t_theme_hot),
     ("us_market", ["us_indices"], _t_us_market),
+    ("kospi_move", ["_kr_index"], _t_kospi_move),
+    ("fx_move", ["_fx"], _t_fx_move),
+    ("rebound", ["_rebound"], _t_rebound),
+    ("correction", ["_correction"], _t_correction),
     ("five_things", [], _t_five_things),
     ("dont_miss", [], _t_dont_miss),
 ]
@@ -110,6 +189,28 @@ def _eligible(tid, requires, data):
             if not any(e.get("ni_yoy") is not None for e in data["earnings"]):
                 return False
             continue
+        if req == "_kr_index":
+            ix = data.get("us_indices") or {}
+            moves = [abs(ix[k]["chg_pct"]) for k in ("kospi", "kosdaq")
+                     if ix.get(k) and ix[k].get("chg_pct") is not None]
+            if not moves or max(moves) < KOSPI_MOVE_MIN:
+                return False
+            continue
+        if req == "_fx":
+            ix = data.get("us_indices") or {}
+            usd = ix.get("usdkrw")
+            if not (usd and usd.get("chg_pct") is not None and usd.get("price")
+                    and abs(usd["chg_pct"]) >= FX_MOVE_MIN):
+                return False
+            continue
+        if req == "_rebound":
+            if not (data.get("_trend") and data["_trend"][1] == "rebound"):
+                return False
+            continue
+        if req == "_correction":
+            if not (data.get("_trend") and data["_trend"][1] == "correction"):
+                return False
+            continue
         if not data.get(req):
             return False
     return True
@@ -123,6 +224,7 @@ def pick_cover_headline(data, name_of, today_str):
     '형태'는 후보에서 제외해 로테이션을 유지한다."""
     data = dict(data)
     data["_name_of"] = name_of
+    data["_trend"] = _detect_trend(data)
 
     hist = _load_history()
     recent_ids = {h["template_id"] for h in hist if h["date"] >= _days_ago(today_str, NO_REPEAT_DAYS)}
