@@ -268,11 +268,32 @@ def render_earnings(data, date_str, page, total):
     return img
 
 
+_ANOMALY_HEADLINES = {
+    "적자 전환": ["흑자에서", "적자로 전환"],
+    "비적정 감사의견": ["감사의견", "적정 아님"],
+    "영업외 손익 의존": ["영업이익 적자,", "순이익만 흑자"],
+    "부채비율 급증": ["부채비율", "급격히 늘었다"],
+    "매출": ["매출이", "계속 줄고 있다"],  # '매출 2년/2분기 연속 감소' 공통 매칭
+}
+
+
+def _anomaly_headline(anomalies):
+    if not anomalies:
+        return ["오늘은 특별한", "위험신호 없음"]
+    label = anomalies[0]["label"]
+    for key, headline in _ANOMALY_HEADLINES.items():
+        if key in label:
+            return headline
+    return ["조심해서 봐야 할", "재무 신호"]
+
+
 def render_anomaly(data, date_str, page, total):
-    """경고 카드 — CTA(주황) 색과 섞이지 않게 위험신호는 항상 빨강 계열로 통일."""
+    """경고 카드 — CTA(주황) 색과 섞이지 않게 위험신호는 항상 빨강 계열로 통일.
+    이제 이상신호가 항상 '적자전환'만 나오는 게 아니라(로테이션으로 다양해짐),
+    헤드라인도 실제 1번 항목 라벨에 맞춰 동적으로 바뀐다."""
     img = _bg()
     d = ImageDraw.Draw(img)
-    y = _header(d, "03 · 조심해서 봐야 할 신호", ["흑자에서", "적자로 전환"],
+    y = _header(d, "03 · 조심해서 봐야 할 신호", _anomaly_headline(data["anomalies"]),
                 eyebrow_color=BAD, y=PAD)
     y += 24
     box_h, gap = 88, 18

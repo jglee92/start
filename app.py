@@ -1022,15 +1022,35 @@ def _blog_draft_data():
                           "quarter": it["quarter"], "rev_yoy": it.get("rev_yoy"),
                           "rev_qoq": it.get("rev_qoq"), "ni_yoy": ni, "tag": tag})
 
-    anomalies = [{"name": r["name"], "code": r["code"], **f}
-                 for r in rk for f in (r.get("flags") or [])]
-    anomalies.sort(key=lambda x: 0 if x["emoji"] == "\U0001F534" else 1)
+    import random
+    day_seed = random.Random(now.strftime("%Y-%m-%d"))  # 날짜로 시드 고정 — 같은 날 안에서는
+                                                          # 안정적이고, 날마다 다르게 로테이션
 
-    mids = [m for maj in _cache["theme_groups"] for m in maj["mids"]
-            if m.get("used", 0) >= 3 and m.get("theme_count", 0) >= 1]
-    mids.sort(key=lambda m: (m["ret_1m"] is not None, m["ret_1m"]), reverse=True)
+    all_anomalies = [{"name": r["name"], "code": r["code"], **f}
+                      for r in rk for f in (r.get("flags") or [])]
+    reds = [a for a in all_anomalies if a["emoji"] == "\U0001F534"]
+    yellows = [a for a in all_anomalies if a["emoji"] != "\U0001F534"]
+    # 빨강(고심각도)은 '다양성'을 이유로 절대 누락하지 않음 — 최대 5개까지 전부 노출.
+    # 노랑은 날짜별로 로테이션해서 매일 다른 종목이 섞여 보이게(항상 2개까지).
+    reds = reds[:5]
+    yellows_shuffled = yellows[:]
+    day_seed.shuffle(yellows_shuffled)
+    anomalies = reds + yellows_shuffled[:2]
+
+    mids_all = [m for maj in _cache["theme_groups"] for m in maj["mids"]
+                if m.get("used", 0) >= 3 and m.get("theme_count", 0) >= 1]
+    mids_all.sort(key=lambda m: (m["ret_1m"] is not None, m["ret_1m"]), reverse=True)
+    # 매번 순위 그대로면 1개월 수익률이 완만하게 바뀌는 지표 특성상 며칠씩 똑같은 테마만
+    # 보여주게 됨 — 1위는 그대로 두고(가장 화제성 있는 테마), 나머지 2개는 상위 8개 안에서
+    # 날짜별로 로테이션해 매일 다른 조합이 나오게 한다.
+    top_pool = mids_all[:8]
+    themes_pick = top_pool[:1]
+    rest_pool = top_pool[1:]
+    day_seed.shuffle(rest_pool)
+    themes_pick += rest_pool[:2]
+
     themes = []
-    for m in mids[:3]:
+    for m in themes_pick:
         sub = [t for t in m["themes"] if t.get("used", 0) >= 3 and t["count"] >= 8]
         sub.sort(key=lambda t: (t["ret_1m"] is not None, t["ret_1m"]), reverse=True)
         sub_out = []

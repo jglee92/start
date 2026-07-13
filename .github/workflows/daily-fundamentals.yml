@@ -1,9 +1,12 @@
-name: 주간 재무·배당 갱신
+name: 재무·배당 갱신
 
 on:
   schedule:
-    # 매주 월요일 UTC 10:30 = KST 19:30 (일일 가격 갱신 이후)
-    - cron: '30 10 * * 1'
+    # 매 평일 UTC 10:30 = KST 19:30 (일일 가격 갱신 이후). 원래 매주 월요일 1회였으나,
+    # 기업들이 분기보고서를 월요일에 몰아서 내는 게 아니라 주중 여러 날 나눠 공시하므로
+    # 매일로 늘려서 실적·이상신호 콘텐츠가 매일 새로워지게 함(DART 일일 한도 2만 건
+    # 대비 현재 유니버스 호출량은 여유 충분).
+    - cron: '30 10 * * 1-5'
   workflow_dispatch: {}
 
 permissions:
@@ -37,7 +40,7 @@ jobs:
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add data/screener_deploy.db
           git diff --staged --quiet && echo "변경 없음" || \
-            (git commit -m "chore: 주간 재무·배당 갱신 $(date -u +%Y-%m-%d)" && git push)
+            (git commit -m "chore: 재무·배당 갱신 $(date -u +%Y-%m-%d)" && git push)
 
       - name: 서버 캐시 갱신 (재시작 없이 새 데이터 반영)
         run: |
