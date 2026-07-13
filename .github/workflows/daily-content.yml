@@ -5,6 +5,8 @@ on:
     # 매 평일 UTC 22:30 = KST 07:30 (다음날). 일~목 UTC로 지정해야 월~금 KST 아침이 된다.
     # daily-prices.yml이 전날 저녁(KST 19:00)에 이미 최신 시세를 반영해두므로 이 시각에
     # 실행해도 데이터는 최신 상태. 휴장일엔 daily_content.py가 자동으로 아무것도 안 만듦.
+    # 인스타 게시는 여기서 바로 하지 않고 daily-instagram-post.yml이 08:00에 따로 함
+    # (콘텐츠 생성과 게시 시간을 분리해달라는 요청 반영).
     - cron: '30 22 * * 0-4'
   workflow_dispatch: {}
 
@@ -36,12 +38,3 @@ jobs:
           git add content_out/
           git diff --staged --quiet && echo "변경 없음" || \
             (git commit -m "chore: 오늘자 블로그·인스타 콘텐츠 생성 $(date -u +%Y-%m-%d)" && git push)
-
-      - name: raw.githubusercontent.com 반영 대기
-        run: sleep 15
-
-      - name: 인스타그램 자동 게시
-        env:
-          INSTAGRAM_ACCESS_TOKEN: ${{ secrets.INSTAGRAM_ACCESS_TOKEN }}
-          INSTAGRAM_BUSINESS_ID: ${{ secrets.INSTAGRAM_BUSINESS_ID }}
-        run: python post_to_instagram.py

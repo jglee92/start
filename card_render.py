@@ -248,7 +248,9 @@ def render_earnings(data, date_str, page, total):
 
     if shocks:
         row_h = 64
-        box_h = 56 + row_h * len(shocks) + 20
+        # 매출 서브텍스트 한 줄이 마지막 엔트리 아래로 삐져나가는 문제가 있었음(+20으론
+        # 부족해서 박스 테두리에 살짝 겹침, 개수 무관하게 고정적으로 발생) — +40으로 여유.
+        box_h = 56 + row_h * len(shocks) + 40
         _box(d, PAD, y, box_w, box_h, BAD, (36, 18, 18))
         bx, by = PAD + 28, y + 24
         d.ellipse([bx, by + 4, bx + 14, by + 18], fill=BAD)

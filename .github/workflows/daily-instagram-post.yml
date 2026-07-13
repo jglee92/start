@@ -1,0 +1,31 @@
+name: 인스타그램 자동 게시
+
+on:
+  schedule:
+    # 매 평일 UTC 23:00 = KST 08:00 (다음날). daily-content.yml(07:30)이 그날 콘텐츠를
+    # 이미 커밋해둔 뒤라, 여기서는 재생성 없이 오늘자 content_out/ 폴더를 그대로 게시만
+    # 한다 — 콘텐츠 생성(7:30)과 게시(8:00) 시간을 분리해달라는 요청 반영.
+    - cron: '0 23 * * 0-4'
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+jobs:
+  post:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: 의존성 설치
+        run: pip install requests
+
+      - name: 인스타그램 자동 게시
+        env:
+          INSTAGRAM_ACCESS_TOKEN: ${{ secrets.INSTAGRAM_ACCESS_TOKEN }}
+          INSTAGRAM_BUSINESS_ID: ${{ secrets.INSTAGRAM_BUSINESS_ID }}
+        run: python post_to_instagram.py
