@@ -19,7 +19,11 @@ import time
 
 import requests
 
-API = "https://graph.facebook.com/v21.0"
+# "Instagram API with Instagram Login"(페이스북 페이지 경유 없이 인스타 계정으로 직접
+# 로그인하는 최신 방식)으로 발급한 토큰은 'IGAG...' 형태이고, graph.facebook.com이 아니라
+# graph.instagram.com 으로 요청해야 인식됨 — 처음엔 이걸 몰라서 "토큰을 파싱할 수 없음"
+# 에러가 계속 났음(토큰 자체는 액세스 토큰 디버거에서 유효함을 확인했었음).
+API = "https://graph.instagram.com/v21.0"
 
 
 def _raw_url(repo, branch, path):
