@@ -995,7 +995,12 @@ def _blog_draft_data():
         return {"date": now, "is_holiday": True}
 
     conn = _conn()
-    disclosures = db.get_recent_disclosures(conn, limit=8)
+    # 최근 1개월 이내 공시만 — 그보다 오래된 건 '오늘 브리핑'에 넣기엔 철 지난 소식이라
+    # 제외(넉넉한 풀에서 가져온 뒤 날짜로 거른다. limit=8이면 공시 뜸한 날 오래된 것까지
+    # 끌려올 수 있어 limit을 키움).
+    one_month_ago = (now - timedelta(days=30)).strftime("%Y-%m-%d")
+    disclosures = [d for d in db.get_recent_disclosures(conn, limit=60)
+                   if d["disclosed_date"] >= one_month_ago]
     rk = get_ranking()
     codes = [r["code"] for r in rk]
     gainers, losers, movers_date = _period_movers(conn, codes, offset=1, n=3)
@@ -1105,20 +1110,21 @@ def _blog_draft_text():
             lines.append(f"- (급락) {_name_of(code)}({code}): {pct:+.1f}%")
         lines.append("")
 
-    lines.append("\U0001F4CA 실적 발표 브리핑 (어닝서프라이즈·어닝쇼크 체크)")
-    lines.append("(가장 최근 실적 발표 기준 · 전년동기대비)")
-    for it in data["earnings"]:
-        rev, rev_q, ni = it.get("rev_yoy"), it.get("rev_qoq"), it.get("ni_yoy")
-        if rev is not None:
-            rev_tag = f"매출 {rev:+.1f}%"
-        elif rev_q is not None:
-            rev_tag = f"매출(전분기) {rev_q:+.1f}%"
-        else:
-            rev_tag = "매출 데이터 부족(금융업 등 업종 특성)"
-        # 어닝서프라이즈/쇼크 판정은 매출보다 이익이 핵심이라 순이익에 태그를 붙인다.
-        ni_tag = f" · 순이익 {ni:+.1f}%{_earning_tag(ni)}" if ni is not None else ""
-        lines.append(f"- {it['name']}({it['code']}) {it['year']}년 {it['quarter']}분기 실적: {rev_tag}{ni_tag}")
-    lines.append("")
+    if data["earnings"]:
+        lines.append("\U0001F4CA 실적 발표 브리핑 (어닝서프라이즈·어닝쇼크 체크)")
+        lines.append("(최근 1개월 내 실적 발표 기준 · 전년동기대비)")
+        for it in data["earnings"]:
+            rev, rev_q, ni = it.get("rev_yoy"), it.get("rev_qoq"), it.get("ni_yoy")
+            if rev is not None:
+                rev_tag = f"매출 {rev:+.1f}%"
+            elif rev_q is not None:
+                rev_tag = f"매출(전분기) {rev_q:+.1f}%"
+            else:
+                rev_tag = "매출 데이터 부족(금융업 등 업종 특성)"
+            # 어닝서프라이즈/쇼크 판정은 매출보다 이익이 핵심이라 순이익에 태그를 붙인다.
+            ni_tag = f" · 순이익 {ni:+.1f}%{_earning_tag(ni)}" if ni is not None else ""
+            lines.append(f"- {it['name']}({it['code']}) {it['year']}년 {it['quarter']}분기 실적: {rev_tag}{ni_tag}")
+        lines.append("")
 
     if data["anomalies"]:
         lines.append("\U0001F6A9 조심해서 봐야 할 이상신호 종목")
