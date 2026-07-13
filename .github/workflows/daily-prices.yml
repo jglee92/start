@@ -34,3 +34,8 @@ jobs:
           git add data/screener_deploy.db
           git diff --staged --quiet && echo "변경 없음" || \
             (git commit -m "chore: 일일 가격 갱신 $(date -u +%Y-%m-%d)" && git push)
+
+      - name: 서버 캐시 갱신 (재시작 없이 새 데이터 반영)
+        run: |
+          curl -sf -X POST https://getmoneycheckup.com/api/refresh || \
+            echo "::warning::/api/refresh 호출 실패 — 서버가 자연 재시작될 때까지 이전 캐시로 서빙됨"
