@@ -495,7 +495,7 @@ def render_company_review(data, date_str, page, total, section_no):
     headline = f"{f['name']} 건강점수 {f['score']:.1f}점"
     _center_display(d, headline, 36, cx, y, INK)
     y += 50
-    _center_text(d, f"{f['code']} · 업종 내 랭킹 {f['rank']}위(참고용)", font("regular", 20), cx, y, DIM)
+    _center_text(d, f"{f['code']} · 건강점수 랭킹 {f['rank']}위(참고용)", font("regular", 20), cx, y, DIM)
     y += 44
 
     dims = f["dims"]

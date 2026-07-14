@@ -1165,7 +1165,7 @@ def _featured_lines(f):
     # 건강검진 결과처럼 읽히는 점수를 앞세우고, 등수는 참고용으로만 괄호에 덧붙인다.
     dims = f["dims"]
     lines = [f"\U0001F3E5 이달의 기업 종합검진 — {f['name']}({f['code']}) 건강점수 {f['score']:.1f}점"
-             f" (참고용 업종 내 랭킹 {f['rank']}위)"]
+             f" (참고용 건강점수 랭킹 {f['rank']}위)"]
     for key, label in _DIM_ORDER:
         d_ = dims[key]
         lines.append(f"- {label} {_stars_text(d_['stars'])} {d_['label']}: {d_['text']}")
