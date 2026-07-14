@@ -1015,6 +1015,31 @@ def _score_movers(rk_now, rk_past, n=3):
     return up, down
 
 
+def _trading_day_ordinal(now):
+    """이번 달 1일부터 오늘까지(포함) 개장일수 — '이달의 기업 종합검진'에서 몇 번째
+    영업일인지로 오늘 보여줄 순위를 정하는 데 씀."""
+    from datetime import timedelta
+    d = now.replace(day=1)
+    count = 0
+    while d.date() <= now.date():
+        if not _is_market_holiday(d):
+            count += 1
+        d += timedelta(days=1)
+    return count
+
+
+def _company_of_the_day(rk, now):
+    """랭킹 1~20위를 영업일마다 하나씩 순서대로 보여준다(한 달이 보통 영업일
+    20일 안팎이라 대략 한 달에 한 바퀴 도는 셈) — 매번 1위만 나오는 것보다
+    상위권 전체를 골고루 노출하려는 의도."""
+    if not rk:
+        return None
+    ordinal = _trading_day_ordinal(now)
+    rank = ((ordinal - 1) % 20) + 1
+    rank = min(rank, len(rk))
+    return rk[rank - 1]
+
+
 def _theme_examples(tmap, rk_by_code, no, n=3):
     """테마 구성종목 중 시총 상위 n개 이름(블로그 초안용 예시 종목)."""
     t = tmap.get("themes", {}).get(no)
@@ -1113,7 +1138,31 @@ def _blog_draft_data():
         "kr_trend": {"kospi": _kr_index_streak("kospi"), "kosdaq": _kr_index_streak("kosdaq")},
         "movers_date": movers_date, "gainers": gainers, "losers": losers,
         "earnings": earnings, "anomalies": anomalies, "themes": themes,
+        "featured": _company_of_the_day(rk, now),
     }
+
+
+_DIM_ORDER = [("value", "밸류에이션"), ("profit", "수익성"), ("safety", "안정성"), ("growth", "성장성")]
+
+
+def _stars_text(n):
+    n = n or 0
+    return "★" * n + "☆" * (5 - n)
+
+
+def _featured_lines(f):
+    """'이달의 기업 종합검진' 섹션 — 랭킹 1~20위를 영업일마다 하나씩 순서대로 보여주는
+    우리만의 차별 콘텐츠(전 종목 스크리닝·회계감사의견까지 보여주는 게 강점이라,
+    그 강점을 매일 실제 종목 하나로 직접 보여주는 섹션)."""
+    dims = f["dims"]
+    lines = [f"\U0001F3E5 이달의 기업 종합검진 — {f['name']}({f['code']}) 종합랭킹 {f['rank']}위"]
+    for key, label in _DIM_ORDER:
+        d_ = dims[key]
+        lines.append(f"- {label} {_stars_text(d_['stars'])} {d_['label']}: {d_['text']}")
+    if dims.get("overall_text"):
+        lines.append(dims["overall_text"])
+    lines.append("")
+    return lines
 
 
 def _blog_draft_text():
@@ -1184,6 +1233,9 @@ def _blog_draft_text():
                 ex = f" (예: {', '.join(t['examples'])})" if t["examples"] else ""
                 lines.append(f"  - {t['name']}: {t['ret_1m']:+.1f}%{ex}")
         lines.append("")
+
+    if data.get("featured"):
+        lines += _featured_lines(data["featured"])
 
     lines.append(f"\U0001F449 위에 나온 종목들 재무제표·회계감사의견(적정/한정)까지, "
                   f"머니체크업에서 무료로 바로 확인하세요.")

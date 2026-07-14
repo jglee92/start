@@ -226,6 +226,42 @@ def _sign_color(v):
     return GOOD if v is not None and v >= 0 else BAD
 
 
+def _grade_color(label):
+    """4차원 등급 라벨(factor/interpret.py::LABELS)을 색으로 — 개별 항목마다 다른
+    색을 주기보다, 등급 자체의 좋고 나쁨을 의미하는 색으로 통일(기존 초록=좋음/
+    빨강=주의 관례를 그대로 따름)."""
+    if label in ("매우 우수", "우수"):
+        return GOOD
+    if label in ("미흡", "부족"):
+        return BAD
+    return DIM  # 보통 / 데이터 없음
+
+
+def _dim_box(d, x, y, w, h, label, dim):
+    """기업 종합검진 4차원(밸류에이션/수익성/안정성/성장성) 박스 하나 — 라벨+별점
+    한 줄, 등급 텍스트 한 줄, 설명 문장(줄바꿈)."""
+    d.rounded_rectangle([x, y, x + w, y + h], radius=16, outline=RULE, width=2)
+    pad = 20
+    tx, ty = x + pad, y + pad
+    d.text((tx, ty), label, font=font("bold", 21), fill=INK)
+
+    stars = dim["stars"] or 0
+    star_fnt = font("bold", 19)
+    filled, empty = "★" * stars, "☆" * (5 - stars)
+    ew = d.textlength(empty, font=star_fnt)
+    fw = d.textlength(filled, font=star_fnt)
+    ex_ = x + w - pad - ew
+    d.text((ex_ - fw, ty + 2), filled, font=star_fnt, fill=ORANGE)
+    d.text((ex_, ty + 2), empty, font=star_fnt, fill=RULE)
+
+    ty += 36
+    d.text((tx, ty), dim["label"], font=font("bold", 18), fill=_grade_color(dim["label"]))
+    ty += 30
+    for line in _wrap(d, dim["text"], font("regular", 17), w - pad * 2)[:4]:
+        d.text((tx, ty), line, font=font("regular", 17), fill=INK_SOFT)
+        ty += 24
+
+
 # ---------------- 카드별 렌더 ----------------
 
 def render_cover(headline_lines, subtitle, date_str, page, total):
@@ -435,6 +471,43 @@ def render_theme_cta(data, date_str, page, total, section_no):
     return img
 
 
+_DIM_ORDER = [("value", "밸류에이션"), ("profit", "수익성"), ("safety", "안정성"), ("growth", "성장성")]
+
+
+def render_company_review(data, date_str, page, total, section_no):
+    """마지막 장 — '오늘의 기업리뷰'. 랭킹 1~20위를 영업일마다 하나씩 순서대로 보여줘
+    (app.py::_company_of_the_day) 전 종목 스크리닝·회계감사의견까지 보여준다는 우리
+    강점을 매일 실제 종목 하나로 직접 증명하는 클로징 카드."""
+    img, d = _notepad_card()
+    x0, y0, x1, y1 = CARD
+    cx = (x0 + x1) // 2
+    ex, ey = x0 + 56, x1 - 56
+    y = _masthead(img, d, ex, ey, y0 + 46, f"{section_no:02d} · 오늘의 기업리뷰", f"{date_str}")
+
+    f = data.get("featured")
+    if not f:
+        _center_display(d, "오늘의 기업리뷰 준비 중", 34, cx, y + 80, INK)
+        _footer(img, d, x0, x1, y1, date_str, page, total)
+        return img
+
+    headline = f"{f['name']} 종합랭킹 {f['rank']}위"
+    _center_display(d, headline, 36, cx, y, INK)
+    y += 50
+    _center_text(d, f"종합점수 {f['score']:.1f}점 · {f['code']}", font("regular", 20), cx, y, DIM)
+    y += 44
+
+    dims = f["dims"]
+    box_w = (ey - ex - 20) / 2
+    box_h = 210
+    for i, (key, label) in enumerate(_DIM_ORDER):
+        bx = ex + (i % 2) * (box_w + 20)
+        by = y + (i // 2) * (box_h + 20)
+        _dim_box(d, bx, by, box_w, box_h, label, dims[key])
+
+    _footer(img, d, x0, x1, y1, date_str, page, total)
+    return img
+
+
 def generate_cards(data, name_of, headline_lines, subtitle, date_str, out_dir="cards_out"):
     """data: app.py::_blog_draft_data() 결과. 섹션이 없는 날은 그 카드를 건너뛰어
     장수가 유동적으로 줄어든다(예: 실적발표 없는 날 실적 카드 생략)."""
@@ -449,9 +522,10 @@ def generate_cards(data, name_of, headline_lines, subtitle, date_str, out_dir="c
         sections.append("earnings")
     if data["anomalies"]:
         sections.append("anomaly")
-    # CTA(테마+CTA 카드)는 항상 마지막에 정확히 1장 — 테마 데이터가 없는 날도
-    # CTA 자체는 있어야 하므로 섹션 유무와 무관하게 항상 추가한다.
+    # CTA(테마+CTA 카드)는 데이터 유무와 무관하게 항상 추가.
     sections.append("theme_cta")
+    # 오늘의 기업리뷰(랭킹 1~20위 영업일 로테이션)는 항상 맨 마지막 장으로 마무리.
+    sections.append("company_review")
 
     total = 1 + len(sections)  # 총 장수를 렌더링 전에 먼저 확정(페이지 번호 불일치 방지)
     paths = []
@@ -471,6 +545,8 @@ def generate_cards(data, name_of, headline_lines, subtitle, date_str, out_dir="c
             img = render_anomaly(data, date_str, i, total)
         elif kind == "theme_cta":
             img = render_theme_cta(data, date_str, i, total, section_no)
+        elif kind == "company_review":
+            img = render_company_review(data, date_str, i, total, section_no)
         p = os.path.join(out_dir, f"{i:02d}.png")
         img.save(p)
         paths.append(p)
