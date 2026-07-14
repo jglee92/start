@@ -1029,15 +1029,22 @@ def _trading_day_ordinal(now):
 
 
 def _company_of_the_day(rk, now):
-    """랭킹 1~20위를 영업일마다 하나씩 순서대로 보여준다(한 달이 보통 영업일
-    20일 안팎이라 대략 한 달에 한 바퀴 도는 셈) — 매번 1위만 나오는 것보다
-    상위권 전체를 골고루 노출하려는 의도."""
-    if not rk:
+    """랭킹 1~50위 전체를 대상으로 노출 순서를 월 단위 시드로 셔플해서 영업일마다
+    하나씩 보여준다. 등수 그대로(1→20위) 고정 순서로 돌리면, 종합점수가 연간
+    재무제표 기준이라 거의 안 바뀌는 탓에 매달 똑같은 순서로 반복되는 문제가
+    있었음(사용자 피드백) — 셔플 시드를 '연-월'로 고정해 그 달 안에서는 중복 없이
+    한 바퀴를 돌되(영업일이 최대 23일 정도라 50개 중 절반도 못 돌지만 매달 다른
+    절반이 나옴), 다음 달엔 다른 순서로 다시 섞이게 한다(테마/이상신호 로테이션과
+    동일한 날짜시드 패턴)."""
+    pool = rk[:50]
+    if not pool:
         return None
+    import random
+    month_seed = random.Random(now.strftime("%Y-%m"))
+    order = pool[:]
+    month_seed.shuffle(order)
     ordinal = _trading_day_ordinal(now)
-    rank = ((ordinal - 1) % 20) + 1
-    rank = min(rank, len(rk))
-    return rk[rank - 1]
+    return order[(ordinal - 1) % len(order)]
 
 
 def _theme_examples(tmap, rk_by_code, no, n=3):
