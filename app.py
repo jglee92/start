@@ -26,6 +26,27 @@ from factor.current import compute_ranking
 
 app = FastAPI(title="가치+퀄리티 팩터 대시보드")
 
+
+@app.on_event("startup")
+def _start_proactive_refresh():
+    """실시간가/지수 캐시가 '요청이 와야 갱신을 시작'하는 구조라, 트래픽이 뜸하면
+    사용자가 새로고침해도 항상 한 박자 늦은(캐시 갱신 트리거만 하고 예전 값을 보여주는)
+    값을 보게 되는 문제가 있었음(실사용자 피드백으로 발견). 서버 자체가 백그라운드에서
+    주기적으로 미리 갱신해두면, 사용자가 실제로 볼 때는 이미 최신 상태일 확률이 높아짐."""
+    import threading
+    import time as _time
+
+    def _loop():
+        while True:
+            try:
+                get_live_prices()
+                get_market_indices()
+            except Exception:
+                pass
+            _time.sleep(30)
+
+    threading.Thread(target=_loop, daemon=True).start()
+
 # --- 백테스트 결과 (정직본, factor.backtest 실행값) ---
 BACKTEST = {
     "설정": "KOSPI+KOSDAQ 시총≥3000억 상위200 · 가치+퀄리티 top20 동일가중 · "
