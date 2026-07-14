@@ -4,10 +4,14 @@
 
 디자인은 사용자가 직접 보여준 레퍼런스(따뜻한 크림/피치 배경 + 스프링노트 카드 +
 검정·주황 타이포 + 체크박스 불릿)를 그대로 따르되, "신문 느낌을 가미해달라"는
-추가 요청을 반영해 마스트헤드(제호)식 상단 바 + 세리프 헤드라인 + 더블룰(굵은선-얇은선)
-+ 호수/날짜 데이트라인을 얹었다. 실제 데이터(종목명·등락률)는 표처럼 좌우 정렬해야
-가독성이 나오므로, 레퍼런스의 "중앙 정렬 짧은 문구" 톤은 표지/헤드라인에만 쓰고,
-데이터 목록은 좌측 라벨 + 우측 값의 신문 표(box score) 스타일로 변형했다.
+추가 요청을 반영해 마스트헤드(제호)식 상단 바 + 더블룰(굵은선-얇은선) + 호수/날짜
+데이트라인을 얹었다. 제목·큰 숫자는 두 번째 레퍼런스("주요 기업 평균급여" 카드)가
+쓴 두꺼운 고딕 스타일(BlackHanSans)로 통일 — 다만 이 폰트는 한글 음절을 일부만
+담고 있어 종목명 등 동적 텍스트에서 tofu가 날 수 있으므로 문자열마다 커버리지를
+검사해 안 되면 Noto Sans black으로 자동 대체한다(_display_font). 실제 데이터
+(종목명·등락률)는 표처럼 좌우 정렬해야 가독성이 나오므로, 레퍼런스의 "중앙 정렬
+짧은 문구" 톤은 표지/헤드라인에만 쓰고, 데이터 목록은 좌측 라벨 + 우측 값의 신문
+표(box score) 스타일로 변형했다.
 
 이모지는 폰트에 따라 네모(□)로 깨지는 걸 겪어서(Noto CJK류에 컬러이모지 없음)
 전부 벡터 도형(체크박스/점/삼각형)으로 대체."""
@@ -15,25 +19,18 @@ from __future__ import annotations
 import os
 
 from PIL import Image, ImageDraw, ImageFont
+from fontTools.ttLib import TTFont
 
 W = H = 1080
 
 _FONTS_DIR = os.path.join(os.path.dirname(__file__), "assets", "fonts")
 FONT_SANS = os.path.join(_FONTS_DIR, "NotoSansKR-VF.ttf")
-# 세리프는 헤드라인에서만 bold/black 두 굵기만 쓰므로, 가변폰트(23MB) 대신 두 굵기만
-# fonttools로 정적 인스턴스화 + 한글 음절/라틴/문장부호로 서브셋한 파일(각 ~8MB)을 씀
-# — 리포 용량을 아끼기 위함(다른 굵기가 필요해지면 다시 인스턴스화하면 됨).
-_SERIF_PATHS = {
-    "bold": os.path.join(_FONTS_DIR, "NotoSerifKR-Bold.ttf"),
-    "black": os.path.join(_FONTS_DIR, "NotoSerifKR-Black.ttf"),
-}
-_SANS_WEIGHTS = {"light": 300, "regular": 400, "bold": 700}
+_SANS_WEIGHTS = {"light": 300, "regular": 400, "bold": 700, "black": 900}
 _FONT_CACHE = {}
 
 
 def font(weight, size):
-    """본문·라벨용 산세리프."""
-    key = ("sans", weight, size)
+    key = (weight, size)
     if key not in _FONT_CACHE:
         f = ImageFont.truetype(FONT_SANS, size)
         f.set_variation_by_axes([_SANS_WEIGHTS[weight]])
@@ -41,12 +38,26 @@ def font(weight, size):
     return _FONT_CACHE[key]
 
 
-def serif(weight, size):
-    """헤드라인용 세리프 — 신문 제목 느낌을 위해 씀."""
-    key = ("serif", weight, size)
-    if key not in _FONT_CACHE:
-        _FONT_CACHE[key] = ImageFont.truetype(_SERIF_PATHS[weight], size)
-    return _FONT_CACHE[key]
+# 제목·큰 숫자용 디스플레이 폰트 — 레퍼런스(신문 타이틀 + "1억 8500만원" 스타일 숫자)
+# 느낌을 살리려고 씀. 다만 한글 음절을 2,581자(전체 11,172자의 23%)만 담고 있어서
+# 종목명·테마명처럼 동적으로 들어오는 텍스트에 쓰면 못 그리는 글자가 네모(tofu)로
+# 깨질 위험이 있음 — 그래서 그릴 문자열마다 커버리지를 확인해 안 되면 Noto Sans
+# black 굵기로 자동 대체한다(예전에 이모지 깨짐 겪은 뒤로 정착한 안전 패턴과 동일).
+FONT_DISPLAY = os.path.join(_FONTS_DIR, "BlackHanSans-Regular.ttf")
+_DISPLAY_CMAP = set(TTFont(FONT_DISPLAY).getBestCmap().keys())
+_DISPLAY_CACHE = {}
+
+
+def _covers(text):
+    return all(ord(ch) in _DISPLAY_CMAP or ch.isspace() for ch in text)
+
+
+def _display_font(text, size):
+    if not _covers(text):
+        return font("black", size)
+    if size not in _DISPLAY_CACHE:
+        _DISPLAY_CACHE[size] = ImageFont.truetype(FONT_DISPLAY, size)
+    return _DISPLAY_CACHE[size]
 
 
 # --- 팔레트: 레퍼런스의 따뜻한 크림/피치 + 신문 잉크 블랙 + 브랜드 오렌지 ---
@@ -189,7 +200,7 @@ def render_cover(headline_lines, subtitle, date_str, page, total):
     n = len(headline_lines)
     for i, line in enumerate(headline_lines):
         color = ORANGE if i == n - 1 else INK
-        _center_text(d, line, serif("black", 62), cx, y, color)
+        _center_text(d, line, _display_font(line, 62), cx, y, color)
         y += 76
     y += 18
     d.line([(cx - 60, y), (cx + 60, y)], fill=RULE, width=3)
@@ -212,7 +223,7 @@ def render_market(data, date_str, page, total):
     headline = "미국은 웃었고, 환율은 올랐다" if nasdaq_up else "미국도 조심스럽고, 환율도 흔들렸다"
 
     y = _masthead(img, d, x0 + 56, x1 - 56, y0 + 46, "01 · 간밤 시장", f"{date_str}")
-    _center_text(d, headline, serif("bold", 38), cx, y, INK)
+    _center_text(d, headline, _display_font(headline, 38), cx, y, INK)
     y += 66
 
     ex, ey = x0 + 56, x1 - 56
@@ -230,7 +241,7 @@ def render_market(data, date_str, page, total):
             txt, color = f"{v['price']:,.1f}원", INK
         else:
             txt, color = "-", DIM
-        d.text((x, y + 30), txt, font=serif("bold", 32), fill=color)
+        d.text((x, y + 30), txt, font=_display_font(txt, 32), fill=color)
         if i > 0:
             d.line([(x - 4, y - 4), (x - 4, y + 74)], fill=RULE, width=1)
     y += 110
@@ -246,11 +257,15 @@ def render_market(data, date_str, page, total):
         ry = y
         for gainer, loser in zip_longest(data["gainers"], data["losers"]):
             if gainer:
-                _row(d, ex, ex + half, ry, data["_name_of"](gainer[0]), _pct_text(gainer[1]),
-                     value_color=GOOD, dot_color=GOOD, label_font=font("regular", 24))
+                gv = _pct_text(gainer[1])
+                _row(d, ex, ex + half, ry, data["_name_of"](gainer[0]), gv,
+                     value_color=GOOD, dot_color=GOOD, label_font=font("regular", 24),
+                     value_font=_display_font(gv, 26))
             if loser:
-                _row(d, ex + half + 40, ey, ry, data["_name_of"](loser[0]), _pct_text(loser[1]),
-                     value_color=BAD, dot_color=BAD, label_font=font("regular", 24))
+                lv = _pct_text(loser[1])
+                _row(d, ex + half + 40, ey, ry, data["_name_of"](loser[0]), lv,
+                     value_color=BAD, dot_color=BAD, label_font=font("regular", 24),
+                     value_font=_display_font(lv, 26))
             ry += 50
         d.line([(ex + half + 20, y - 10), (ex + half + 20, ry - 20)], fill=RULE, width=1)
 
@@ -264,7 +279,7 @@ def render_earnings(data, date_str, page, total):
     cx = (x0 + x1) // 2
     ex, ey = x0 + 56, x1 - 56
     y = _masthead(img, d, ex, ey, y0 + 46, "02 · 실적 발표", f"{date_str}")
-    _center_text(d, "누가 웃고, 누가 울었나", serif("bold", 38), cx, y, INK)
+    _center_text(d, "누가 웃고, 누가 울었나", _display_font("누가 웃고, 누가 울었나", 38), cx, y, INK)
     y += 70
 
     surprises = [e for e in data["earnings"] if e["tag"] == "surprise"][:3]
@@ -274,8 +289,9 @@ def render_earnings(data, date_str, page, total):
         d.text((ex, y), "어닝 서프라이즈", font=font("bold", 23), fill=GOOD)
         y += 40
         for e in surprises:
-            _row(d, ex, ey, y, e["name"], f"순이익 {_pct_text(e['ni_yoy'])}",
-                 value_color=GOOD, dot_color=GOOD)
+            v = f"순이익 {_pct_text(e['ni_yoy'])}"
+            _row(d, ex, ey, y, e["name"], v,
+                 value_color=GOOD, dot_color=GOOD, value_font=_display_font(v, 28))
             y += 52
         y += 20
 
@@ -283,8 +299,9 @@ def render_earnings(data, date_str, page, total):
         d.text((ex, y), "어닝 쇼크", font=font("bold", 23), fill=BAD)
         y += 40
         for e in shocks:
-            _row(d, ex, ey, y, e["name"], f"순이익 {_pct_text(e['ni_yoy'])}",
-                 value_color=BAD, dot_color=BAD)
+            v = f"순이익 {_pct_text(e['ni_yoy'])}"
+            _row(d, ex, ey, y, e["name"], v,
+                 value_color=BAD, dot_color=BAD, value_font=_display_font(v, 28))
             y += 40
             if e.get("rev_yoy") is not None:
                 d.text((ex + 26, y), f"매출 {_pct_text(e['rev_yoy'])}", font=font("regular", 19), fill=DIM)
@@ -320,7 +337,8 @@ def render_anomaly(data, date_str, page, total):
     cx = (x0 + x1) // 2
     ex, ey = x0 + 56, x1 - 56
     y = _masthead(img, d, ex, ey, y0 + 46, "03 · 위험 신호", f"{date_str}")
-    _center_text(d, _anomaly_headline(data["anomalies"]), serif("bold", 34), cx, y, INK)
+    ah = _anomaly_headline(data["anomalies"])
+    _center_text(d, ah, _display_font(ah, 34), cx, y, INK)
     y += 76
 
     for a in data["anomalies"][:4]:
@@ -356,12 +374,13 @@ def render_theme_cta(data, date_str, page, total, section_no):
         headline = "요즘 주도테마 한눈에 보기"
 
     y = _masthead(img, d, ex, ey, y0 + 46, f"{section_no:02d} · 주도테마", f"{date_str}")
-    _center_text(d, headline, serif("bold", 34), cx, y, INK)
+    _center_text(d, headline, _display_font(headline, 34), cx, y, INK)
     y += 70
 
     for m in themes[:3]:
-        _row(d, ex, ey, y, m["mid"], _pct_text(m["ret_1m"]),
-             value_color=_sign_color(m["ret_1m"]), label_font=font("regular", 27))
+        tv = _pct_text(m["ret_1m"])
+        _row(d, ex, ey, y, m["mid"], tv, value_color=_sign_color(m["ret_1m"]),
+             label_font=font("regular", 27), value_font=_display_font(tv, 28))
         y += 46
         d.line([(ex, y - 10), (ey, y - 10)], fill=RULE, width=1)
 
@@ -370,7 +389,7 @@ def render_theme_cta(data, date_str, page, total, section_no):
     _checkbox(d, ex + 26, cta_y + 24, size=26)
     d.text((ex + 66, cta_y + 20), "전 종목 스크리닝, 무료로", font=font("bold", 27), fill=INK)
     d.text((ex + 66, cta_y + 58), "재무제표 · 회계감사의견까지 한번에", font=font("regular", 19), fill=DIM)
-    d.text((ex + 26, cta_y + 90), "getmoneycheckup.com", font=serif("bold", 25), fill=ORANGE)
+    d.text((ex + 26, cta_y + 90), "getmoneycheckup.com", font=font("bold", 25), fill=ORANGE)
 
     _footer(img, d, x0, x1, y1, date_str, page, total)
     return img
