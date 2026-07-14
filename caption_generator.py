@@ -27,6 +27,10 @@ def build_caption(data, headline_lines, subtitle):
         top = data["themes"][0]
         lines.append(f"\U0001F525 요즘 뜨는 테마: {top['mid']} {top['ret_1m']:+.1f}%")
 
+    if data.get("featured"):
+        f = data["featured"]
+        lines.append(f"\U0001F3E5 오늘의 기업리뷰: {f['name']} 건강점수 {f['score']:.1f}점")
+
     lines += [
         "",
         "전 종목 스크리닝 · 재무제표 · 회계감사의견까지, 머니체크업에서 무료로 확인하세요.",

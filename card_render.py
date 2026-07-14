@@ -17,11 +17,19 @@
 전부 벡터 도형(체크박스/점/삼각형)으로 대체."""
 from __future__ import annotations
 import os
+import random
 
 from PIL import Image, ImageDraw, ImageFont
 from fontTools.ttLib import TTFont
 
 W = H = 1080
+
+
+def _rot(seed_key, options):
+    """card_templates.py의 표지 헤드라인 로테이션과 같은 패턴 — 섹션 헤드라인도
+    매일 문구가 고정이면 AI스러워 보인다는 피드백을 받아, 날짜+슬롯 시드로 문구
+    뱅크 중 하나를 고정 선택한다."""
+    return random.Random(seed_key).choice(options)
 
 _FONTS_DIR = os.path.join(os.path.dirname(__file__), "assets", "fonts")
 # 본문 폰트는 나눔스퀘어(배포 라이선스가 불명확해 번들 불가) 대신 나눔고딕 사용
@@ -294,7 +302,13 @@ def render_market(data, date_str, page, total):
     cx = (x0 + x1) // 2
     ix = data["us_indices"] or {}
     nasdaq_up = ix.get("nasdaq", {}).get("chg_pct", 0) >= 0
-    headline = "미국은 웃었고, 환율은 올랐다" if nasdaq_up else "미국도 조심스럽고, 환율도 흔들렸다"
+    headline = _rot(f"{date_str}|market", [
+        "미국은 웃었고, 환율은 올랐다", "간밤 뉴욕은 강세, 환율도 들썩",
+        "미국 증시 훈풍, 오늘 환율은?",
+    ]) if nasdaq_up else _rot(f"{date_str}|market", [
+        "미국도 조심스럽고, 환율도 흔들렸다", "간밤 뉴욕은 약세, 환율도 출렁",
+        "미국 증시 주춤, 오늘 환율은?",
+    ])
 
     y = _masthead(img, d, x0 + 56, x1 - 56, y0 + 46, "01 · 간밤 시장", f"{date_str}")
     _center_display(d, headline, 38, cx, y, INK)
@@ -353,7 +367,11 @@ def render_earnings(data, date_str, page, total):
     cx = (x0 + x1) // 2
     ex, ey = x0 + 56, x1 - 56
     y = _masthead(img, d, ex, ey, y0 + 46, "02 · 실적 발표", f"{date_str}")
-    _center_display(d, "누가 웃고, 누가 울었나", 38, cx, y, INK)
+    e_headline = _rot(f"{date_str}|earnings", [
+        "누가 웃고, 누가 울었나", "오늘 실적표, 희비가 갈렸다",
+        "실적 발표 이렇게 나왔다", "숫자로 보는 오늘의 실적",
+    ])
+    _center_display(d, e_headline, 38, cx, y, INK)
     y += 70
 
     surprises = [e for e in data["earnings"] if e["tag"] == "surprise"][:3]
@@ -387,22 +405,24 @@ def render_earnings(data, date_str, page, total):
 
 
 _ANOMALY_HEADLINES = {
-    "적자 전환": "흑자에서 적자로 전환",
-    "비적정 감사의견": "감사의견, 적정 아님",
-    "영업외 손익 의존": "영업이익 적자인데 순이익만 흑자",
-    "부채비율 급증": "부채비율이 급격히 늘었다",
-    "매출": "매출이 계속 줄고 있다",
+    "적자 전환": ["흑자에서 적자로 전환", "이 회사들, 적자로 돌아섰다", "흑자였던 곳이 적자로"],
+    "비적정 감사의견": ["감사의견, 적정 아님", "감사인이 문제를 제기했다"],
+    "영업외 손익 의존": ["영업이익 적자인데 순이익만 흑자", "본업 말고 다른 데서 번 이익"],
+    "부채비율 급증": ["부채비율이 급격히 늘었다", "빚이 갑자기 늘어난 곳들"],
+    "매출": ["매출이 계속 줄고 있다", "매출 감소가 이어지는 곳들"],
 }
+_ANOMALY_FALLBACK = ["조심해서 봐야 할 재무 신호", "오늘 체크할 위험 신호"]
+_ANOMALY_NONE = ["오늘은 특별한 위험신호 없음", "오늘은 조용히 지나간 하루"]
 
 
-def _anomaly_headline(anomalies):
+def _anomaly_headline(anomalies, seed):
     if not anomalies:
-        return "오늘은 특별한 위험신호 없음"
+        return _rot(f"{seed}|none", _ANOMALY_NONE)
     label = anomalies[0]["label"]
-    for key, headline in _ANOMALY_HEADLINES.items():
+    for key, options in _ANOMALY_HEADLINES.items():
         if key in label:
-            return headline
-    return "조심해서 봐야 할 재무 신호"
+            return _rot(f"{seed}|{key}", options)
+    return _rot(f"{seed}|fallback", _ANOMALY_FALLBACK)
 
 
 def render_anomaly(data, date_str, page, total):
@@ -411,7 +431,7 @@ def render_anomaly(data, date_str, page, total):
     cx = (x0 + x1) // 2
     ex, ey = x0 + 56, x1 - 56
     y = _masthead(img, d, ex, ey, y0 + 46, "03 · 위험 신호", f"{date_str}")
-    ah = _anomaly_headline(data["anomalies"])
+    ah = _anomaly_headline(data["anomalies"], date_str)
     _center_display(d, ah, 34, cx, y, INK)
     y += 76
 
@@ -444,9 +464,15 @@ def render_theme_cta(data, date_str, page, total, section_no):
     top = themes[0] if themes else None
     if top:
         sign = "+" if top["ret_1m"] >= 0 else ""
-        headline = f"{top['mid']} 한 달 새 {sign}{top['ret_1m']:.1f}%"
+        headline = _rot(f"{date_str}|theme_cta", [
+            f"{top['mid']} 한 달 새 {sign}{top['ret_1m']:.1f}%",
+            f"요즘 뜨는 테마, {top['mid']}",
+            f"{top['mid']}, 최근 한 달 {sign}{top['ret_1m']:.1f}%",
+        ])
     else:
-        headline = "요즘 주도테마 한눈에 보기"
+        headline = _rot(f"{date_str}|theme_cta_none", [
+            "요즘 주도테마 한눈에 보기", "지금 이 테마들이 뜬다",
+        ])
 
     y = _masthead(img, d, ex, ey, y0 + 46, f"{section_no:02d} · 주도테마", f"{date_str}")
     _center_display(d, headline, 34, cx, y, INK)
