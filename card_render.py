@@ -490,10 +490,12 @@ def render_company_review(data, date_str, page, total, section_no):
         _footer(img, d, x0, x1, y1, date_str, page, total)
         return img
 
-    headline = f"{f['name']} 종합랭킹 {f['rank']}위"
+    # "종합랭킹 N위"로 쓰면 매수 추천 순위처럼 오해할 수 있어(사용자 피드백) —
+    # 헤드라인은 건강검진 결과처럼 읽히는 점수를 앞세우고, 등수는 부제목에 참고용으로만.
+    headline = f"{f['name']} 건강점수 {f['score']:.1f}점"
     _center_display(d, headline, 36, cx, y, INK)
     y += 50
-    _center_text(d, f"종합점수 {f['score']:.1f}점 · {f['code']}", font("regular", 20), cx, y, DIM)
+    _center_text(d, f"{f['code']} · 업종 내 랭킹 {f['rank']}위(참고용)", font("regular", 20), cx, y, DIM)
     y += 44
 
     dims = f["dims"]
@@ -503,6 +505,12 @@ def render_company_review(data, date_str, page, total, section_no):
         bx = ex + (i % 2) * (box_w + 20)
         by = y + (i // 2) * (box_h + 20)
         _dim_box(d, bx, by, box_w, box_h, label, dims[key])
+    y += 2 * box_h + 20 + 22
+
+    caption = "* 건강점수는 밸류에이션·수익성·안정성·성장성을 같은 업종 내 백분위로 환산한 참고 지표로, 매수·매도 추천이 아닙니다."
+    for line in _wrap(d, caption, font("regular", 17), ey - ex):
+        _center_text(d, line, font("regular", 17), cx, y, DIM)
+        y += 24
 
     _footer(img, d, x0, x1, y1, date_str, page, total)
     return img

@@ -1154,13 +1154,18 @@ def _featured_lines(f):
     """'이달의 기업 종합검진' 섹션 — 랭킹 1~20위를 영업일마다 하나씩 순서대로 보여주는
     우리만의 차별 콘텐츠(전 종목 스크리닝·회계감사의견까지 보여주는 게 강점이라,
     그 강점을 매일 실제 종목 하나로 직접 보여주는 섹션)."""
+    # "종합랭킹 N위"를 헤드라인에 쓰면 매수 추천 순위처럼 오해할 수 있어(사용자 피드백) —
+    # 건강검진 결과처럼 읽히는 점수를 앞세우고, 등수는 참고용으로만 괄호에 덧붙인다.
     dims = f["dims"]
-    lines = [f"\U0001F3E5 이달의 기업 종합검진 — {f['name']}({f['code']}) 종합랭킹 {f['rank']}위"]
+    lines = [f"\U0001F3E5 이달의 기업 종합검진 — {f['name']}({f['code']}) 건강점수 {f['score']:.1f}점"
+             f" (참고용 업종 내 랭킹 {f['rank']}위)"]
     for key, label in _DIM_ORDER:
         d_ = dims[key]
         lines.append(f"- {label} {_stars_text(d_['stars'])} {d_['label']}: {d_['text']}")
     if dims.get("overall_text"):
         lines.append(dims["overall_text"])
+    lines.append("* 건강점수는 밸류에이션·수익성·안정성·성장성을 같은 업종 내 백분위로 환산한 "
+                 "참고 지표로, 매수·매도 추천이 아닙니다.")
     lines.append("")
     return lines
 
