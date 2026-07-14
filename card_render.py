@@ -24,42 +24,78 @@ from fontTools.ttLib import TTFont
 W = H = 1080
 
 _FONTS_DIR = os.path.join(os.path.dirname(__file__), "assets", "fonts")
-FONT_SANS = os.path.join(_FONTS_DIR, "NotoSansKR-VF.ttf")
-_SANS_WEIGHTS = {"light": 300, "regular": 400, "bold": 700, "black": 900}
+# 본문 폰트는 나눔스퀘어(배포 라이선스가 불명확해 번들 불가) 대신 나눔고딕 사용
+# — 사용자 요청. 한글 11,172자 전체를 담고 있어 별도 폴백이 필요 없음.
+_BODY_PATHS = {
+    "regular": os.path.join(_FONTS_DIR, "NanumGothic-Regular.ttf"),
+    "bold": os.path.join(_FONTS_DIR, "NanumGothic-Bold.ttf"),
+    "black": os.path.join(_FONTS_DIR, "NanumGothic-ExtraBold.ttf"),
+}
 _FONT_CACHE = {}
 
 
 def font(weight, size):
     key = (weight, size)
     if key not in _FONT_CACHE:
-        f = ImageFont.truetype(FONT_SANS, size)
-        f.set_variation_by_axes([_SANS_WEIGHTS[weight]])
-        _FONT_CACHE[key] = f
+        _FONT_CACHE[key] = ImageFont.truetype(_BODY_PATHS[weight], size)
     return _FONT_CACHE[key]
 
 
 # 제목·큰 숫자용 디스플레이 폰트 — 레퍼런스(신문 타이틀 + "1억 8500만원" 스타일 숫자)
 # 느낌을 살리려고 씀. 다만 한글 음절을 2,581자(전체 11,172자의 23%)만 담고 있어서
 # 종목명·테마명처럼 동적으로 들어오는 텍스트에 쓰면 못 그리는 글자가 네모(tofu)로
-# 깨질 위험이 있음 — 그래서 그릴 문자열마다 커버리지를 확인해 안 되면 Noto Sans
-# black 굵기로 자동 대체한다(예전에 이모지 깨짐 겪은 뒤로 정착한 안전 패턴과 동일).
+# 깨질 위험이 있음 — 그래서 그릴 문자열마다 커버리지를 확인해 안 되면 나눔고딕
+# bold로 자동 대체한다(예전에 이모지 깨짐 겪은 뒤로 정착한 안전 패턴과 동일).
+#
+# "·"(가운뎃점)만 단독으로 빠져 있는데, 이게 "유통·소비재" 같은 흔한 복합어에도
+# 나오다 보니 그것 때문에 문자열 전체가 통째로 다른 폰트로 밀려나 버려(카드마다
+# 헤드라인 폰트가 들쭉날쭉해 보이는 원인이었음) — 그래서 "·"는 커버리지 검사에서
+# 제외하고, 실제로 그릴 때만 _center_display/_draw_display가 직접 점을 그려 넣는다.
 FONT_DISPLAY = os.path.join(_FONTS_DIR, "BlackHanSans-Regular.ttf")
 _DISPLAY_CMAP = set(TTFont(FONT_DISPLAY).getBestCmap().keys())
 _DISPLAY_CACHE = {}
+_MIDDOT = "·"
 
 
 def _covers(text):
-    return all(ord(ch) in _DISPLAY_CMAP or ch.isspace() for ch in text)
+    return all(ch == _MIDDOT or ord(ch) in _DISPLAY_CMAP or ch.isspace() for ch in text)
 
 
 def _display_font(text, size):
     if not _covers(text):
-        # 대체 굵기는 black(900)이 아니라 bold(700) — 커버리지가 없어 대체되는
-        # 문자열이 헤드라인 옆에서 지나치게 두꺼워 보이지 않게(사용자 피드백).
         return font("bold", size)
     if size not in _DISPLAY_CACHE:
         _DISPLAY_CACHE[size] = ImageFont.truetype(FONT_DISPLAY, size)
     return _DISPLAY_CACHE[size]
+
+
+def _draw_display(d, text, size, x, y, color):
+    """_display_font로 그리되 "·"는 수동으로 작은 점을 찍어 대체. 왼쪽 정렬,
+    그린 전체 너비를 반환."""
+    fnt = _display_font(text, size)
+    parts = text.split(_MIDDOT)
+    gap = size * 0.38
+    dot_d = max(4, size * 0.09)
+    cx = x
+    for i, part in enumerate(parts):
+        if part:
+            d.text((cx, y), part, font=fnt, fill=color)
+            cx += d.textlength(part, font=fnt)
+        if i < len(parts) - 1:
+            dot_cy = y + size * 0.62
+            cx += gap / 2
+            d.ellipse([cx - dot_d / 2, dot_cy - dot_d / 2, cx + dot_d / 2, dot_cy + dot_d / 2], fill=color)
+            cx += gap / 2
+    return cx - x
+
+
+def _center_display(d, text, size, cx, y, color):
+    """가운데 정렬 버전 — 전체 너비를 먼저 재서 중앙에 맞춘 뒤 _draw_display로 그림."""
+    fnt = _display_font(text, size)
+    parts = text.split(_MIDDOT)
+    gap = size * 0.38
+    total = sum(d.textlength(p, font=fnt) for p in parts) + gap * (len(parts) - 1)
+    return _draw_display(d, text, size, cx - total / 2, y, color)
 
 
 # --- 팔레트: 레퍼런스의 따뜻한 크림/피치 + 신문 잉크 블랙 + 브랜드 오렌지 ---
@@ -202,14 +238,14 @@ def render_cover(headline_lines, subtitle, date_str, page, total):
     n = len(headline_lines)
     for i, line in enumerate(headline_lines):
         color = ORANGE if i == n - 1 else INK
-        _center_text(d, line, _display_font(line, 62), cx, y, color)
+        _center_display(d, line, 62, cx, y, color)
         y += 76
     y += 18
     d.line([(cx - 60, y), (cx + 60, y)], fill=RULE, width=3)
     y += 36
     if subtitle:
         for line in _wrap(d, subtitle, font("bold", 26), x1 - x0 - 200)[:2]:
-            _center_text(d, line, _display_font(line, 26), cx, y, INK_SOFT)
+            _center_display(d, line, 26, cx, y, INK_SOFT)
             y += 38
 
     _footer(img, d, x0, x1, y1, date_str, page, total)
@@ -225,7 +261,7 @@ def render_market(data, date_str, page, total):
     headline = "미국은 웃었고, 환율은 올랐다" if nasdaq_up else "미국도 조심스럽고, 환율도 흔들렸다"
 
     y = _masthead(img, d, x0 + 56, x1 - 56, y0 + 46, "01 · 간밤 시장", f"{date_str}")
-    _center_text(d, headline, _display_font(headline, 38), cx, y, INK)
+    _center_display(d, headline, 38, cx, y, INK)
     y += 66
 
     ex, ey = x0 + 56, x1 - 56
@@ -252,7 +288,7 @@ def render_market(data, date_str, page, total):
 
     if data["movers_date"]:
         mv_label = f"어제({data['movers_date'][5:].replace('-', '.')}) 급등·급락 TOP3"
-        d.text((ex, y), mv_label, font=_display_font(mv_label, 25), fill=INK)
+        _draw_display(d, mv_label, 25, ex, y, INK)
         y += 46
         half = (ey - ex) / 2 - 20
         from itertools import zip_longest
@@ -281,7 +317,7 @@ def render_earnings(data, date_str, page, total):
     cx = (x0 + x1) // 2
     ex, ey = x0 + 56, x1 - 56
     y = _masthead(img, d, ex, ey, y0 + 46, "02 · 실적 발표", f"{date_str}")
-    _center_text(d, "누가 웃고, 누가 울었나", _display_font("누가 웃고, 누가 울었나", 38), cx, y, INK)
+    _center_display(d, "누가 웃고, 누가 울었나", 38, cx, y, INK)
     y += 70
 
     surprises = [e for e in data["earnings"] if e["tag"] == "surprise"][:3]
@@ -340,7 +376,7 @@ def render_anomaly(data, date_str, page, total):
     ex, ey = x0 + 56, x1 - 56
     y = _masthead(img, d, ex, ey, y0 + 46, "03 · 위험 신호", f"{date_str}")
     ah = _anomaly_headline(data["anomalies"])
-    _center_text(d, ah, _display_font(ah, 34), cx, y, INK)
+    _center_display(d, ah, 34, cx, y, INK)
     y += 76
 
     for a in data["anomalies"][:4]:
@@ -377,7 +413,7 @@ def render_theme_cta(data, date_str, page, total, section_no):
         headline = "요즘 주도테마 한눈에 보기"
 
     y = _masthead(img, d, ex, ey, y0 + 46, f"{section_no:02d} · 주도테마", f"{date_str}")
-    _center_text(d, headline, _display_font(headline, 34), cx, y, INK)
+    _center_display(d, headline, 34, cx, y, INK)
     y += 70
 
     for m in themes[:3]:
