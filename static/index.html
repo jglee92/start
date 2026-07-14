@@ -571,7 +571,10 @@ async function renderIndices(){
     el.innerHTML=INDEX_ORDER.filter(k=>INDICES_DATA[k]).map(k=>
       `<div class="idx-tab" data-key="${k}" onclick="selectChartIndex('${k}')">${INDICES_DATA[k].name}</div>`
     ).join('');
-    const first=INDEX_ORDER.find(k=>INDICES_DATA[k]);
+    // 60초마다 자동 재조회 시 사용자가 보고 있던 탭(예: 코스닥)이 매번 첫 탭으로
+    // 리셋되지 않게, 이미 선택된 게 있으면 그걸 유지한 채 숫자만 갱신한다.
+    const keep=(currentChartKey && INDICES_DATA[currentChartKey]) ? currentChartKey : null;
+    const first=keep||INDEX_ORDER.find(k=>INDICES_DATA[k]);
     if(first) selectChartIndex(first);
   }catch(e){}
 }
@@ -1488,6 +1491,10 @@ async function loadSectors(){
 }
 
 renderIndices();
+// 페이지 로드 시 한 번만 불러오고 그 뒤로 갱신이 없어서 '실시간 업데이트 안 됨'으로
+// 보였던 문제 — 서버 캐시 TTL(60초)에 맞춰 주기적으로 다시 불러온다. 탭이 백그라운드에
+// 있을 땐(다른 앱 보는 중 등) 굳이 갱신 안 해서 배터리·데이터 아낌.
+setInterval(() => { if (document.visibilityState === 'visible') renderIndices(); }, 60000);
 load().then(()=>{
   const h=location.hash.slice(1);
   if(h&&document.querySelector(`.nav-item[data-v="${h}"]`))switchView(h);
