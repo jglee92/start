@@ -54,7 +54,9 @@ def _covers(text):
 
 def _display_font(text, size):
     if not _covers(text):
-        return font("black", size)
+        # 대체 굵기는 black(900)이 아니라 bold(700) — 커버리지가 없어 대체되는
+        # 문자열이 헤드라인 옆에서 지나치게 두꺼워 보이지 않게(사용자 피드백).
+        return font("bold", size)
     if size not in _DISPLAY_CACHE:
         _DISPLAY_CACHE[size] = ImageFont.truetype(FONT_DISPLAY, size)
     return _DISPLAY_CACHE[size]
@@ -206,8 +208,8 @@ def render_cover(headline_lines, subtitle, date_str, page, total):
     d.line([(cx - 60, y), (cx + 60, y)], fill=RULE, width=3)
     y += 36
     if subtitle:
-        for line in _wrap(d, subtitle, font("regular", 26), x1 - x0 - 200)[:2]:
-            _center_text(d, line, font("regular", 26), cx, y, INK_SOFT)
+        for line in _wrap(d, subtitle, font("bold", 26), x1 - x0 - 200)[:2]:
+            _center_text(d, line, _display_font(line, 26), cx, y, INK_SOFT)
             y += 38
 
     _footer(img, d, x0, x1, y1, date_str, page, total)
@@ -249,8 +251,8 @@ def render_market(data, date_str, page, total):
     y += 34
 
     if data["movers_date"]:
-        d.text((ex, y), f"어제({data['movers_date'][5:].replace('-', '.')}) 급등·급락 TOP3",
-                font=font("bold", 25), fill=INK)
+        mv_label = f"어제({data['movers_date'][5:].replace('-', '.')}) 급등·급락 TOP3"
+        d.text((ex, y), mv_label, font=_display_font(mv_label, 25), fill=INK)
         y += 46
         half = (ey - ex) / 2 - 20
         from itertools import zip_longest
@@ -286,7 +288,7 @@ def render_earnings(data, date_str, page, total):
     shocks = [e for e in data["earnings"] if e["tag"] == "shock"][:2]
 
     if surprises:
-        d.text((ex, y), "어닝 서프라이즈", font=font("bold", 23), fill=GOOD)
+        d.text((ex, y), "어닝 서프라이즈", font=_display_font("어닝 서프라이즈", 23), fill=GOOD)
         y += 40
         for e in surprises:
             v = f"순이익 {_pct_text(e['ni_yoy'])}"
@@ -296,7 +298,7 @@ def render_earnings(data, date_str, page, total):
         y += 20
 
     if shocks:
-        d.text((ex, y), "어닝 쇼크", font=font("bold", 23), fill=BAD)
+        d.text((ex, y), "어닝 쇼크", font=_display_font("어닝 쇼크", 23), fill=BAD)
         y += 40
         for e in shocks:
             v = f"순이익 {_pct_text(e['ni_yoy'])}"
@@ -346,7 +348,8 @@ def render_anomaly(data, date_str, page, total):
         d.ellipse([ex, cyc - 14, ex + 28, cyc + 14], outline=BAD, width=3)
         d.line([(ex + 14, cyc - 6), (ex + 14, cyc + 3)], fill=BAD, width=3)
         d.ellipse([ex + 12.5, cyc + 7, ex + 15.5, cyc + 10], fill=BAD)
-        d.text((ex + 44, y), f"{a['name']} ({a['code']})", font=font("bold", 27), fill=INK)
+        row_txt = f"{a['name']} ({a['code']})"
+        d.text((ex + 44, y), row_txt, font=_display_font(row_txt, 27), fill=INK)
         y += 56
         d.line([(ex, y - 8), (ey, y - 8)], fill=RULE, width=1)
 
@@ -387,7 +390,8 @@ def render_theme_cta(data, date_str, page, total, section_no):
     cta_y = y1 - 226
     d.rounded_rectangle([ex, cta_y, ey, cta_y + 130], radius=20, outline=ORANGE, width=3)
     _checkbox(d, ex + 26, cta_y + 24, size=26)
-    d.text((ex + 66, cta_y + 20), "전 종목 스크리닝, 무료로", font=font("bold", 27), fill=INK)
+    cta_line = "전 종목 스크리닝, 무료로"
+    d.text((ex + 66, cta_y + 20), cta_line, font=_display_font(cta_line, 27), fill=INK)
     d.text((ex + 66, cta_y + 58), "재무제표 · 회계감사의견까지 한번에", font=font("regular", 19), fill=DIM)
     d.text((ex + 26, cta_y + 90), "getmoneycheckup.com", font=font("bold", 25), fill=ORANGE)
 
