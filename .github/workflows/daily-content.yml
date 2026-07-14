@@ -2,12 +2,14 @@ name: 블로그·인스타 콘텐츠 자동 생성
 
 on:
   schedule:
-    # 매 평일 UTC 22:30 = KST 07:30 (다음날). 일~목 UTC로 지정해야 월~금 KST 아침이 된다.
+    # 매 평일 UTC 21:30 = KST 06:30(다음날) 목표. 일~목 UTC로 지정해야 월~금 KST 아침이 된다.
+    # GitHub Actions 스케줄은 정시 실행을 보장하지 않고 실측상 50~60분 정도 늦게 실행돼서
+    # (원래 목표였던 07:30 KST 대비), 실제 완료 시각이 07:30 언저리에 오도록 1시간 당겼다.
     # daily-prices.yml이 전날 저녁(KST 19:00)에 이미 최신 시세를 반영해두므로 이 시각에
     # 실행해도 데이터는 최신 상태. 휴장일엔 daily_content.py가 자동으로 아무것도 안 만듦.
-    # 인스타 게시는 여기서 바로 하지 않고 daily-instagram-post.yml이 08:00에 따로 함
+    # 인스타 게시는 여기서 바로 하지 않고 daily-instagram-post.yml이 따로 함
     # (콘텐츠 생성과 게시 시간을 분리해달라는 요청 반영).
-    - cron: '30 22 * * 0-4'
+    - cron: '30 21 * * 0-4'
   workflow_dispatch: {}
 
 permissions:
@@ -36,5 +38,9 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add content_out/
+          # 커밋 메시지 날짜는 UTC가 아니라 KST로 — content_out/ 폴더명(KST 기준)과
+          # 어긋나서 헷갈렸던 적이 있었음(UTC 밤 실행이라 폴더는 다음날인데 커밋 메시지는
+          # 실행 당일로 찍힘).
+          DATE_KST=$(TZ='Asia/Seoul' date +%Y-%m-%d)
           git diff --staged --quiet && echo "변경 없음" || \
-            (git commit -m "chore: 오늘자 블로그·인스타 콘텐츠 생성 $(date -u +%Y-%m-%d)" && git push)
+            (git commit -m "chore: 오늘자 블로그·인스타 콘텐츠 생성 $DATE_KST" && git push)
