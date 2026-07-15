@@ -480,7 +480,7 @@ def render_theme(data, date_str, page, total, section_no):
     _center_display(d, headline, 34, cx, y, INK)
     y += 70
 
-    for m in themes[:3]:
+    for m in themes[:4]:
         tv = _pct_text(m["ret_1m"])
         _row(d, ex, ey, y, m["mid"], tv, value_color=_sign_color(m["ret_1m"]),
              label_font=font("regular", 27), value_font=_display_font(tv, 28))

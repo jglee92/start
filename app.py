@@ -1118,16 +1118,25 @@ def _blog_draft_data():
     anomalies = reds + yellows_shuffled[:2]
 
     mids_all = [m for maj in _cache["theme_groups"] for m in maj["mids"]
-                if m.get("used", 0) >= 3 and m.get("theme_count", 0) >= 1]
-    mids_all.sort(key=lambda m: (m["ret_1m"] is not None, m["ret_1m"]), reverse=True)
-    # 매번 순위 그대로면 1개월 수익률이 완만하게 바뀌는 지표 특성상 며칠씩 똑같은 테마만
-    # 보여주게 됨 — 1위는 그대로 두고(가장 화제성 있는 테마), 나머지 2개는 상위 8개 안에서
-    # 날짜별로 로테이션해 매일 다른 조합이 나오게 한다.
-    top_pool = mids_all[:8]
-    themes_pick = top_pool[:1]
-    rest_pool = top_pool[1:]
-    day_seed.shuffle(rest_pool)
-    themes_pick += rest_pool[:2]
+                if m.get("used", 0) >= 3 and m.get("theme_count", 0) >= 1
+                and m.get("ret_1m") is not None]
+    # 상승 테마만 모아서 보여주면 반쪽짜리 시황이라, 상승 2개(1위 고정 + 나머지는
+    # 상위권에서 날짜별 로테이션) · 하락 2개(동일 패턴)를 같이 보여준다. 1위(가장
+    # 화제성 있는 상승 테마)만 고정하고 나머지는 매번 순위 그대로면 1개월 수익률이
+    # 완만하게 바뀌는 지표 특성상 며칠씩 똑같은 테마만 나오게 돼서 로테이션 유지.
+    risers = sorted([m for m in mids_all if m["ret_1m"] >= 0],
+                     key=lambda m: m["ret_1m"], reverse=True)
+    fallers = sorted([m for m in mids_all if m["ret_1m"] < 0], key=lambda m: m["ret_1m"])
+
+    def _pick_two(pool):
+        top_pool = pool[:6]
+        picked = top_pool[:1]
+        rest = top_pool[1:]
+        day_seed.shuffle(rest)
+        picked += rest[:1]
+        return picked
+
+    themes_pick = _pick_two(risers) + _pick_two(fallers)
 
     themes = []
     for m in themes_pick:
