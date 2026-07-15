@@ -1356,19 +1356,40 @@ def _weekly_wrap_text():
 
 @app.get("/internal/blog-draft")
 def blog_draft(key: str = ""):
-    """메모장에 바로 옮겨서 쓰기 좋게 .txt 파일로 다운로드.
-    브라우저에서 HTML을 복사하면 네이버 블로그 에디터에 붙여넣을 때 줄바꿈이
-    씹히는 경우가 있어(실측 확인), 메모장 경유가 더 안정적이라 이 방식으로 굳힘."""
+    """블로그 초안 + 오늘 생성된 인스타 카드뉴스·캡션을 zip으로 한 번에 다운로드.
+    content_out/{오늘}/이 있으면(자동 생성 완료) 그 파일들을 그대로 묶어서 내려줘 —
+    이러면 블로그 글과 카드가 실제로 같은 시점 데이터를 보여준다는 게 보장됨(이 함수가
+    그때그때 새로 계산해서 텍스트만 내려주면 카드 생성 이후 시세가 바뀌어 숫자가
+    어긋날 수 있음). content_out이 아직 없으면(휴장일 등) 예전처럼 텍스트만 즉석 생성."""
     expected = os.getenv("BLOG_DRAFT_KEY")
     if not expected or key != expected:
         raise HTTPException(404)
+    import io
+    import zipfile
     from datetime import datetime, timezone, timedelta
     KST = timezone(timedelta(hours=9))
-    title, body = _blog_draft_text()
-    content = f"{title}\n{'=' * len(title)}\n\n{body}"
-    data = ("﻿" + content).encode("utf-8")  # BOM: 메모장 한글 인코딩 오인식 방지
-    fname = f"blog-draft-{datetime.now(KST).strftime('%m%d')}.txt"
-    return Response(content=data, media_type="text/plain; charset=utf-8",
+    today_str = datetime.now(KST).strftime("%Y-%m-%d")
+    day_dir = os.path.join("content_out", today_str)
+    blog_path = os.path.join(day_dir, "blog_draft.txt")
+    cards_dir = os.path.join(day_dir, "cards")
+
+    if not os.path.isfile(blog_path):
+        title, body = _blog_draft_text()
+        content = f"{title}\n{'=' * len(title)}\n\n{body}"
+        data = ("﻿" + content).encode("utf-8")  # BOM: 메모장 한글 인코딩 오인식 방지
+        fname = f"blog-draft-{datetime.now(KST).strftime('%m%d')}.txt"
+        return Response(content=data, media_type="text/plain; charset=utf-8",
+                         headers={"Content-Disposition": f'attachment; filename="{fname}"'})
+
+    buf = io.BytesIO()
+    with zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED) as zf:
+        with open(blog_path, "rb") as f:
+            zf.writestr("blog_draft.txt", "﻿".encode("utf-8") + f.read())
+        if os.path.isdir(cards_dir):
+            for fn in sorted(os.listdir(cards_dir)):
+                zf.write(os.path.join(cards_dir, fn), f"cards/{fn}")
+    fname = f"blog-draft-{datetime.now(KST).strftime('%m%d')}.zip"
+    return Response(content=buf.getvalue(), media_type="application/zip",
                      headers={"Content-Disposition": f'attachment; filename="{fname}"'})
 
 
