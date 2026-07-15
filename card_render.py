@@ -200,6 +200,16 @@ def _checkbox(d, x, y, size=24, color=ORANGE):
             (x + size * 0.82, y + size * 0.26)], fill=color, width=4, joint="curve")
 
 
+def _cta_box(d, ex, ey, y, title, height=118):
+    """마지막 장(오늘의 기업리뷰) 클로징 CTA — 예전엔 주도테마 카드에 있었는데
+    캐러셀을 5장으로 줄이며 진짜 마지막 액션이 되도록 이 장으로 옮겨왔다."""
+    d.rounded_rectangle([ex, y, ey, y + height], radius=18, outline=ORANGE, width=3)
+    _checkbox(d, ex + 22, y + 18, size=24)
+    d.text((ex + 58, y + 14), title, font=_display_font(title, 24), fill=INK)
+    d.text((ex + 58, y + 50), "재무제표 · 회계감사의견까지 한번에", font=font("regular", 17), fill=DIM)
+    d.text((ex + 22, y + 80), "getmoneycheckup.com", font=font("bold", 23), fill=ORANGE)
+
+
 def _footer(img, d, x0, x1, y1, date_str, page, total):
     cx = (x0 + x1) // 2
     txt = f"머니체크업 · {date_str} · {page:02d}/{total:02d}"
@@ -296,7 +306,7 @@ def render_cover(headline_lines, subtitle, date_str, page, total):
     return img
 
 
-def render_market(data, date_str, page, total):
+def render_market(data, date_str, page, total, section_no):
     img, d = _notepad_card()
     x0, y0, x1, y1 = CARD
     cx = (x0 + x1) // 2
@@ -310,7 +320,7 @@ def render_market(data, date_str, page, total):
         "미국 증시 주춤, 오늘 환율은?",
     ])
 
-    y = _masthead(img, d, x0 + 56, x1 - 56, y0 + 46, "01 · 간밤 시장", f"{date_str}")
+    y = _masthead(img, d, x0 + 56, x1 - 56, y0 + 46, f"{section_no:02d} · 간밤 시장", f"{date_str}")
     _center_display(d, headline, 38, cx, y, INK)
     y += 66
 
@@ -361,49 +371,6 @@ def render_market(data, date_str, page, total):
     return img
 
 
-def render_earnings(data, date_str, page, total):
-    img, d = _notepad_card()
-    x0, y0, x1, y1 = CARD
-    cx = (x0 + x1) // 2
-    ex, ey = x0 + 56, x1 - 56
-    y = _masthead(img, d, ex, ey, y0 + 46, "02 · 실적 발표", f"{date_str}")
-    e_headline = _rot(f"{date_str}|earnings", [
-        "누가 웃고, 누가 울었나", "오늘 실적표, 희비가 갈렸다",
-        "실적 발표 이렇게 나왔다", "숫자로 보는 오늘의 실적",
-    ])
-    _center_display(d, e_headline, 38, cx, y, INK)
-    y += 70
-
-    surprises = [e for e in data["earnings"] if e["tag"] == "surprise"][:3]
-    shocks = [e for e in data["earnings"] if e["tag"] == "shock"][:2]
-
-    if surprises:
-        d.text((ex, y), "어닝 서프라이즈", font=_display_font("어닝 서프라이즈", 23), fill=GOOD)
-        y += 40
-        for e in surprises:
-            v = f"순이익 {_pct_text(e['ni_yoy'])}"
-            _row(d, ex, ey, y, e["name"], v,
-                 value_color=GOOD, dot_color=GOOD, value_font=_display_font(v, 28))
-            y += 52
-        y += 20
-
-    if shocks:
-        d.text((ex, y), "어닝 쇼크", font=_display_font("어닝 쇼크", 23), fill=BAD)
-        y += 40
-        for e in shocks:
-            v = f"순이익 {_pct_text(e['ni_yoy'])}"
-            _row(d, ex, ey, y, e["name"], v,
-                 value_color=BAD, dot_color=BAD, value_font=_display_font(v, 28))
-            y += 40
-            if e.get("rev_yoy") is not None:
-                d.text((ex + 26, y), f"매출 {_pct_text(e['rev_yoy'])}", font=font("regular", 19), fill=DIM)
-                y += 30
-            y += 12
-
-    _footer(img, d, x0, x1, y1, date_str, page, total)
-    return img
-
-
 _ANOMALY_HEADLINES = {
     "적자 전환": ["흑자에서 적자로 전환", "이 회사들, 적자로 돌아섰다", "흑자였던 곳이 적자로"],
     "비적정 감사의견": ["감사의견, 적정 아님", "감사인이 문제를 제기했다"],
@@ -412,50 +379,85 @@ _ANOMALY_HEADLINES = {
     "매출": ["매출이 계속 줄고 있다", "매출 감소가 이어지는 곳들"],
 }
 _ANOMALY_FALLBACK = ["조심해서 봐야 할 재무 신호", "오늘 체크할 위험 신호"]
-_ANOMALY_NONE = ["오늘은 특별한 위험신호 없음", "오늘은 조용히 지나간 하루"]
+_SIGNALS_HEADLINES_BOTH = [
+    "오늘의 종목 시그널", "실적으로 웃고, 신호로 울고",
+    "오늘 체크할 종목들", "실적부터 위험신호까지, 한 장 정리",
+]
 
 
-def _anomaly_headline(anomalies, seed):
-    if not anomalies:
-        return _rot(f"{seed}|none", _ANOMALY_NONE)
-    label = anomalies[0]["label"]
-    for key, options in _ANOMALY_HEADLINES.items():
-        if key in label:
-            return _rot(f"{seed}|{key}", options)
-    return _rot(f"{seed}|fallback", _ANOMALY_FALLBACK)
+def _signals_headline(data, seed):
+    """실적·이상신호를 한 장에 합친 카드 헤드라인 — 둘 다 있으면 공용 문구,
+    한쪽만 있으면 그쪽 성격에 맞는 문구를 쓴다."""
+    has_earnings, anomalies = bool(data["earnings"]), data["anomalies"]
+    if has_earnings and anomalies:
+        return _rot(f"{seed}|signals", _SIGNALS_HEADLINES_BOTH)
+    if anomalies:
+        label = anomalies[0]["label"]
+        for key, options in _ANOMALY_HEADLINES.items():
+            if key in label:
+                return _rot(f"{seed}|{key}", options)
+        return _rot(f"{seed}|fallback", _ANOMALY_FALLBACK)
+    return _rot(f"{seed}|earnings", [
+        "누가 웃고, 누가 울었나", "오늘 실적표, 희비가 갈렸다", "숫자로 보는 오늘의 실적",
+    ])
 
 
-def render_anomaly(data, date_str, page, total):
+def render_signals(data, date_str, page, total, section_no):
+    """실적 서프라이즈·쇼크 + 재무 위험신호를 한 장으로 합친 카드 — 예전엔 두 장으로
+    나뉘어 있었는데 둘 다 '개별 종목 시그널'이라 성격이 겹치고, 6장이던 캐러셀을
+    5장으로 줄여달라는 요청에 따라 합쳤다."""
     img, d = _notepad_card()
     x0, y0, x1, y1 = CARD
     cx = (x0 + x1) // 2
     ex, ey = x0 + 56, x1 - 56
-    y = _masthead(img, d, ex, ey, y0 + 46, "03 · 위험 신호", f"{date_str}")
-    ah = _anomaly_headline(data["anomalies"], date_str)
-    _center_display(d, ah, 34, cx, y, INK)
-    y += 76
+    y = _masthead(img, d, ex, ey, y0 + 46, f"{section_no:02d} · 종목 시그널", f"{date_str}")
+    headline = _signals_headline(data, date_str)
+    _center_display(d, headline, 34, cx, y, INK)
+    y += 66
 
-    for a in data["anomalies"][:4]:
-        cyc = y + 14
-        d.ellipse([ex, cyc - 14, ex + 28, cyc + 14], outline=BAD, width=3)
-        d.line([(ex + 14, cyc - 6), (ex + 14, cyc + 3)], fill=BAD, width=3)
-        d.ellipse([ex + 12.5, cyc + 7, ex + 15.5, cyc + 10], fill=BAD)
-        row_txt = f"{a['name']} ({a['code']})"
-        d.text((ex + 44, y), row_txt, font=_display_font(row_txt, 27), fill=INK)
-        y += 56
-        d.line([(ex, y - 8), (ey, y - 8)], fill=RULE, width=1)
+    surprises = [e for e in data["earnings"] if e["tag"] == "surprise"][:2]
+    shocks = [e for e in data["earnings"] if e["tag"] == "shock"][:1]
 
-    y += 20
+    if surprises:
+        d.text((ex, y), "어닝 서프라이즈", font=_display_font("어닝 서프라이즈", 22), fill=GOOD)
+        y += 38
+        for e in surprises:
+            v = f"순이익 {_pct_text(e['ni_yoy'])}"
+            _row(d, ex, ey, y, e["name"], v, value_color=GOOD, dot_color=GOOD,
+                 label_font=font("regular", 25), value_font=_display_font(v, 26))
+            y += 46
+        y += 16
+
+    if shocks:
+        d.text((ex, y), "어닝 쇼크", font=_display_font("어닝 쇼크", 22), fill=BAD)
+        y += 38
+        for e in shocks:
+            v = f"순이익 {_pct_text(e['ni_yoy'])}"
+            _row(d, ex, ey, y, e["name"], v, value_color=BAD, dot_color=BAD,
+                 label_font=font("regular", 25), value_font=_display_font(v, 26))
+            y += 38
+            if e.get("rev_yoy") is not None:
+                d.text((ex + 26, y), f"매출 {_pct_text(e['rev_yoy'])}", font=font("regular", 18), fill=DIM)
+                y += 28
+        y += 16
+
     if data["anomalies"]:
-        for line in _wrap(d, data["anomalies"][0]["text"], font("regular", 19), ey - ex):
-            d.text((ex, y), line, font=font("regular", 19), fill=DIM)
-            y += 28
+        d.text((ex, y), "위험 신호", font=_display_font("위험 신호", 22), fill=BAD)
+        y += 38
+        for a in data["anomalies"][:3]:
+            cyc = y + 13
+            d.ellipse([ex, cyc - 13, ex + 26, cyc + 13], outline=BAD, width=3)
+            d.line([(ex + 13, cyc - 5), (ex + 13, cyc + 3)], fill=BAD, width=3)
+            d.ellipse([ex + 11.5, cyc + 6, ex + 14.5, cyc + 9], fill=BAD)
+            row_txt = f"{a['name']} ({a['code']})"
+            d.text((ex + 40, y), row_txt, font=_display_font(row_txt, 25), fill=INK)
+            y += 50
 
     _footer(img, d, x0, x1, y1, date_str, page, total)
     return img
 
 
-def render_theme_cta(data, date_str, page, total, section_no):
+def render_theme(data, date_str, page, total, section_no):
     img, d = _notepad_card()
     x0, y0, x1, y1 = CARD
     cx = (x0 + x1) // 2
@@ -464,13 +466,13 @@ def render_theme_cta(data, date_str, page, total, section_no):
     top = themes[0] if themes else None
     if top:
         sign = "+" if top["ret_1m"] >= 0 else ""
-        headline = _rot(f"{date_str}|theme_cta", [
+        headline = _rot(f"{date_str}|theme", [
             f"{top['mid']} 한 달 새 {sign}{top['ret_1m']:.1f}%",
             f"요즘 뜨는 테마, {top['mid']}",
             f"{top['mid']}, 최근 한 달 {sign}{top['ret_1m']:.1f}%",
         ])
     else:
-        headline = _rot(f"{date_str}|theme_cta_none", [
+        headline = _rot(f"{date_str}|theme_none", [
             "요즘 주도테마 한눈에 보기", "지금 이 테마들이 뜬다",
         ])
 
@@ -484,14 +486,6 @@ def render_theme_cta(data, date_str, page, total, section_no):
              label_font=font("regular", 27), value_font=_display_font(tv, 28))
         y += 46
         d.line([(ex, y - 10), (ey, y - 10)], fill=RULE, width=1)
-
-    cta_y = y1 - 226
-    d.rounded_rectangle([ex, cta_y, ey, cta_y + 130], radius=20, outline=ORANGE, width=3)
-    _checkbox(d, ex + 26, cta_y + 24, size=26)
-    cta_line = "전 종목 스크리닝, 무료로"
-    d.text((ex + 66, cta_y + 20), cta_line, font=_display_font(cta_line, 27), fill=INK)
-    d.text((ex + 66, cta_y + 58), "재무제표 · 회계감사의견까지 한번에", font=font("regular", 19), fill=DIM)
-    d.text((ex + 26, cta_y + 90), "getmoneycheckup.com", font=font("bold", 25), fill=ORANGE)
 
     _footer(img, d, x0, x1, y1, date_str, page, total)
     return img
@@ -513,6 +507,7 @@ def render_company_review(data, date_str, page, total, section_no):
     f = data.get("featured")
     if not f:
         _center_display(d, "오늘의 기업리뷰 준비 중", 34, cx, y + 80, INK)
+        _cta_box(d, ex, ey, y1 - 190, "전 종목 스크리닝, 무료로")
         _footer(img, d, x0, x1, y1, date_str, page, total)
         return img
 
@@ -522,21 +517,21 @@ def render_company_review(data, date_str, page, total, section_no):
     _center_display(d, headline, 36, cx, y, INK)
     y += 50
     _center_text(d, f"{f['code']} · 건강점수 랭킹 {f['rank']}위(참고용)", font("regular", 20), cx, y, DIM)
-    y += 44
+    y += 40
 
+    # CTA(전 종목 스크리닝 안내)를 이 마지막 장으로 옮겨오면서(예전엔 주도테마 카드에
+    # 있었음 — 6장→5장으로 줄이며 캐러셀의 진짜 마지막 액션이 되도록 재배치) 박스
+    # 높이를 살짝 줄여 공간을 만들었다.
     dims = f["dims"]
     box_w = (ey - ex - 20) / 2
-    box_h = 210
+    box_h = 178
     for i, (key, label) in enumerate(_DIM_ORDER):
         bx = ex + (i % 2) * (box_w + 20)
         by = y + (i // 2) * (box_h + 20)
         _dim_box(d, bx, by, box_w, box_h, label, dims[key])
     y += 2 * box_h + 20 + 22
 
-    caption = "* 건강점수는 밸류에이션·수익성·안정성·성장성을 같은 업종 내 백분위로 환산한 참고 지표로, 매수·매도 추천이 아닙니다."
-    for line in _wrap(d, caption, font("regular", 17), ey - ex):
-        _center_text(d, line, font("regular", 17), cx, y, DIM)
-        y += 24
+    _cta_box(d, ex, ey, y, "전 종목 스크리닝, 무료로")
 
     _footer(img, d, x0, x1, y1, date_str, page, total)
     return img
@@ -548,17 +543,22 @@ def generate_cards(data, name_of, headline_lines, subtitle, date_str, out_dir="c
     data = dict(data)
     data["_name_of"] = name_of
     os.makedirs(out_dir, exist_ok=True)
+    # 카드 장수가 어제보다 줄어든 날(예: 이상신호 없는 날) 이전 실행의 여분 PNG가
+    # 그대로 남아있으면 캐러셀에 옛날 카드까지 같이 올라갈 수 있어(post_to_instagram.py가
+    # 폴더 안 .png 전부를 줍기 때문) — 새로 만들기 전에 이전 산출물을 지운다.
+    for f in os.listdir(out_dir):
+        if f.endswith(".png"):
+            os.remove(os.path.join(out_dir, f))
 
     sections = []
     if data["us_indices"] or data["gainers"] or data["losers"]:
         sections.append("market")
-    if data["earnings"]:
-        sections.append("earnings")
-    if data["anomalies"]:
-        sections.append("anomaly")
-    # CTA(테마+CTA 카드)는 데이터 유무와 무관하게 항상 추가.
-    sections.append("theme_cta")
-    # 오늘의 기업리뷰(랭킹 1~20위 영업일 로테이션)는 항상 맨 마지막 장으로 마무리.
+    # 실적(어닝서프라이즈·쇼크)과 이상신호는 둘 다 '개별 종목 시그널'이라 한 장으로
+    # 합침(6장→5장 요청) — 둘 중 하나라도 있으면 카드 자체는 추가.
+    if data["earnings"] or data["anomalies"]:
+        sections.append("signals")
+    sections.append("theme")
+    # 오늘의 기업리뷰(랭킹 1~50위 로테이션 + CTA)는 항상 맨 마지막 장으로 마무리.
     sections.append("company_review")
 
     total = 1 + len(sections)  # 총 장수를 렌더링 전에 먼저 확정(페이지 번호 불일치 방지)
@@ -572,13 +572,11 @@ def generate_cards(data, name_of, headline_lines, subtitle, date_str, out_dir="c
     section_no = 1
     for i, kind in enumerate(sections, start=2):
         if kind == "market":
-            img = render_market(data, date_str, i, total)
-        elif kind == "earnings":
-            img = render_earnings(data, date_str, i, total)
-        elif kind == "anomaly":
-            img = render_anomaly(data, date_str, i, total)
-        elif kind == "theme_cta":
-            img = render_theme_cta(data, date_str, i, total, section_no)
+            img = render_market(data, date_str, i, total, section_no)
+        elif kind == "signals":
+            img = render_signals(data, date_str, i, total, section_no)
+        elif kind == "theme":
+            img = render_theme(data, date_str, i, total, section_no)
         elif kind == "company_review":
             img = render_company_review(data, date_str, i, total, section_no)
         p = os.path.join(out_dir, f"{i:02d}.png")
