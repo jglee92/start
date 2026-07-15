@@ -8,3 +8,4 @@ requests==2.34.2
 lxml==6.1.1
 beautifulsoup4==4.15.0
 Pillow==12.3.0
+fonttools==4.63.0
