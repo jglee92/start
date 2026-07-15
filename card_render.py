@@ -484,8 +484,17 @@ def render_theme(data, date_str, page, total, section_no):
         tv = _pct_text(m["ret_1m"])
         _row(d, ex, ey, y, m["mid"], tv, value_color=_sign_color(m["ret_1m"]),
              label_font=font("regular", 27), value_font=_display_font(tv, 28))
-        y += 46
-        d.line([(ex, y - 10), (ey, y - 10)], fill=RULE, width=1)
+        y += 40
+
+        # 테마명만 나열하면 와닿지 않는다는 피드백 — 대표 세부테마의 예시 종목을
+        # 바로 아래에 붙인다(블로그 글엔 이미 쓰던 데이터, 카드엔 안 옮겨져 있었음).
+        examples = next((s["examples"] for s in m.get("sub", []) if s.get("examples")), None)
+        if examples:
+            d.text((ex, y), f"예: {', '.join(examples[:3])}", font=font("regular", 20), fill=DIM)
+            y += 32
+        y += 12
+        d.line([(ex, y - 8), (ey, y - 8)], fill=RULE, width=1)
+        y += 6
 
     _footer(img, d, x0, x1, y1, date_str, page, total)
     return img
