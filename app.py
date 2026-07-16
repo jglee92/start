@@ -1412,7 +1412,11 @@ def blog_draft(key: str = ""):
     cards_dir = os.path.join(day_dir, "cards")
 
     if not os.path.isfile(blog_path):
-        title, body = _blog_draft_text()
+        # 토요일엔 평일용 _blog_draft_text()를 그대로 쓰면 "휴장일이라 소식 없음"으로
+        # 잘못 나옴(주간 마무리 대신) — 자동 생성이 아직 안 끝난 시점에 눌렀을 때의
+        # 폴백이라 요일에 맞는 함수로 갈라줘야 함.
+        is_saturday = datetime.now(KST).weekday() == 5
+        title, body = _weekly_wrap_text() if is_saturday else _blog_draft_text()
         content = f"{title}\n{'=' * len(title)}\n\n{body}"
         data = ("﻿" + content).encode("utf-8")  # BOM: 메모장 한글 인코딩 오인식 방지
         fname = f"blog-draft-{datetime.now(KST).strftime('%m%d')}.txt"
