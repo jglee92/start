@@ -342,3 +342,97 @@ def _days_ago(date_str, n):
     y, m, d = map(int, date_str.split("-"))
     cutoff = date(y, m, d) - timedelta(days=n)
     return cutoff.isoformat()
+
+
+# ── 주간 리포트(토요일) 표지 헤드라인 ──────────────────────────────────────
+# 데이터가 _weekly_wrap_data() 모양이라 일간 템플릿과 키가 다름 — 별도 목록으로 관리.
+# 템플릿 id에 wk_ 접두어를 붙여서 같은 cover_history.json을 공유해도 일간 로테이션
+# 기록과 절대 안 섞인다(주 1회 발행이라 반복 회피 압박도 낮아 목록도 더 단촐함).
+
+def _wt_gainer(data, seed):
+    top = data["gainers"][0]
+    line2 = _rot(f"{seed}|l2", [
+        "이번주 최고 상승 종목", "이번주 가장 뜨거웠던 종목", "주간 급등주 TOP3 정리",
+    ])
+    sub = _rot(f"{seed}|sub", [
+        "이번주 급등·급락 종목 한눈에 정리", "주간 마감, 5분 만에 훑기",
+    ])
+    return ([f"{top['name']} +{_fmt_pct(top['pct'])}%,", line2], sub, abs(top["pct"]))
+
+
+def _wt_theme(data, seed):
+    top = data["strong_themes"][0]
+    sign = "+" if top["ret_1m"] >= 0 else ""
+    line1 = _rot(f"{seed}|l1", [
+        f"이번주 가장 뜨거웠던 테마 '{top['name']}'", f"주간 최고 강세 테마 '{top['name']}'",
+    ])
+    line2 = _rot(f"{seed}|l2", [f"{sign}{top['ret_1m']:.1f}% 상승", f"수익률 {sign}{top['ret_1m']:.1f}%"])
+    sub = _rot(f"{seed}|sub", [
+        "이번주 강세 테마 TOP5 정리", "주도테마 한 주 성적표",
+    ])
+    return ([line1, line2], sub, abs(top["ret_1m"]))
+
+
+def _wt_index(data, seed):
+    top = max(data["idx"], key=lambda i: abs(i["chg"]))
+    name, chg = top["name"], top["chg"]
+    sign = "+" if chg >= 0 else ""
+    mood = _rot(f"{seed}|mood", ["강세 마감", "웃으며 마감"]) if chg >= 0 \
+        else _rot(f"{seed}|mood", ["약세 마감", "부담스러운 한 주"])
+    sub = _rot(f"{seed}|sub", [
+        "이번주 지수·급등락·이상신호 총정리", "주간 국내증시 마무리 브리핑",
+    ])
+    return ([f"{name} 이번주 {sign}{chg:.1f}%,", mood], sub, abs(chg) * 20)
+
+
+def _wt_anomaly(data, seed):
+    n = len(data["anomalies"])
+    line2 = _rot(f"{seed}|l2", [
+        "이번주 체크할 위험신호", "주말에 꼭 확인해야 할 종목",
+    ])
+    sub = _rot(f"{seed}|sub", [
+        "재무 이상신호 무료로 미리 확인", "숫자로 짚어보는 이번주 위험신호",
+    ])
+    return ([f"이번주 이상신호 {n}건,", line2], sub, 10 + n * 3)
+
+
+def _wt_wrap(data, seed):
+    lines = _rot(f"{seed}|lines", [
+        ["이번주도 고생 많으셨어요,", "주간증시 5분 정리"],
+        ["한 주 마무리,", "이것만 보고 가세요"],
+        ["주말 전 체크리스트,", "이번주 증시 요약"],
+    ])
+    sub = _rot(f"{seed}|sub", ["급등락·강세테마·이상신호 한 번에", "이번주 시장을 5분 만에 정리"])
+    return (lines, sub, 5)
+
+
+WEEKLY_TEMPLATES = [
+    ("wk_gainer", ["gainers"], _wt_gainer),
+    ("wk_theme", ["strong_themes"], _wt_theme),
+    ("wk_index", ["idx"], _wt_index),
+    ("wk_anomaly", ["anomalies"], _wt_anomaly),
+    ("wk_wrap", [], _wt_wrap),
+]
+
+
+def pick_weekly_cover_headline(data, today_str):
+    """_weekly_wrap_data() 반환값 기반 — pick_cover_headline()의 주간판(간소화 버전).
+    이름함수(name_of) 의존이 없어(gainers/losers가 이미 이름 포함) 인자가 더 단순함."""
+    hist = _load_history()
+    recent_ids = {h["template_id"] for h in hist if h["date"] >= _days_ago(today_str, NO_REPEAT_DAYS)}
+
+    candidates = [(tid, fill) for tid, requires, fill in WEEKLY_TEMPLATES
+                  if all(data.get(r) for r in requires)]
+    if not candidates:
+        candidates = [("wk_wrap", _wt_wrap)]
+
+    fresh = [(tid, fill) for tid, fill in candidates if tid not in recent_ids]
+    pool = fresh or candidates
+
+    filled = [(tid, *fill(data, f"{today_str}|{tid}")) for tid, fill in pool]
+    filled.sort(key=lambda x: x[3], reverse=True)
+    tid, lines, subtitle, _impact = filled[0]
+
+    hist.append({"date": today_str, "template_id": tid})
+    _save_history(hist)
+    return lines, subtitle, tid

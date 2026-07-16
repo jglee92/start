@@ -282,11 +282,12 @@ def _dim_box(d, x, y, w, h, label, dim):
 
 # ---------------- 카드별 렌더 ----------------
 
-def render_cover(headline_lines, subtitle, date_str, page, total):
+def render_cover(headline_lines, subtitle, date_str, page, total,
+                  section_label="장전 브리핑", dateline_suffix="오늘의 한 장"):
     img, d = _notepad_card()
     x0, y0, x1, y1 = CARD
     cx = (x0 + x1) // 2
-    y = _masthead(img, d, x0 + 56, x1 - 56, y0 + 46, "장전 브리핑", f"{date_str} · 오늘의 한 장")
+    y = _masthead(img, d, x0 + 56, x1 - 56, y0 + 46, section_label, f"{date_str} · {dateline_suffix}")
 
     y += 90
     n = len(headline_lines)
@@ -544,6 +545,203 @@ def render_company_review(data, date_str, page, total, section_no):
 
     _footer(img, d, x0, x1, y1, date_str, page, total)
     return img
+
+
+# ---------------- 주간 리포트(토요일) 카드 ----------------
+# app.py::_weekly_wrap_data() 구조화 데이터 기반 — 일간 카드와 섹션 구성은 비슷하되
+# (표지→시황→시그널→테마) 데이터 키가 달라(gainers/losers가 이미 이름 포함,
+# earnings 없음, us_indices 대신 idx) 별도 렌더 함수로 둔다. 오늘의 기업리뷰는
+# 주간 데이터에 대응하는 게 없어 생략하고, CTA는 마지막 장인 테마 카드로 옮겼다.
+
+def render_weekly_market(data, date_str, page, total, section_no):
+    img, d = _notepad_card()
+    x0, y0, x1, y1 = CARD
+    cx = (x0 + x1) // 2
+    ex, ey = x0 + 56, x1 - 56
+
+    idx = data["idx"]
+    if idx:
+        top = max(idx, key=lambda i: abs(i["chg"]))
+        mood = "상승" if top["chg"] >= 0 else "하락"
+        headline = _rot(f"{date_str}|wk_market", [
+            f"{top['name']} 이번주 {mood} 마감", "이번주 국내증시 결산",
+        ])
+    else:
+        headline = "이번주 국내증시 결산"
+
+    y = _masthead(img, d, ex, ey, y0 + 46, f"{section_no:02d} · 이번주 시황", f"{date_str}")
+    _center_display(d, headline, 36, cx, y, INK)
+    y += 66
+
+    if idx:
+        col_w = (ey - ex) / len(idx)
+        d.line([(ex, y), (ey, y)], fill=RULE, width=2)
+        y += 26
+        for i, item in enumerate(idx):
+            x = ex + i * col_w
+            d.text((x, y), item["name"], font=font("regular", 22), fill=DIM)
+            txt = _pct_text(item["chg"])
+            d.text((x, y + 32), txt, font=_display_font(txt, 34), fill=_sign_color(item["chg"]))
+            if i > 0:
+                d.line([(x - 4, y - 4), (x - 4, y + 78)], fill=RULE, width=1)
+        y += 114
+        d.line([(ex, y), (ey, y)], fill=RULE, width=2)
+        y += 34
+
+    if data["gainers"] or data["losers"]:
+        _draw_display(d, "금주 급등·급락 TOP3", 25, ex, y, INK)
+        y += 46
+        half = (ey - ex) / 2 - 20
+        from itertools import zip_longest
+        ry = y
+        for gainer, loser in zip_longest(data["gainers"], data["losers"]):
+            if gainer:
+                gv = _pct_text(gainer["pct"])
+                _row(d, ex, ex + half, ry, gainer["name"], gv,
+                     value_color=GOOD, dot_color=GOOD, label_font=font("regular", 24),
+                     value_font=_display_font(gv, 26))
+            if loser:
+                lv = _pct_text(loser["pct"])
+                _row(d, ex + half + 40, ey, ry, loser["name"], lv,
+                     value_color=BAD, dot_color=BAD, label_font=font("regular", 24),
+                     value_font=_display_font(lv, 26))
+            ry += 50
+        d.line([(ex + half + 20, y - 10), (ex + half + 20, ry - 20)], fill=RULE, width=1)
+
+    _footer(img, d, x0, x1, y1, date_str, page, total)
+    return img
+
+
+def render_weekly_signals(data, date_str, page, total, section_no):
+    """이상신호 + 종합점수 급상승·급하락 종목을 한 장으로(일간의 실적 자리를 주간엔
+    점수 변동으로 대체 — 주간 데이터엔 최근 공시 실적이 따로 없음)."""
+    img, d = _notepad_card()
+    x0, y0, x1, y1 = CARD
+    cx = (x0 + x1) // 2
+    ex, ey = x0 + 56, x1 - 56
+    y = _masthead(img, d, ex, ey, y0 + 46, f"{section_no:02d} · 이번주 체크포인트", f"{date_str}")
+    headline = _rot(f"{date_str}|wk_signals", [
+        "이번주 체크할 종목들", "이번주 점수가 갈린 종목", "한 주간 달라진 것들",
+    ])
+    _center_display(d, headline, 34, cx, y, INK)
+    y += 66
+
+    if data["anomalies"]:
+        d.text((ex, y), "위험 신호", font=_display_font("위험 신호", 22), fill=BAD)
+        y += 38
+        for a in data["anomalies"][:3]:
+            cyc = y + 13
+            d.ellipse([ex, cyc - 13, ex + 26, cyc + 13], outline=BAD, width=3)
+            d.line([(ex + 13, cyc - 5), (ex + 13, cyc + 3)], fill=BAD, width=3)
+            d.ellipse([ex + 11.5, cyc + 6, ex + 14.5, cyc + 9], fill=BAD)
+            row_txt = f"{a['name']} ({a['code']})"
+            d.text((ex + 40, y), row_txt, font=_display_font(row_txt, 25), fill=INK)
+            y += 50
+        y += 10
+
+    score_up = data["score_up"][:2]
+    if score_up:
+        d.text((ex, y), "점수 급상승", font=_display_font("점수 급상승", 22), fill=GOOD)
+        y += 38
+        for m in score_up:
+            v = f"{m['score']:.1f}점 ({m['score_change']:+.1f})"
+            _row(d, ex, ey, y, m["name"], v, value_color=GOOD, dot_color=GOOD,
+                 label_font=font("regular", 24), value_font=_display_font(v, 24))
+            y += 44
+        y += 10
+
+    score_down = data["score_down"][:2]
+    if score_down:
+        d.text((ex, y), "점수 급하락", font=_display_font("점수 급하락", 22), fill=BAD)
+        y += 38
+        for m in score_down:
+            v = f"{m['score']:.1f}점 ({m['score_change']:+.1f})"
+            _row(d, ex, ey, y, m["name"], v, value_color=BAD, dot_color=BAD,
+                 label_font=font("regular", 24), value_font=_display_font(v, 24))
+            y += 44
+
+    _footer(img, d, x0, x1, y1, date_str, page, total)
+    return img
+
+
+def render_weekly_theme(data, date_str, page, total, section_no):
+    """이번주 강세 테마 TOP5 + CTA — 주간 카드엔 '오늘의 기업리뷰'에 대응하는 게
+    없어(랭킹 로테이션은 일간 개념) 마지막 장인 이 카드로 CTA를 가져왔다."""
+    img, d = _notepad_card()
+    x0, y0, x1, y1 = CARD
+    cx = (x0 + x1) // 2
+    ex, ey = x0 + 56, x1 - 56
+    themes = data["strong_themes"]
+    top = themes[0] if themes else None
+    if top:
+        sign = "+" if top["ret_1m"] >= 0 else ""
+        headline = _rot(f"{date_str}|wk_theme", [
+            f"이번주 최고 테마, {top['name']}", f"{top['name']} 이번주 {sign}{top['ret_1m']:.1f}%",
+        ])
+    else:
+        headline = "이번주 강세 테마 TOP5"
+
+    y = _masthead(img, d, ex, ey, y0 + 46, f"{section_no:02d} · 이번주 강세테마", f"{date_str}")
+    _center_display(d, headline, 34, cx, y, INK)
+    y += 70
+
+    for t in themes[:4]:
+        tv = _pct_text(t["ret_1m"])
+        _row(d, ex, ey, y, t["name"], tv, value_color=_sign_color(t["ret_1m"]),
+             label_font=font("regular", 26), value_font=_display_font(tv, 27))
+        y += 38
+        if t.get("examples"):
+            d.text((ex, y), f"예: {', '.join(t['examples'][:3])}", font=font("regular", 19), fill=DIM)
+            y += 30
+        y += 10
+        d.line([(ex, y - 6), (ey, y - 6)], fill=RULE, width=1)
+        y += 8
+
+    # CTA는 고정 위치가 아니라 방금 그린 테마 목록 바로 아래(콘텐츠가 적은 주엔 위로
+    # 붙고, 4개 꽉 찬 주엔 아래로 내려가되 항상 푸터 위 여유 공간을 확보).
+    _cta_box(d, ex, ey, min(y + 16, y1 - 190), "전 종목 스크리닝, 무료로")
+
+    _footer(img, d, x0, x1, y1, date_str, page, total)
+    return img
+
+
+def generate_weekly_cards(data, headline_lines, subtitle, date_str, out_dir="cards_out"):
+    """data: app.py::_weekly_wrap_data() 결과. generate_cards()의 주간판 — 섹션이
+    유동적으로 빠지는 로직은 동일(예: 이상신호·점수변동이 전부 없는 주는 시그널
+    카드 생략)."""
+    os.makedirs(out_dir, exist_ok=True)
+    for f in os.listdir(out_dir):
+        if f.endswith(".png"):
+            os.remove(os.path.join(out_dir, f))
+
+    sections = ["market"]
+    if data["anomalies"] or data["score_up"] or data["score_down"]:
+        sections.append("signals")
+    sections.append("theme")  # 마지막 장 — CTA 포함, 항상 존재
+
+    total = 1 + len(sections)
+    paths = []
+
+    cover = render_cover(headline_lines, subtitle, date_str, 1, total,
+                         section_label="주간 마무리", dateline_suffix="이번주 한 장 요약")
+    p = os.path.join(out_dir, "01.png")
+    cover.save(p)
+    paths.append(p)
+
+    section_no = 1
+    for i, kind in enumerate(sections, start=2):
+        if kind == "market":
+            img = render_weekly_market(data, date_str, i, total, section_no)
+        elif kind == "signals":
+            img = render_weekly_signals(data, date_str, i, total, section_no)
+        elif kind == "theme":
+            img = render_weekly_theme(data, date_str, i, total, section_no)
+        p = os.path.join(out_dir, f"{i:02d}.png")
+        img.save(p)
+        paths.append(p)
+        section_no += 1
+
+    return paths
 
 
 def generate_cards(data, name_of, headline_lines, subtitle, date_str, out_dir="cards_out"):

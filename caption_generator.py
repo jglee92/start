@@ -42,3 +42,36 @@ def build_caption(data, headline_lines, subtitle):
         HASHTAGS,
     ]
     return "\n".join(lines)
+
+
+WEEKLY_HASHTAGS = ("#국내증시 #코스피 #코스닥 #주간증시 #이번주증시 #주간결산 "
+                    "#강세테마 #실적발표 #특징주 #머니체크업 #주식 #주식투자 #국내주식 #재테크")
+
+
+def build_weekly_caption(data, headline_lines, subtitle):
+    """app.py::_weekly_wrap_data()를 공유하는 주간판 캡션 — build_caption()과 같은
+    패턴이되 earnings/featured가 없고 gainers가 이미 이름 포함이라 접근 방식이 다름."""
+    lines = [" ".join(headline_lines), subtitle, ""]
+
+    if data["gainers"]:
+        top = data["gainers"][0]
+        lines.append(f"\U0001F4C8 이번주 급등 1위: {top['name']} {top['pct']:+.1f}%")
+
+    if data["anomalies"]:
+        lines.append(f"\U0001F6A9 이번주 체크할 이상신호 {len(data['anomalies'])}건")
+
+    if data["strong_themes"]:
+        top = data["strong_themes"][0]
+        lines.append(f"\U0001F525 이번주 강세 테마: {top['name']} {top['ret_1m']:+.1f}%")
+
+    lines += [
+        "",
+        "전 종목 스크리닝 · 재무제표 · 회계감사의견까지, 머니체크업에서 무료로 확인하세요.",
+        "\U0001F449 getmoneycheckup.com (프로필 링크 클릭)",
+        "",
+        "※ 이 게시물은 공개 데이터를 정리한 정보 제공용 콘텐츠이며, 특정 종목에 대한",
+        "매수·매도 추천이 아닙니다. 투자 판단과 책임은 본인에게 있습니다.",
+        "",
+        WEEKLY_HASHTAGS,
+    ]
+    return "\n".join(lines)

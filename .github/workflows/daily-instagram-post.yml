@@ -2,12 +2,14 @@ name: 인스타그램 자동 게시
 
 on:
   schedule:
-    # 매 평일 UTC 22:00 = KST 07:00(다음날) 목표. GitHub Actions 스케줄 실행이 실측상
-    # 50~60분 정도 늦어서(원래 목표 08:00 KST 대비), 실제 게시 시각이 08:00 언저리에
-    # 오도록 1시간 당겼다(daily-content.yml과 동일한 이유). daily-content.yml이 그날
-    # 콘텐츠를 이미 커밋해둔 뒤라, 여기서는 재생성 없이 오늘자 content_out/ 폴더를
-    # 그대로 게시만 한다 — 콘텐츠 생성과 게시 시간을 분리해달라는 요청 반영.
-    - cron: '0 22 * * 0-4'
+    # 매 평일+토요일 UTC 22:00 = KST 07:00(다음날) 목표. GitHub Actions 스케줄 실행이
+    # 실측상 50~60분 정도 늦어서(원래 목표 08:00 KST 대비), 실제 게시 시각이 08:00
+    # 언저리에 오도록 1시간 당겼다(daily-content.yml과 동일한 이유). daily-content.yml이
+    # 그날 콘텐츠를 이미 커밋해둔 뒤라, 여기서는 재생성 없이 오늘자 content_out/ 폴더를
+    # 그대로 게시만 한다 — 콘텐츠 생성과 게시 시간을 분리해달라는 요청 반영. 토요일
+    # 분량(주간 마무리 카드)도 daily-content.yml이 같은 폴더 구조로 만들어두므로
+    # post_to_instagram.py는 요일 구분 없이 그대로 재사용된다.
+    - cron: '0 22 * * 0-5'
   workflow_dispatch: {}
 
 permissions:

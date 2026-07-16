@@ -1270,14 +1270,16 @@ def _blog_draft_text():
     return title, "\n".join(lines)
 
 
-def _weekly_wrap_text():
-    """토요일 아침 전용 '주간 마무리' 메일(평일 브리핑과 별개). 금요일 종가까지 반영된
-    데이터로 발송하므로(daily-prices.yml이 금요일 저녁에 갱신) 평일 아침에 미리 만들면
-    당일 장이 아직 안 열려 생기던 '반쪽짜리 주간 요약' 문제를 피한다."""
+def _weekly_wrap_data():
+    """'주간 마무리'의 원시(구조화) 데이터만 계산 — _blog_draft_data()의 주간판.
+    뉴스레터 텍스트(_weekly_wrap_text)와 주간 인스타 카드뉴스 생성기가 이 함수를
+    공유한다(일간판과 동일한 이유 — 완성 텍스트를 다시 파싱하지 않기 위함).
+    토요일 아침 전용(평일 브리핑과 별개). 금요일 종가까지 반영된 데이터로 만드므로
+    (daily-prices.yml이 금요일 저녁에 갱신) 당일 장이 아직 안 열려 생기던
+    '반쪽짜리 주간 요약' 문제를 피한다."""
     from datetime import datetime, timezone, timedelta
     KST = timezone(timedelta(hours=9))
     now = datetime.now(KST)
-    title = f"{now.month}월 {now.day}일 이번주 국내증시 마무리 | 머니체크업"
 
     conn = _conn()
     rk = get_ranking()
@@ -1293,51 +1295,87 @@ def _weekly_wrap_text():
     strong_themes = [t for t in _cache["theme_perf"]
                      if t.get("priced", 0) >= 5 and t.get("ret_1m") is not None]
     strong_themes.sort(key=lambda t: t["ret_1m"], reverse=True)
+    strong_themes = strong_themes[:5]
+    rk_by_code = {r["code"]: r for r in rk}
+    tmap = get_tmap()
+    for t in strong_themes:
+        t["examples"] = _theme_examples(tmap, rk_by_code, t["no"], 3)
+
+    idx = []
+    try:
+        import market_indices
+        for key in ("kospi", "kosdaq"):
+            hist = market_indices.fetch_history(key, "1mo")
+            pts = hist["points"] if hist else []
+            if len(pts) >= 6 and pts[-6]["c"]:
+                chg = (pts[-1]["c"] / pts[-6]["c"] - 1) * 100
+                idx.append({"name": hist["name"], "chg": chg})
+    except Exception:
+        pass
+
+    # 지금 재무 이상신호가 떠 있는 종목(주간 리포트에도 이 차별 섹션을 노출). '이번주 새로'는
+    # 지난주 신호 상태를 따로 저장하지 않아 단정 못 하므로 '체크할'로 표현(허위 방지).
+    anomalies = [{"name": r["name"], "code": r["code"], **f} for r in rk for f in (r.get("flags") or [])]
+    anomalies.sort(key=lambda a: 0 if a["emoji"] == "\U0001F534" else 1)
+
+    return {
+        "date": now, "is_holiday": False, "week_date": week_date,
+        "idx": idx,
+        "gainers": [{"name": _name_of(c), "code": c, "pct": pct} for c, pct in week_gainers],
+        "losers": [{"name": _name_of(c), "code": c, "pct": pct} for c, pct in week_losers],
+        "strong_themes": strong_themes,
+        "anomalies": anomalies[:3],
+        "score_up": score_up, "score_down": score_down,
+    }
+
+
+def _weekly_wrap_text(data=None):
+    """토요일 아침 전용 '주간 마무리' 메일(평일 브리핑과 별개)."""
+    data = data if data is not None else _weekly_wrap_data()
+    now = data["date"]
+    title = f"{now.month}월 {now.day}일 이번주 국내증시 마무리 | 머니체크업"
 
     lines = [
         "이번주도 고생 많으셨어요 \U0001F44B 이번주 국내증시, 이것만 보고 가세요.",
         "",
     ]
 
-    idx_line = _weekly_index_line()
-    if idx_line:
+    if data["idx"]:
+        idx_line = "\U0001F4CA 이번주 지수 — " + " · ".join(
+            f"{i['name']} {i['chg']:+.1f}%" for i in data["idx"])
         lines.append(idx_line)
         lines.append("")
 
-    if week_gainers or week_losers:
+    if data["gainers"] or data["losers"]:
         lines.append("\U0001F4C8 금주 가장 많이 오른 종목 · 하락한 종목")
-        for code, pct in week_gainers:
-            lines.append(f"- (상승) {_name_of(code)}({code}): {pct:+.1f}%")
-        for code, pct in week_losers:
-            lines.append(f"- (하락) {_name_of(code)}({code}): {pct:+.1f}%")
+        for g in data["gainers"]:
+            lines.append(f"- (상승) {g['name']}({g['code']}): {g['pct']:+.1f}%")
+        for l in data["losers"]:
+            lines.append(f"- (하락) {l['name']}({l['code']}): {l['pct']:+.1f}%")
         lines.append("")
 
-    if strong_themes:
+    if data["strong_themes"]:
         lines.append("\U0001F525 이번주 강세 테마 TOP5")
-        for t in strong_themes[:5]:
+        for t in data["strong_themes"]:
             lines.append(f"- {t['name']}: {t['ret_1m']:+.1f}%")
         lines.append("")
 
-    # 지금 재무 이상신호가 떠 있는 종목(주간 리포트에도 이 차별 섹션을 노출). '이번주 새로'는
-    # 지난주 신호 상태를 따로 저장하지 않아 단정 못 하므로 '체크할'로 표현(허위 방지).
-    anomalies = [(r["name"], r["code"], f) for r in rk for f in (r.get("flags") or [])]
-    if anomalies:
-        anomalies.sort(key=lambda x: 0 if x[2]["emoji"] == "\U0001F534" else 1)
+    if data["anomalies"]:
         lines.append("\U0001F6A9 이번주 체크할 이상신호 종목")
-        for name, code, f in anomalies[:3]:
-            lines.append(f"- {name}({code}) {f['label']}: {f['text']}")
+        for a in data["anomalies"]:
+            lines.append(f"- {a['name']}({a['code']}) {a['label']}: {a['text']}")
         lines.append("")
 
-    if score_up:
+    if data["score_up"]:
         lines.append("\U0001F4C8 이번주 종합점수 급상승 종목")
-        for m in score_up:
+        for m in data["score_up"]:
             lines.append(f"- {m['name']}({m['code']}): {m['prev_score']:.1f}점 → "
                          f"{m['score']:.1f}점 ({m['score_change']:+.1f})")
         lines.append("")
 
-    if score_down:
+    if data["score_down"]:
         lines.append("\U0001F4C9 이번주 종합점수 급하락 종목")
-        for m in score_down:
+        for m in data["score_down"]:
             lines.append(f"- {m['name']}({m['code']}): {m['prev_score']:.1f}점 → "
                          f"{m['score']:.1f}점 ({m['score_change']:+.1f})")
         lines.append("")
