@@ -1197,6 +1197,99 @@ def _rot(seed_key, options):
     return random.Random(seed_key).choice(options)
 
 
+def _bonus_blocks(seed):
+    """장전 브리핑에 매일 하나씩 랜덤으로 끼워넣을 '오늘의 픽' 후보 블록들. 전부 이미 가진
+    랭킹 데이터(건강점수·PER·배당·부채비율·ROE·매출성장·점수변동)에서 뽑은 큐레이션이라
+    추가 수집 없이 콘텐츠 다양성만 늘린다 — 매일 같은 6개 섹션만 반복되면 자동생성 티가
+    나므로. 매수 추천이 아니라 정보/교육용(공통 면책 적용). 데이터 부족한 픽은 자동 제외.
+    이모지는 코어 섹션(🌏📈📊🚩🔥🏥)과 겹치지 않게 골랐다."""
+    rk = get_ranking()
+    blocks = {}
+
+    # 저평가 우량주 (PER 낮고 건강점수 높은)
+    vp = sorted([r for r in rk if r["per"] and 0 < r["per"] <= 15],
+                key=lambda r: r["score"], reverse=True)
+    if len(vp) >= 3:
+        b = [_rot(f"{seed}|h_value", [
+            "\U0001F48E 저평가 우량주 픽 — 건강점수 높고 PER 낮은 종목",
+            "\U0001F48E 오늘의 저평가 우량주 (건강점수·PER 기준)",
+            "\U0001F48E 가치+퀄리티 픽 — 싸고 튼튼한 종목",
+        ])]
+        for r in vp[:4]:
+            b.append(f"- {r['name']}({r['code']}): 건강점수 {r['score']:.1f} · PER {r['per']:.1f} · PBR {r['pbr']:.2f}")
+        blocks["value_pick"] = b
+
+    # 고배당주
+    dp = sorted([r for r in rk if r.get("div_yield") and 0 < r["div_yield"] <= 20],
+                key=lambda r: r["div_yield"], reverse=True)
+    if len(dp) >= 3:
+        b = [_rot(f"{seed}|h_div", [
+            "\U0001F4B0 고배당주 픽 — 배당수익률 상위 종목",
+            "\U0001F4B0 오늘의 고배당 종목 (배당수익률 기준)",
+            "\U0001F4B0 배당 매력 픽 — 배당수익률 높은 종목",
+        ])]
+        for r in dp[:4]:
+            b.append(f"- {r['name']}({r['code']}): 배당수익률 {r['div_yield']:.2f}% · 건강점수 {r['score']:.1f}")
+        blocks["dividend_pick"] = b
+
+    # 재무 안전주 (부채비율 낮은 우량)
+    sp = sorted([r for r in rk if r["debt_ratio"] is not None and r["debt_ratio"] <= 50],
+                key=lambda r: r["score"], reverse=True)
+    if len(sp) >= 3:
+        b = [_rot(f"{seed}|h_safe", [
+            "\U0001F6E1 재무 안전주 픽 — 부채비율 낮은 우량 종목",
+            "\U0001F6E1 오늘의 안전주 (부채비율 낮은 종목)",
+            "\U0001F6E1 튼튼한 재무 픽 — 빚 적고 점수 높은 종목",
+        ])]
+        for r in sp[:4]:
+            b.append(f"- {r['name']}({r['code']}): 부채비율 {r['debt_ratio']:.0f}% · 건강점수 {r['score']:.1f}")
+        blocks["safety_pick"] = b
+
+    # 수익성 상위 (ROE)
+    pp = sorted([r for r in rk if r["roe"] is not None and 0 < r["roe"] <= 80],
+                key=lambda r: r["roe"], reverse=True)
+    if len(pp) >= 3:
+        b = [_rot(f"{seed}|h_profit", [
+            "\U0001F4B8 수익성 픽 — ROE 높은 종목",
+            "\U0001F4B8 오늘의 고ROE 종목 (자본 효율 상위)",
+            "\U0001F4B8 돈 잘 버는 픽 — ROE 상위 종목",
+        ])]
+        for r in pp[:4]:
+            opm = f" · 영업이익률 {r['op_margin']:.1f}%" if r.get("op_margin") is not None else ""
+            b.append(f"- {r['name']}({r['code']}): ROE {r['roe']:.1f}%{opm}")
+        blocks["profit_pick"] = b
+
+    # 매출 급성장
+    gp = sorted([r for r in rk if r.get("rev_growth") is not None and 0 < r["rev_growth"] <= 300],
+                key=lambda r: r["rev_growth"], reverse=True)
+    if len(gp) >= 3:
+        b = [_rot(f"{seed}|h_growth", [
+            "\U0001F331 고성장 픽 — 매출 급증 종목",
+            "\U0001F331 오늘의 매출 성장주 (전년 대비)",
+            "\U0001F331 성장 픽 — 매출 증가율 상위 종목",
+        ])]
+        for r in gp[:4]:
+            b.append(f"- {r['name']}({r['code']}): 매출 +{r['rev_growth']:.1f}% · 건강점수 {r['score']:.1f}")
+        blocks["growth_pick"] = b
+
+    # 종합점수 급상승 (최근 ~1주 대비)
+    try:
+        up, _down = _score_movers(rk, get_ranking_asof(7), n=4)
+    except Exception:
+        up = []
+    if len(up) >= 3:
+        b = [_rot(f"{seed}|h_scoreup", [
+            "\U00002728 건강점수 급상승 픽 — 최근 점수가 오른 종목",
+            "\U00002728 오늘의 점수 상승 종목 (최근 1주 대비)",
+            "\U00002728 개선세 픽 — 종합점수가 오른 종목",
+        ])]
+        for m in up:
+            b.append(f"- {m['name']}({m['code']}): {m['prev_score']:.1f} → {m['score']:.1f}점 ({m['score_change']:+.1f})")
+        blocks["scoreup_pick"] = b
+
+    return blocks
+
+
 def _blog_draft_text():
     """'장 열리기전 체크포인트' 블로그 초안(제목+본문) 생성.
     네이버 블로그 자동 포스팅 API는 2020년에 종료되어(직접 확인함) 발행은 수동으로
@@ -1303,11 +1396,20 @@ def _blog_draft_text():
         ["movers", "earnings", "anomaly", "theme", "market"],
         ["market", "movers", "theme", "earnings", "anomaly"],
     ])
+    present = [n for n in order if n in blocks]
+
+    # '오늘의 픽' 후보 중 하루 하나를 랜덤으로 골라 코어 섹션 사이에 끼워넣는다(위치도 랜덤).
+    bonus = _bonus_blocks(seed)
+    if bonus:
+        pick = _rot(f"{seed}|bonuspick", sorted(bonus.keys()))
+        blocks[pick] = bonus[pick]
+        pos = random.Random(f"{seed}|bonuspos").randint(0, len(present))
+        present.insert(pos, pick)
+
     lines = [intro[0], intro[1], ""]
-    for name in order:
-        if name in blocks:
-            lines += blocks[name]
-            lines.append("")
+    for name in present:
+        lines += blocks[name]
+        lines.append("")
 
     if data.get("featured"):
         lines += _featured_lines(data["featured"])
