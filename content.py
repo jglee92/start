@@ -696,3 +696,130 @@ def render_earnings_report(items, canonical):
     desc = "최근 공시된 한국 상장기업 분기 실적 발표 현황과 전년 동기 대비 매출·순이익 성장률 정리."
     return layout("최근 실적발표 현황 — 분기 실적 발표일·전년동기 성장률",
                   desc, canonical, body, show_subscribe=False)
+
+
+# ── 데일리/주간 인사이트 아티클 ────────────────────────────────────────────
+# daily_content.py가 매일 content_out/{날짜}/blog_draft.txt로 커밋해두는 편집 글을
+# 사이트에 크롤링 가능한 아티클로 노출. 리포트 섹션(실시간 데이터 뷰)과 달리, 날짜별
+# 영구 URL로 매일 하나씩 '쌓이는' 원본 편집 콘텐츠 아카이브 — 애드센스가 요구하는
+# '고유하고 지속적으로 늘어나는 콘텐츠'의 핵심. blog_draft.txt는 제목 한 줄 + '===='
+# 밑줄 + 본문(이모지 섹션 헤더 + 불릿) 구조라, 이를 아티클 HTML로 변환한다.
+
+# 본문 줄의 맨 앞이 이모지면 섹션 헤더(h2)로 간주. 👉(CTA)는 헤더가 아니라 문단.
+def _lead_is_emoji(line):
+    s = line.lstrip()
+    if not s:
+        return False
+    cp = ord(s[0])
+    return cp >= 0x1F000 or (0x2600 <= cp <= 0x27BF) or (0x2190 <= cp <= 0x21FF)
+
+
+def _insight_body_html(body_text):
+    """blog_draft.txt 본문(제목/밑줄 제거한 나머지)을 아티클 HTML로 변환.
+    - 이모지로 시작하는 줄 → <h2> (단 👉 CTA 줄은 문단)
+    - '- ' 불릿 → <li>, '  - ' 들여쓴 불릿 → 중첩 <li>
+    - '#해시태그' 줄 → 태그 배지, '※' 줄 → 각주
+    - 빈 줄 → 문단 구분, 그 외 → <p>"""
+    lines = body_text.split("\n")
+    out = []
+    list_open = 0  # 현재 열린 <ul> 깊이(0/1/2)
+
+    def close_lists(to=0):
+        nonlocal list_open
+        while list_open > to:
+            out.append("</ul>")
+            list_open -= 1
+
+    for raw in lines:
+        line = raw.rstrip()
+        stripped = line.strip()
+        if not stripped:
+            close_lists(0)
+            continue
+        # 불릿(중첩 여부는 선행 공백으로 판단)
+        indent = len(line) - len(line.lstrip())
+        if stripped.startswith("- "):
+            depth = 2 if indent >= 2 else 1
+            while list_open < depth:
+                out.append("<ul>")
+                list_open += 1
+            close_lists(depth)
+            out.append(f"<li>{_esc(stripped[2:])}</li>")
+            continue
+        close_lists(0)
+        if stripped.startswith("#"):
+            tags = "".join(f'<span class="badge">{_esc(t)}</span>'
+                           for t in stripped.split() if t.startswith("#"))
+            out.append(f'<p class="tagrow">{tags}</p>')
+        elif stripped.startswith("※"):
+            out.append(f'<p class="footnote muted">{_esc(stripped)}</p>')
+        elif _lead_is_emoji(stripped) and not stripped.startswith("\U0001F449"):
+            out.append(f"<h2>{_esc(stripped)}</h2>")
+        else:
+            out.append(f"<p>{_esc(stripped)}</p>")
+    close_lists(0)
+    return "\n".join(out)
+
+
+def _insight_date_kr(date_str):
+    y, m, d = date_str.split("-")
+    return f"{int(y)}년 {int(m)}월 {int(d)}일"
+
+
+def render_insight(date_str, title, body_text, prev_key, next_key, canonical):
+    """개별 인사이트 아티클 페이지. prev_key/next_key: 인접 날짜(YYYY-MM-DD) 또는 None."""
+    body_html = _insight_body_html(body_text)
+    nav = []
+    if prev_key:
+        nav.append(f'<a href="/insights/{prev_key}">← {_insight_date_kr(prev_key)}</a>')
+    nav.append('<a href="/insights">전체 목록</a>')
+    if next_key:
+        nav.append(f'<a href="/insights/{next_key}">{_insight_date_kr(next_key)} →</a>')
+    nav_html = ' · '.join(nav)
+    body = f"""
+<article>
+<h1>{_esc(title)}</h1>
+<p class="muted" style="margin-top:-4px">{_ic('calendar')} {_insight_date_kr(date_str)} 발행 · 머니체크업 데일리 브리핑</p>
+{body_html}
+</article>
+<nav style="margin-top:26px;display:flex;gap:14px;flex-wrap:wrap;font-size:13.5px">{nav_html}</nav>
+"""
+    # desc: 본문 첫 산문 문단에서 요약 추출(이모지 헤더·불릿·빈 줄 제외)
+    snippet = ""
+    for ln in body_text.split("\n"):
+        s = ln.strip()
+        if s and not _lead_is_emoji(s) and not s.startswith(("-", "#", "※", "(")):
+            snippet = s
+            break
+    desc = (snippet or title)[:150]
+    return layout(title, desc, canonical, body)
+
+
+def render_insights_index(entries, canonical):
+    """인사이트 아카이브 목록. entries: [{date, title, snippet}] 최신순."""
+    cards = []
+    for e in entries:
+        cards.append(
+            f'<a href="/insights/{e["date"]}" class="insight-card">'
+            f'<div class="ic-date">{_ic("calendar")} {_insight_date_kr(e["date"])}</div>'
+            f'<div class="ic-title">{_esc(e["title"])}</div>'
+            f'<div class="ic-snip muted">{_esc(e["snippet"])}</div></a>')
+    cards_html = "\n".join(cards) or '<p class="muted">아직 발행된 글이 없습니다.</p>'
+    body = f"""
+<h1>{_ic('news')} 데일리 마켓 브리핑</h1>
+<p>매일 아침(주말엔 주간 마무리) 코스피·코스닥의 급등락·실적 발표·재무 이상신호·주도테마를
+사람이 읽기 좋게 정리한 원본 브리핑입니다. 각 글은 그날의 공개 데이터를 자체 팩터 모델로
+해석한 것으로, 매매 추천이 아니라 시장 흐름을 빠르게 훑기 위한 정보·교육용 콘텐츠입니다.</p>
+<style>
+.insight-card{{display:block;border:1px solid #8883;border-radius:10px;padding:14px 16px;
+ margin:10px 0;text-decoration:none;color:inherit;font-weight:400}}
+.insight-card:hover{{border-color:#1a63cf;text-decoration:none}}
+.insight-card .ic-date{{font-size:12.5px;color:#5a6472}}
+.insight-card .ic-title{{font-weight:700;font-size:15.5px;margin:3px 0}}
+.insight-card .ic-snip{{font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}}
+.tagrow .badge{{font-size:12px}}
+</style>
+{cards_html}
+"""
+    desc = "코스피·코스닥 급등락·실적발표·이상신호·주도테마를 매일 정리한 데일리 마켓 브리핑 아카이브 — 머니체크업."
+    return layout("데일리 마켓 브리핑 — 코스피·코스닥 매일 시장 정리", desc, canonical, body)

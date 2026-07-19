@@ -1453,6 +1453,75 @@ def api_earnings_recent(n: int = 5):
     return {"items": _earnings_items()[:n]}
 
 
+_CONTENT_OUT = os.path.join(os.path.dirname(__file__), "content_out")
+_DATE_RE = __import__("re").compile(r"^\d{4}-\d{2}-\d{2}$")
+
+
+def _insight_dates():
+    """content_out/ 안에서 blog_draft.txt가 있는 날짜 폴더만 최신순으로 반환."""
+    if not os.path.isdir(_CONTENT_OUT):
+        return []
+    dates = [d for d in os.listdir(_CONTENT_OUT)
+             if _DATE_RE.match(d) and os.path.isfile(
+                 os.path.join(_CONTENT_OUT, d, "blog_draft.txt"))]
+    return sorted(dates, reverse=True)
+
+
+def _read_insight(date_str):
+    """blog_draft.txt를 (제목, 본문)으로 분리. 첫 줄=제목, '===='밑줄 이후=본문."""
+    path = os.path.join(_CONTENT_OUT, date_str, "blog_draft.txt")
+    if not os.path.isfile(path):
+        return None
+    with open(path, "r", encoding="utf-8") as f:
+        raw = f.read()
+    lines = raw.split("\n")
+    title = lines[0].strip() if lines else date_str
+    # 둘째 줄이 '===='류 밑줄이면 건너뛰고, 그 뒤 빈 줄들도 정리
+    body_start = 1
+    if len(lines) > 1 and set(lines[1].strip()) <= {"="} and lines[1].strip():
+        body_start = 2
+    body = "\n".join(lines[body_start:]).strip("\n")
+    return title, body
+
+
+@app.get("/insights", response_class=HTMLResponse)
+def insights_index():
+    from content import render_insights_index
+    entries = []
+    for d in _insight_dates():
+        parsed = _read_insight(d)
+        if not parsed:
+            continue
+        title, body = parsed
+        # 첫 산문 문단을 스니펫으로
+        snip = ""
+        for ln in body.split("\n"):
+            s = ln.strip()
+            if s and not s.startswith(("-", "#", "※", "(")) and ord(s[0]) < 0x1F000:
+                snip = s
+                break
+        entries.append({"date": d, "title": title, "snippet": snip[:90]})
+    return render_insights_index(entries, f"{BASE_URL}/insights")
+
+
+@app.get("/insights/{date_str}", response_class=HTMLResponse)
+def insight_article(date_str: str):
+    from content import render_insight
+    if not _DATE_RE.match(date_str):
+        raise HTTPException(404, "글 없음")
+    parsed = _read_insight(date_str)
+    if not parsed:
+        raise HTTPException(404, "글 없음")
+    title, body = parsed
+    dates = _insight_dates()  # 최신순
+    idx = dates.index(date_str) if date_str in dates else -1
+    # 최신순 리스트라 '다음(더 이전 날짜)'은 idx+1, '이전(더 최근 날짜)'은 idx-1
+    newer = dates[idx - 1] if idx > 0 else None
+    older = dates[idx + 1] if 0 <= idx < len(dates) - 1 else None
+    return render_insight(date_str, title, body, prev_key=older, next_key=newer,
+                          canonical=f"{BASE_URL}/insights/{date_str}")
+
+
 @app.get("/themes-index", response_class=HTMLResponse)
 def themes_index():
     from content import layout
@@ -1572,11 +1641,13 @@ def sitemap():
     today = datetime.now().strftime("%Y-%m-%d")
     from glossary import TERMS
     from factor.sectors import SLUGS
-    urls = [("/", "daily", "1.0"), ("/weekly", "weekly", "0.9"),
+    urls = [("/", "daily", "1.0"), ("/insights", "daily", "0.9"),
+            ("/weekly", "weekly", "0.9"),
             ("/anomaly-report", "weekly", "0.8"), ("/learn", "monthly", "0.8"),
             ("/sector-report", "monthly", "0.8"), ("/monthly", "monthly", "0.8"),
             ("/earnings-report", "daily", "0.8"),
             ("/themes-index", "weekly", "0.7"), ("/about", "monthly", "0.5")]
+    urls += [(f"/insights/{d}", "monthly", "0.8") for d in _insight_dates()]
     urls += [(f"/learn/{slug}", "monthly", "0.7") for slug in TERMS]
     urls += [(f"/sector-report/{slug}", "monthly", "0.7") for slug in SLUGS.values()]
     parts = [f"<url><loc>{BASE_URL}{p}</loc><lastmod>{today}</lastmod>"
