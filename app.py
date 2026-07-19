@@ -10,6 +10,7 @@
 """
 from __future__ import annotations
 import os
+import random
 import time
 import urllib.parse
 import xml.etree.ElementTree as ET
@@ -1186,6 +1187,14 @@ def _featured_lines(f):
     return lines
 
 
+def _rot(seed_key, options):
+    """날짜+슬롯 시드로 옵션 중 하나 고정 선택 — card_templates._rot과 같은 패턴.
+    매일 인트로·섹션 제목이 똑같으면 '자동생성 템플릿'처럼 보여 애드센스에도 불리해서,
+    본문 문구를 날짜별로 로테이션한다(같은 날엔 안정적, 날마다 다름). 슬롯명을 다르게
+    줘서 같은 날 여러 문구가 전부 같은 인덱스로 몰리지 않게 함."""
+    return random.Random(seed_key).choice(options)
+
+
 def _blog_draft_text():
     """'장 열리기전 체크포인트' 블로그 초안(제목+본문) 생성.
     네이버 블로그 자동 포스팅 API는 2020년에 종료되어(직접 확인함) 발행은 수동으로
@@ -1198,12 +1207,19 @@ def _blog_draft_text():
         return title, "오늘은 국내증시 휴장일이라 특별히 정리할 소식이 없어요. 다음 개장일에 다시 올게요!"
 
     gainers, losers, movers_date = data["gainers"], data["losers"], data["movers_date"]
+    seed = now.strftime("%Y-%m-%d")
 
-    lines = [
-        "좋은 아침입니다 \U0001F44B 오늘 장 시작 전에 체크하면 좋을 국내증시 소식,",
-        "코스피·코스닥 실적 발표랑 특징테마 위주로 정리해봤어요.",
-        "",
-    ]
+    intro = _rot(f"{seed}|intro", [
+        ["좋은 아침입니다 \U0001F44B 오늘 장 시작 전에 체크하면 좋을 국내증시 소식,",
+         "코스피·코스닥 실적 발표랑 특징테마 위주로 정리해봤어요."],
+        ["오늘도 좋은 아침이에요 \U0001F44B 장 열리기 전에 훑어두면 좋은 국내증시 소식들,",
+         "어제 급등락·실적 발표·주도테마 흐름 위주로 골라 정리했어요."],
+        ["반가워요 \U0001F44B 오늘 국내 증시, 시작 전에 핵심만 빠르게 짚어볼게요.",
+         "어제 움직임·실적 발표·강세테마 순서로 담았어요."],
+        ["장 시작 전 5분 브리핑입니다 \U0001F44B 오늘 꼭 체크할 국내증시 포인트,",
+         "코스피·코스닥 급등락과 실적·테마 위주로 정리했어요."],
+    ])
+    lines = [intro[0], intro[1], ""]
 
     ix = data["us_indices"]
     if ix:
@@ -1217,7 +1233,12 @@ def _blog_draft_text():
             lines.append("")
 
     if gainers or losers:
-        lines.append(f"\U0001F4C8 어제({movers_date}) 급등·급락 TOP{len(gainers) or len(losers)}")
+        _n = len(gainers) or len(losers)
+        lines.append(_rot(f"{seed}|movers", [
+            f"\U0001F4C8 어제({movers_date}) 급등·급락 TOP{_n}",
+            f"\U0001F4C8 어제({movers_date}) 가장 많이 움직인 종목 TOP{_n}",
+            f"\U0001F4C8 어제({movers_date}) 급등·급락 상위 {_n}종목",
+        ]))
         for code, pct in gainers:
             lines.append(f"- (급등) {_name_of(code)}({code}): {pct:+.1f}%")
         for code, pct in losers:
@@ -1225,7 +1246,11 @@ def _blog_draft_text():
         lines.append("")
 
     if data["earnings"]:
-        lines.append("\U0001F4CA 실적 발표 브리핑 (어닝서프라이즈·어닝쇼크 체크)")
+        lines.append(_rot(f"{seed}|earn", [
+            "\U0001F4CA 실적 발표 브리핑 (어닝서프라이즈·어닝쇼크 체크)",
+            "\U0001F4CA 최근 실적 발표 — 서프라이즈와 쇼크 체크",
+            "\U0001F4CA 실적 시즌 체크 (어닝서프라이즈·어닝쇼크)",
+        ]))
         lines.append("(최근 1개월 내 실적 발표 기준 · 전년동기대비)")
         for it in data["earnings"]:
             rev, rev_q, ni = it.get("rev_yoy"), it.get("rev_qoq"), it.get("ni_yoy")
@@ -1241,13 +1266,21 @@ def _blog_draft_text():
         lines.append("")
 
     if data["anomalies"]:
-        lines.append("\U0001F6A9 조심해서 봐야 할 이상신호 종목")
+        lines.append(_rot(f"{seed}|anom", [
+            "\U0001F6A9 조심해서 봐야 할 이상신호 종목",
+            "\U0001F6A9 재무 이상신호가 켜진 종목",
+            "\U0001F6A9 한 번 더 확인해볼 이상신호 종목",
+        ]))
         for a in data["anomalies"]:
             lines.append(f"- {a['name']}({a['code']}) {a['label']}: {a['text']}")
         lines.append("")
 
     if data["themes"]:
-        lines.append("\U0001F525 요즘 주도테마 · 특징테마 (최근 1개월 수익률)")
+        lines.append(_rot(f"{seed}|theme", [
+            "\U0001F525 요즘 주도테마 · 특징테마 (최근 1개월 수익률)",
+            "\U0001F525 지금 뜨는 테마 · 특징테마 (최근 1개월)",
+            "\U0001F525 최근 강세 테마 흐름 (1개월 수익률)",
+        ]))
         for m in data["themes"]:
             lines.append(f"- {m['mid']}: {m['ret_1m']:+.1f}%")
             for t in m["sub"]:

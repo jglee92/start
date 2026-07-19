@@ -766,8 +766,28 @@ def _insight_date_kr(date_str):
     return f"{int(y)}년 {int(m)}월 {int(d)}일"
 
 
+def _strip_web_tail(body_text):
+    """웹 아티클에서만 잘라내는 꼬리 블록. blog_draft.txt 끝의 CTA(👉)·"전 종목 스크리닝"
+    안내·면책조항(※)·해시태그(#)는 네이버 블로그·인스타·뉴스레터엔 필요하지만, 사이트
+    안에서는 (1) "머니체크업에서 확인하세요" CTA가 이미 사이트 안이라 어색하고 (2) 면책은
+    layout() 푸터에 이미 있어 중복이며 (3) 해시태그 벽은 애드센스에 키워드 스터핑 신호로
+    감점이라 웹에서만 제거한다. 원본 파일은 그대로 두므로 다른 채널엔 영향 없음."""
+    lines = body_text.split("\n")
+    cut = len(lines)
+    for i, ln in enumerate(lines):
+        s = ln.strip()
+        if s.startswith(("\U0001F449", "※", "#")):  # 👉 CTA / 면책 / 해시태그
+            cut = i
+            break
+    kept = lines[:cut]
+    while kept and not kept[-1].strip():   # 잘라낸 뒤 남은 끝 빈 줄 제거
+        kept.pop()
+    return "\n".join(kept)
+
+
 def render_insight(date_str, title, body_text, prev_key, next_key, canonical):
     """개별 인사이트 아티클 페이지. prev_key/next_key: 인접 날짜(YYYY-MM-DD) 또는 None."""
+    body_text = _strip_web_tail(body_text)
     body_html = _insight_body_html(body_text)
     nav = []
     if prev_key:
@@ -776,13 +796,16 @@ def render_insight(date_str, title, body_text, prev_key, next_key, canonical):
     if next_key:
         nav.append(f'<a href="/insights/{next_key}">{_insight_date_kr(next_key)} →</a>')
     nav_html = ' · '.join(nav)
+    pager = (f'<nav class="ins-pager" style="display:flex;gap:14px;flex-wrap:wrap;'
+             f'font-size:13.5px">{nav_html}</nav>')
     body = f"""
 <article>
 <h1>{_esc(title)}</h1>
-<p class="muted" style="margin-top:-4px">{_ic('calendar')} {_insight_date_kr(date_str)} 발행 · 머니체크업 데일리 브리핑</p>
+<p class="muted" style="margin:-4px 0 12px">{_ic('calendar')} {_insight_date_kr(date_str)} 발행 · 머니체크업 데일리 브리핑</p>
+{pager}
 {body_html}
 </article>
-<nav style="margin-top:26px;display:flex;gap:14px;flex-wrap:wrap;font-size:13.5px">{nav_html}</nav>
+<div style="margin-top:26px">{pager}</div>
 """
     # desc: 본문 첫 산문 문단에서 요약 추출(이모지 헤더·불릿·빈 줄 제외)
     snippet = ""
