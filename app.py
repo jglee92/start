@@ -637,9 +637,68 @@ def _page(fname):
         return f.read()
 
 
+def _home_ssr_html():
+    """홈 `/`에 서버렌더로 심는 콘텐츠 블록 — 통계·차트·하이라이트 카드가 전부 JS 렌더라
+    크롤러는 홈에서 사실상 히어로 문단만 봤다. 여기에 건강점수 상위 종목(내부링크 /s/),
+    최신 브리핑(/insights), 주요 용어(/learn) 링크를 실제 텍스트로 심어 홈의 크롤 가능한
+    본문과 내부 링크를 확실히 확보한다. JS 사용자는 로드 후 이 블록의 링크가 SPA 드로어/뷰로
+    열리게 재배선된다(wireHomeSsr)."""
+    from content import _esc as _esc_app
+    try:
+        rk = get_ranking()[:10]
+    except Exception:
+        rk = []
+
+    def cell(v, nd=1):
+        x = _r(v, nd)
+        return "–" if x is None else (f"{x:.{nd}f}" if isinstance(x, float) else str(x))
+
+    rows = "".join(
+        f'<tr><td style="text-align:left"><a href="/s/{r["code"]}">{_esc_app(r["name"])}</a>'
+        f' <span class="mut" style="font-size:11px">{r["code"]}</span></td>'
+        f'<td><b style="color:var(--accent)">{cell(r.get("score"))}</b></td>'
+        f'<td>{cell(r.get("per"))}</td><td>{cell(r.get("pbr"), 2)}</td>'
+        f'<td>{cell(r.get("roe"))}</td></tr>'
+        for r in rk)
+    top_table = (
+        '<div class="wrap" style="overflow-x:auto"><table>'
+        '<thead><tr><th style="text-align:left">종목</th><th>건강점수</th>'
+        '<th>PER</th><th>PBR</th><th>ROE%</th></tr></thead>'
+        f'<tbody>{rows}</tbody></table></div>') if rk else ""
+
+    briefs = _insight_dates()[:5]
+    brief_items = []
+    for d in briefs:
+        parsed = _read_insight(d)
+        label = _esc_app(parsed[0]) if parsed else f"{d} 국내증시 브리핑"
+        brief_items.append(f'<li><a href="/insights/{d}">{label}</a></li>')
+    brief_html = f'<ul>{"".join(brief_items)}</ul>' if brief_items else ""
+
+    from glossary import TERMS
+    key_terms = [("health-score", "건강점수"), ("anomaly-signal", "이상신호"),
+                 ("audit-opinion", "감사의견"), ("per", "PER"), ("pbr", "PBR"),
+                 ("roe", "ROE"), ("debt-ratio", "부채비율"), ("dividend-yield", "배당수익률"),
+                 ("income-statement", "손익계산서"), ("balance-sheet", "재무상태표")]
+    term_html = " · ".join(f'<a href="/learn/{s}">{lbl}</a>'
+                           for s, lbl in key_terms if s in TERMS)
+
+    return f'''<section class="home-ssr" style="margin-top:26px">
+  <h2>건강점수 상위 종목</h2>
+  <p class="mut" style="font-size:13px">가치(저평가)와 퀄리티(수익성·안정성)를 합친 종합 건강점수 상위 종목입니다
+    (시총 3,000억 이상 유니버스 · 최근 연간 재무제표 기준 · 매매 추천 아님). 종목명을 누르면
+    재무제표·회계감사의견·이상신호까지 한 페이지에서 볼 수 있습니다.</p>
+  {top_table}
+  <h2 style="margin-top:24px">최신 데일리 브리핑</h2>
+  <p class="mut" style="font-size:13px">매일 아침 코스피·코스닥의 급등락·실적발표·재무 이상신호·주도테마를 정리한 브리핑입니다.</p>
+  {brief_html}
+  <h2 style="margin-top:24px">자주 찾는 투자 용어</h2>
+  <p>{term_html}</p>
+</section>'''
+
+
 @app.get("/", response_class=HTMLResponse)
 def index():
-    return _page("index.html")
+    return _page("index.html").replace("<!--SSR-HOME-->", _home_ssr_html())
 
 
 @app.get("/about", response_class=HTMLResponse)

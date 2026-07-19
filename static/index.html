@@ -383,6 +383,8 @@
       <h3 style="margin-top:22px">오늘의 하이라이트</h3>
       <div class="cards-row" id="cards"></div>
 
+      <!--SSR-HOME-->
+
       <div style="margin-top:20px;padding:16px 18px;border:1px solid var(--line);border-radius:10px;background:var(--panel)">
         <div style="font-weight:700;margin-bottom:4px"><svg class="ic-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="m3.5 6 8.5 7 8.5-7"/></svg> 매일 아침 국내증시 체크포인트, 이메일로 받아보기</div>
         <div style="color:var(--dim);font-size:13px;margin-bottom:10px">실적발표·이상신호·강세테마 요약을 매일 아침 보내드려요.</div>
@@ -1164,6 +1166,26 @@ async function openInsight(date){
     el.scrollIntoView({block:'start'});
   }catch(e){ el.innerHTML='<p class="mut">불러오지 못했습니다.</p>'; }
 }
+function showInsight(date){ showPanel('view-insights','insights'); openInsight(date); }
+
+// 홈의 서버렌더 블록(.home-ssr) 링크를 SPA 드로어/뷰로 재배선 — 크롤러는 실제 링크로
+// 보고(전체 페이지 이동), JS 사용자는 페이지 전환 없이 그 자리에서 열리게 한다.
+function wireHomeSsr(){
+  const el=document.querySelector('.home-ssr'); if(!el)return;
+  el.querySelectorAll('a[href^="/s/"]').forEach(a=>{
+    const code=a.getAttribute('href').split('/').filter(Boolean).pop();
+    a.classList.add('entity-link');
+    a.onclick=(e)=>{e.preventDefault();openStock(code);};
+  });
+  el.querySelectorAll('a[href^="/insights/"]').forEach(a=>{
+    const date=a.getAttribute('href').split('/').filter(Boolean).pop();
+    a.onclick=(e)=>{e.preventDefault();showInsight(date);};
+  });
+  el.querySelectorAll('a[href^="/learn/"]').forEach(a=>{
+    const slug=a.getAttribute('href').split('/').filter(Boolean).pop();
+    a.onclick=(e)=>{e.preventDefault();gotoLearnTerm(slug);};
+  });
+}
 
 function showPanel(panelId,navKey){
   history.replaceState(null,'',navKey==='home'?location.pathname:'#'+navKey);
@@ -1531,6 +1553,7 @@ renderIndices();
 // 보였던 문제 — 서버 캐시 TTL(60초)에 맞춰 주기적으로 다시 불러온다. 탭이 백그라운드에
 // 있을 땐(다른 앱 보는 중 등) 굳이 갱신 안 해서 배터리·데이터 아낌.
 setInterval(() => { if (document.visibilityState === 'visible') renderIndices(); }, 60000);
+wireHomeSsr();
 load().then(()=>{
   const h=location.hash.slice(1);
   if(h&&document.querySelector(`.nav-item[data-v="${h}"]`))switchView(h);
