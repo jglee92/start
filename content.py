@@ -75,7 +75,10 @@ def _fmt(v, nd=1):
         return "–"
 
 
-def layout(title, desc, canonical, body, show_subscribe=True):
+def layout(title, desc, canonical, body, show_subscribe=True, noindex=False):
+    """noindex=True: 검색엔진 색인만 막고(noindex) 내부 링크는 계속 따라가게(follow) 한다
+    — 사용자·SPA 기능엔 영향 없이, 애드센스 심사 관점에서 부가가치가 낮은 자동생성
+    페이지(예: /t/{테마})만 색인 대상에서 빼기 위한 용도(sitemap.xml 제외와 항상 짝지어 씀)."""
     parts = urlsplit(canonical)
     og_image = f"{parts.scheme}://{parts.netloc}/static/og-image.png"
     subscribe_html = f"""<!--newsletter-block-->
@@ -123,9 +126,10 @@ document.getElementById('newsletterForm').addEventListener('submit', async (e) =
 권유가 아닙니다. 데이터는 오류·지연이 있을 수 있고, 과거 성과는 미래를 보장하지 않습니다.
 투자 판단과 책임은 이용자 본인에게 있습니다. · <a href="/about#privacy">개인정보처리방침</a>
 · <a href="/about#disclaimer">면책조항</a></footer>""" if show_subscribe else ""
+    robots_tag = '<meta name="robots" content="noindex,follow">\n' if noindex else ""
     return f"""<!doctype html><html lang="ko"><head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
-<script async src="https://www.googletagmanager.com/gtag/js?id=G-0C72PQQH21"></script>
+{robots_tag}<script async src="https://www.googletagmanager.com/gtag/js?id=G-0C72PQQH21"></script>
 <script>
   window.dataLayer = window.dataLayer || [];
   function gtag(){{dataLayer.push(arguments);}}
@@ -462,7 +466,11 @@ def render_theme_page(name, stocks, perf, canonical):
 """
     desc = (f"{name} 관련주를 가치+퀄리티 팩터로 분석. 저평가·우량 상위 종목과 "
             f"PER·PBR·ROE, 최근 수익률까지 한눈에.")
-    return layout(f"{name} 관련주 — 가치·퀄리티 분석 | 한국주식 팩터", desc, canonical, body)
+    # noindex: 테마 250개가 사실상 같은 템플릿에 숫자만 바뀌는 구조라(애드센스 "얇은 콘텐츠"
+    # 지적 원인 중 하나) 검색엔진 색인에서는 빼되(noindex), 사이트 내 이용·내부링크는 그대로
+    # 유지한다(follow) — sitemap.xml에서도 짝지어 제외.
+    return layout(f"{name} 관련주 — 가치·퀄리티 분석 | 한국주식 팩터", desc, canonical, body,
+                  noindex=True)
 
 
 _FLAG_EXPLAIN = {

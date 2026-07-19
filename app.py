@@ -1894,9 +1894,10 @@ def sitemap():
     parts = [f"<url><loc>{BASE_URL}{p}</loc><lastmod>{today}</lastmod>"
              f"<changefreq>{cf}</changefreq><priority>{pr}</priority></url>"
              for p, cf, pr in urls]
-    for no in get_tmap().get("themes", {}):
-        parts.append(f"<url><loc>{BASE_URL}/t/{no}</loc><lastmod>{today}</lastmod>"
-                     f"<changefreq>weekly</changefreq><priority>0.6</priority></url>")
+    # 테마 페이지(/t/{no}, ~250개)는 sitemap에서 제외 — 대부분 "구성종목 N개 중 N개 분석,
+    # 최근 1개월 수익률 X%" 식으로 사실상 동일 템플릿에 숫자만 바뀌는 얇은 콘텐츠라(애드센스
+    # "부가가치 없는 자동생성 콘텐츠" 지적과 맞물림), content.py::render_theme_page에서도
+    # noindex,follow를 짝지어 붙였다. 페이지 자체는 그대로 열람 가능(사용자 기능 무손실).
     # 개별 종목 페이지(/s/{code}) — 랭킹 유니버스 전 종목. 실제 검색어("삼성전자 PER" 등)에
     # 대응하는 SSR 랜딩페이지라 색인 가치가 큼. 데이터 없는 얇은 페이지는 랭킹에 없으니 자동 제외.
     for r in get_ranking():
