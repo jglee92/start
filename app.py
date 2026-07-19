@@ -1221,7 +1221,11 @@ def _blog_draft_text():
         ["장 시작 전 5분 브리핑입니다 \U0001F44B 오늘 꼭 체크할 국내증시 포인트,",
          "코스피·코스닥 급등락과 실적·테마 위주로 정리했어요."],
     ])
-    lines = [intro[0], intro[1], ""]
+    # 각 섹션을 '블록'으로 만들어 dict에 담은 뒤, 날짜별로 고른 순서 룰셋대로 조립한다.
+    # 문구 로테이션(_rot 헤더)에 더해 '순서'까지 매일 달라져서 구조 자체가 반복되지 않게
+    # 함 — 종목 페이지처럼 매일 똑같은 골격이면 자동생성 티가 나서 애드센스에도 불리.
+    # (featured '이달의 기업 종합검진'은 마무리 성격 + 뒤에 CTA가 붙어서 항상 맨 끝 고정.)
+    blocks = {}
 
     ix = data["us_indices"]
     if ix:
@@ -1230,30 +1234,30 @@ def _blog_draft_text():
         if parts:
             usd = ix.get("usdkrw")
             fx = f" / 원달러 {usd['price']:,.1f}원" if usd and usd.get("price") else ""
-            lines.append("\U0001F30F 간밤 미국증시 — " + " · ".join(parts) + fx)
-            lines.append("(국내 증시는 간밤 미국장 흐름에 영향을 받는 편이에요.)")
-            lines.append("")
+            blocks["market"] = [
+                "\U0001F30F 간밤 미국증시 — " + " · ".join(parts) + fx,
+                "(국내 증시는 간밤 미국장 흐름에 영향을 받는 편이에요.)",
+            ]
 
     if gainers or losers:
         _n = len(gainers) or len(losers)
-        lines.append(_rot(f"{seed}|movers", [
+        b = [_rot(f"{seed}|movers", [
             f"\U0001F4C8 어제({movers_date}) 급등·급락 TOP{_n}",
             f"\U0001F4C8 어제({movers_date}) 가장 많이 움직인 종목 TOP{_n}",
             f"\U0001F4C8 어제({movers_date}) 급등·급락 상위 {_n}종목",
-        ]))
+        ])]
         for code, pct in gainers:
-            lines.append(f"- (급등) {_name_of(code)}({code}): {pct:+.1f}%")
+            b.append(f"- (급등) {_name_of(code)}({code}): {pct:+.1f}%")
         for code, pct in losers:
-            lines.append(f"- (급락) {_name_of(code)}({code}): {pct:+.1f}%")
-        lines.append("")
+            b.append(f"- (급락) {_name_of(code)}({code}): {pct:+.1f}%")
+        blocks["movers"] = b
 
     if data["earnings"]:
-        lines.append(_rot(f"{seed}|earn", [
+        b = [_rot(f"{seed}|earn", [
             "\U0001F4CA 실적 발표 브리핑 (어닝서프라이즈·어닝쇼크 체크)",
             "\U0001F4CA 최근 실적 발표 — 서프라이즈와 쇼크 체크",
             "\U0001F4CA 실적 시즌 체크 (어닝서프라이즈·어닝쇼크)",
-        ]))
-        lines.append("(최근 1개월 내 실적 발표 기준 · 전년동기대비)")
+        ]), "(최근 1개월 내 실적 발표 기준 · 전년동기대비)"]
         for it in data["earnings"]:
             rev, rev_q, ni = it.get("rev_yoy"), it.get("rev_qoq"), it.get("ni_yoy")
             if rev is not None:
@@ -1264,31 +1268,46 @@ def _blog_draft_text():
                 rev_tag = "매출 데이터 부족(금융업 등 업종 특성)"
             # 어닝서프라이즈/쇼크 판정은 매출보다 이익이 핵심이라 순이익에 태그를 붙인다.
             ni_tag = f" · 순이익 {ni:+.1f}%{_earning_tag(ni)}" if ni is not None else ""
-            lines.append(f"- {it['name']}({it['code']}) {it['year']}년 {it['quarter']}분기 실적: {rev_tag}{ni_tag}")
-        lines.append("")
+            b.append(f"- {it['name']}({it['code']}) {it['year']}년 {it['quarter']}분기 실적: {rev_tag}{ni_tag}")
+        blocks["earnings"] = b
 
     if data["anomalies"]:
-        lines.append(_rot(f"{seed}|anom", [
+        b = [_rot(f"{seed}|anom", [
             "\U0001F6A9 조심해서 봐야 할 이상신호 종목",
             "\U0001F6A9 재무 이상신호가 켜진 종목",
             "\U0001F6A9 한 번 더 확인해볼 이상신호 종목",
-        ]))
+        ])]
         for a in data["anomalies"]:
-            lines.append(f"- {a['name']}({a['code']}) {a['label']}: {a['text']}")
-        lines.append("")
+            b.append(f"- {a['name']}({a['code']}) {a['label']}: {a['text']}")
+        blocks["anomaly"] = b
 
     if data["themes"]:
-        lines.append(_rot(f"{seed}|theme", [
+        b = [_rot(f"{seed}|theme", [
             "\U0001F525 요즘 주도테마 · 특징테마 (최근 1개월 수익률)",
             "\U0001F525 지금 뜨는 테마 · 특징테마 (최근 1개월)",
             "\U0001F525 최근 강세 테마 흐름 (1개월 수익률)",
-        ]))
+        ])]
         for m in data["themes"]:
-            lines.append(f"- {m['mid']}: {m['ret_1m']:+.1f}%")
+            b.append(f"- {m['mid']}: {m['ret_1m']:+.1f}%")
             for t in m["sub"]:
                 ex = f" (예: {', '.join(t['examples'])})" if t["examples"] else ""
-                lines.append(f"  - {t['name']}: {t['ret_1m']:+.1f}%{ex}")
-        lines.append("")
+                b.append(f"  - {t['name']}: {t['ret_1m']:+.1f}%{ex}")
+        blocks["theme"] = b
+
+    # 순서 룰셋 — 각 순열은 그 자체로 자연스럽게 읽히도록 구성(완전 무작위 X). 그날 데이터가
+    # 있는 블록만 순서대로 조립. featured는 이 뒤에 별도로 고정 배치.
+    order = _rot(f"{seed}|order", [
+        ["market", "movers", "earnings", "anomaly", "theme"],
+        ["movers", "market", "theme", "earnings", "anomaly"],
+        ["market", "theme", "movers", "anomaly", "earnings"],
+        ["movers", "earnings", "anomaly", "theme", "market"],
+        ["market", "movers", "theme", "earnings", "anomaly"],
+    ])
+    lines = [intro[0], intro[1], ""]
+    for name in order:
+        if name in blocks:
+            lines += blocks[name]
+            lines.append("")
 
     if data.get("featured"):
         lines += _featured_lines(data["featured"])
