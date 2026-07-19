@@ -1538,8 +1538,7 @@ def _read_insight(date_str):
     return title, body
 
 
-@app.get("/insights", response_class=HTMLResponse)
-def insights_index():
+def _insight_index_html():
     from content import render_insights_index
     entries = []
     for d in _insight_dates():
@@ -1558,14 +1557,14 @@ def insights_index():
     return render_insights_index(entries, f"{BASE_URL}/insights")
 
 
-@app.get("/insights/{date_str}", response_class=HTMLResponse)
-def insight_article(date_str: str):
+def _insight_article_html(date_str):
+    """개별 아티클 전체 HTML(SSR·SPA 공용). 없으면 None."""
     from content import render_insight
     if not _DATE_RE.match(date_str):
-        raise HTTPException(404, "글 없음")
+        return None
     parsed = _read_insight(date_str)
     if not parsed:
-        raise HTTPException(404, "글 없음")
+        return None
     title, body = parsed
     dates = _insight_dates()  # 최신순
     idx = dates.index(date_str) if date_str in dates else -1
@@ -1574,6 +1573,33 @@ def insight_article(date_str: str):
     older = dates[idx + 1] if 0 <= idx < len(dates) - 1 else None
     return render_insight(date_str, title, body, prev_key=older, next_key=newer,
                           canonical=f"{BASE_URL}/insights/{date_str}")
+
+
+@app.get("/insights", response_class=HTMLResponse)
+def insights_index():
+    return _insight_index_html()
+
+
+@app.get("/api/insights")
+def api_insights():
+    """SPA 인라인 표시용 — /insights의 <body>만. 리포트/용어해설과 같은 주입 패턴."""
+    return {"html": _extract_body(_insight_index_html())}
+
+
+@app.get("/insights/{date_str}", response_class=HTMLResponse)
+def insight_article(date_str: str):
+    html = _insight_article_html(date_str)
+    if html is None:
+        raise HTTPException(404, "글 없음")
+    return html
+
+
+@app.get("/api/insights/{date_str}")
+def api_insight_article(date_str: str):
+    html = _insight_article_html(date_str)
+    if html is None:
+        raise HTTPException(404, "글 없음")
+    return {"html": _extract_body(html)}
 
 
 @app.get("/themes-index", response_class=HTMLResponse)

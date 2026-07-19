@@ -306,7 +306,7 @@
       <div class="nav-item" data-v="sec"><svg class="ic-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12a8 8 0 0 1 14-5.3M20 12a8 8 0 0 1-14 5.3"/><path d="M18 3v4h-4M6 21v-4h4"/></svg> 섹터 로테이션</div>
       <div class="nav-item" data-v="themesall"><svg class="ic-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6h11M9 12h11M9 18h11"/><circle cx="4.5" cy="6" r="1" fill="currentColor" stroke="none"/><circle cx="4.5" cy="12" r="1" fill="currentColor" stroke="none"/><circle cx="4.5" cy="18" r="1" fill="currentColor" stroke="none"/></svg> 테마 전체목록</div>
     </details>
-    <a class="nav-item" href="/insights"><svg class="ic-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="5.5" width="12" height="14" rx="1.2"/><path d="M15.5 8.5h4.2a.8.8 0 0 1 .8.8v8.2a1.8 1.8 0 0 1-1.8 1.8h-3.2"/><path d="M6.3 9h6M6.3 12h6M6.3 15h4"/></svg> 데일리 브리핑</a>
+    <div class="nav-item" data-v="insights"><svg class="ic-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="5.5" width="12" height="14" rx="1.2"/><path d="M15.5 8.5h4.2a.8.8 0 0 1 .8.8v8.2a1.8 1.8 0 0 1-1.8 1.8h-3.2"/><path d="M6.3 9h6M6.3 12h6M6.3 15h4"/></svg> 데일리 브리핑</div>
     <details class="nav-group">
       <summary><svg class="gic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="3.5" width="14" height="17" rx="1.6"/><path d="M8 8h8M8 12h8M8 16h5"/></svg>리포트<svg class="chev" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5l7 7-7 7"/></svg></summary>
       <div class="nav-item" data-v="weekly"><svg class="ic-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="5.5" width="12" height="14" rx="1.2"/><path d="M15.5 8.5h4.2a.8.8 0 0 1 .8.8v8.2a1.8 1.8 0 0 1-1.8 1.8h-3.2"/><path d="M6.3 9h6M6.3 12h6M6.3 15h4"/></svg> 주간 리포트</div>
@@ -453,6 +453,7 @@
     <div id="view-monthly" class="wrap about-content" style="display:none"></div>
     <div id="view-sectorreport" class="wrap about-content" style="display:none"></div>
     <div id="view-earnings" class="wrap about-content" style="display:none"></div>
+    <div id="view-insights" class="wrap about-content" style="display:none"></div>
 
     <script>
       document.getElementById('newsletterForm').addEventListener('submit', async (e) => {
@@ -866,7 +867,7 @@ document.addEventListener('click',function(e){
 /* ── 사이드바 전환 ── */
 const ALL_PANELS=['view-home','view-screener','theme','sec','view-table',
   'view-weekly','view-anomaly','view-themesall','view-about','view-learn',
-  'view-monthly','view-sectorreport','view-earnings'];
+  'view-monthly','view-sectorreport','view-earnings','view-insights'];
 function switchView(v){
   curView=v;
   history.replaceState(null,'',v==='home'?location.pathname:'#'+v);
@@ -884,6 +885,7 @@ function switchView(v){
   if(v==='monthly'){document.getElementById('view-monthly').style.display='';loadMonthly();return;}
   if(v==='sectorreport'){document.getElementById('view-sectorreport').style.display='';loadSectorReportIndex();return;}
   if(v==='earnings'){document.getElementById('view-earnings').style.display='';loadEarnings();return;}
+  if(v==='insights'){document.getElementById('view-insights').style.display='';loadInsightsIndex();return;}
   if(VIEWS[v]){
     document.getElementById('view-table').style.display='';
     sortK=VIEWS[v].sort; sortAsc=VIEWS[v].asc;
@@ -1066,6 +1068,13 @@ function wireInlineLinks(el){
   el.querySelectorAll('a[href="/anomaly-report"]').forEach(a=>{
     a.onclick=(e)=>{e.preventDefault();switchView('anomaly');};
   });
+  el.querySelectorAll('a[href^="/insights/"]').forEach(a=>{
+    const date=a.getAttribute('href').split('/').filter(Boolean).pop();
+    a.onclick=(e)=>{e.preventDefault();openInsight(date);};
+  });
+  el.querySelectorAll('a[href="/insights"]').forEach(a=>{
+    a.onclick=(e)=>{e.preventDefault();loadInsightsIndex();};
+  });
 }
 let SECTOR_REPORT_INDEX_HTML=null;
 async function loadSectorReportIndex(){
@@ -1130,6 +1139,32 @@ async function openLearnTerm(slug){
     wireInlineLinks(el);
   }catch(e){ el.innerHTML='<p class="mut">불러오지 못했습니다.</p>'; }
 }
+// 데일리 브리핑 — 리포트/용어해설과 같은 인라인 주입 방식(별도 페이지 전환 없이 본문 영역에
+// 목록·아티클을 그려 넣는다). /insights·/insights/{date} SSR 페이지는 크롤러·직접 링크용으로
+// 그대로 두고, SPA에선 /api 변형을 받아 주입한다.
+let INSIGHTS_INDEX_HTML=null;
+async function loadInsightsIndex(){
+  const el=document.getElementById('view-insights');
+  if(!INSIGHTS_INDEX_HTML){
+    el.innerHTML='<span class="mut">불러오는 중…</span>';
+    try{ INSIGHTS_INDEX_HTML=(await fetch('/api/insights').then(x=>x.json())).html; }
+    catch(e){ el.innerHTML='<p class="mut">불러오지 못했습니다.</p>'; return; }
+  }
+  el.innerHTML=INSIGHTS_INDEX_HTML;
+  wireInlineLinks(el);
+  el.scrollTop=0;
+}
+async function openInsight(date){
+  const el=document.getElementById('view-insights');
+  el.innerHTML='<span class="mut">불러오는 중…</span>';
+  try{
+    const d=await fetch('/api/insights/'+date).then(x=>x.json());
+    el.innerHTML='<button class="backbtn" onclick="loadInsightsIndex()">← 브리핑 목록으로</button>'+d.html;
+    wireInlineLinks(el);
+    el.scrollIntoView({block:'start'});
+  }catch(e){ el.innerHTML='<p class="mut">불러오지 못했습니다.</p>'; }
+}
+
 function showPanel(panelId,navKey){
   history.replaceState(null,'',navKey==='home'?location.pathname:'#'+navKey);
   document.querySelectorAll('.nav-item[data-v]').forEach(n=>n.classList.toggle('active',n.dataset.v===navKey));
