@@ -157,8 +157,10 @@ document.getElementById('newsletterForm').addEventListener('submit', async (e) =
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:image" content="{_esc(og_image)}">
 <script type="application/ld+json">{_breadcrumb_ld(title, canonical)}</script>
-{extra_head}<link rel="stylesheet" as="style" crossorigin
-  href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.css">
+{extra_head}<link rel="preload" as="style" crossorigin
+  href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.css"
+  onload="this.onload=null;this.rel='stylesheet'">
+<noscript><link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.css"></noscript>
 <style>
 body{{max-width:900px;margin:0 auto;padding:20px 18px 60px;line-height:1.7;font-size:14.5px;
  font-family:'Pretendard Variable',Pretendard,-apple-system,"Segoe UI",Roboto,
