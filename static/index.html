@@ -1389,7 +1389,8 @@ function renderScreener(){
   tbody.innerHTML='';
   for(const r of rows.slice(0,300)){
     const tr=document.createElement('tr'); tr.onclick=()=>openStock(r.code);
-    tr.innerHTML=`<td style="text-align:left">${r.name} <span class="code" style="font-size:11px">${r.code}</span></td>
+    const sc=r.small_cap?' <span class="mut" style="font-size:11px" title="시총 3,000억 미만 · 백테스트 미검증 참고용">[참고]</span>':'';
+    tr.innerHTML=`<td style="text-align:left">${r.name}${sc} <span class="code" style="font-size:11px">${r.code}</span></td>
       <td class="score">${r.score}</td><td>${fmt(r.per)}</td><td>${fmt(r.pbr,2)}</td>
       <td>${fmt(r.roe)}</td><td>${fmt(r.debt_ratio,0)}</td>
       <td>${r.rev_growth==null?'–':(r.rev_growth>=0?'+':'')+r.rev_growth+'%'}</td>
@@ -1442,7 +1443,8 @@ async function openStock(code,fromBack){
   document.getElementById('bd').classList.add('on');
   const d=await fetch('/api/stock/'+code).then(x=>x.json());
   const s=d.summary;
-  let html=backHtml()+`<h2>${d.name} <span class="code">${d.code}</span></h2>`;
+  const scBadge=(s&&s.small_cap)?' <span class="badge" style="background:#fff3cd;color:#8a6d00">참고용 · 백테스트 미검증 소형주</span>':'';
+  let html=backHtml()+`<h2>${d.name} <span class="code">${d.code}</span>${scBadge}</h2>`;
   if(s)html+=`<div class="sub">랭킹 #${s.rank} · ${s.market} · 시총 ${s.marcap_eok.toLocaleString()}억 · 현재가 ${s.price.toLocaleString()}`
     +(s.chg_pct!=null?` <span class="${sign(s.chg_pct)}">${s.chg_pct>=0?'+':''}${s.chg_pct}%</span>`:'')
     +(s.live?' <span class="live-dot" title="장중 실시간(성) 현재가">●</span>':'')

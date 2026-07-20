@@ -214,7 +214,7 @@ def _stock_rows(stocks):
     for s in stocks:
         link = f'/s/{s["code"]}'
         if s.get("in_rank"):
-            out += (f'<tr><td><a href="{link}">{_esc(s["name"])}</a> '
+            out += (f'<tr><td><a href="{link}">{_esc(s["name"])}</a>{_smallcap_mark(s)} '
                     f'<span class="muted">{_esc(s["code"])}</span></td>'
                     f'<td><b>{_fmt(s.get("score"),1)}</b></td><td>{_fmt(s.get("per"))}</td>'
                     f'<td>{_fmt(s.get("pbr"),2)}</td><td>{_fmt(s.get("roe"))}</td>'
@@ -234,8 +234,8 @@ def _others_note(stocks):
     names = ", ".join(f'<a href="/s/{s["code"]}">{_esc(s["name"])}</a>'
                       for s in others[:40])
     more = f" 외 {len(others)-40}개" if len(others) > 40 else ""
-    return (f'<p class="muted" style="font-size:12px">데이터 미수집(시총 소형 등) '
-            f'{len(others)}개: {names}{more}</p>')
+    return (f'<p class="muted" style="font-size:12px">재무 데이터 미수집·적자 등으로 '
+            f'점수 미산출 {len(others)}개: {names}{more}</p>')
 
 
 def _spark(prices):
@@ -311,6 +311,14 @@ def _stars_html(n):
     if n is None:
         return '<span class="muted">–</span>'
     return "★" * n + '<span class="muted">' + "☆" * (5 - n) + "</span>"
+
+
+def _smallcap_mark(r):
+    """시총 3,000억 미만(백테스트 미검증) 종목 옆에 붙는 '[참고]' 마커."""
+    if not r.get("small_cap"):
+        return ""
+    return (' <span class="muted" style="font-size:11px" '
+            'title="시총 3,000억 미만 · 백테스트 미검증 참고용">[참고]</span>')
 
 
 def _dims_html(dims):
@@ -399,7 +407,11 @@ def render_stock_page(code, name, summary, financials, prices, news, themes,
     kpi = ""
     dims_html = ""
     if summary:
-        kpi = (f'<p>가치+퀄리티 종합점수 <b>{_fmt(summary.get("score"))}</b> '
+        smallcap_badge = ""
+        if summary.get("small_cap"):
+            smallcap_badge = (' <span class="badge" style="background:#fff3cd;color:#8a6d00">'
+                               '참고용 · 백테스트 미검증 소형주</span>')
+        kpi = (f'<p>가치+퀄리티 종합점수 <b>{_fmt(summary.get("score"))}</b>{smallcap_badge} '
                f'<span class="muted" style="font-size:12px">(최근 연간 재무제표 기준)</span> · '
                f'<a href="/learn/per">PER</a> {_fmt(summary.get("per"))} · '
                f'<a href="/learn/pbr">PBR</a> {_fmt(summary.get("pbr"),2)} · '
@@ -478,7 +490,8 @@ def render_theme_page(name, stocks, perf, canonical):
 <tbody>{_stock_rows(sorted(ranked, key=lambda s: s.get("score") or 0, reverse=True))}</tbody>
 </table></div>
 {_others_note(stocks)}
-<p class="muted footnote">※ 팩터점수는 시총 3,000억 이상 유니버스 내 백분위 기준. 재무=DART 최신
+<p class="muted footnote">※ 팩터점수는 코스피·코스닥 전 종목 대상 백분위 기준이며, 시총 3,000억 미만 소형주는
+백테스트로 검증되지 않아 참고용으로만 표시됩니다. 재무=DART 최신
 사업보고서. 테마 분류는 공개 테마 데이터를 참고했으며, 종목 선별·정렬·분석은 본 사이트의
 자체 팩터 모델에 의한 것입니다.</p>
 """
@@ -544,7 +557,8 @@ def render_anomaly_report(grouped, asof, canonical):
         sections = '<p class="muted">현재 이상신호가 감지된 종목이 없습니다.</p>'
     body = f"""
 <h1>{_ic('alert')} 이상신호 리포트 <span class="muted" style="font-size:14px">({_esc(asof)} 기준)</span></h1>
-<p class="muted">시총 3,000억 이상 유니버스 기준, 규칙 기반으로 감지된 참고 신호 전체 {total}건.</p>
+<p class="muted">코스피·코스닥 전 종목 대상, 규칙 기반으로 감지된 참고 신호 전체 {total}건
+(시총 3,000억 미만 소형주 포함 · 백테스트 미검증 참고용).</p>
 <p>재무 데이터에서 <b>규칙 기반으로 감지된 참고 신호</b>를 모았습니다. 적자 전환, 부채비율
 급증, 영업외 손익 의존, 매출 2년 연속 감소 — 4가지 유형을 자동으로 스캔합니다.
 <b>회계부정을 진단하는 도구가 아니며</b>, "한번 확인해볼 만한 종목"을 걸러주는 참고 신호입니다.
@@ -602,7 +616,8 @@ def _dim_leader_table(rows, dim_key, metric_key, metric_label, unit, lower_bette
     top = scored[:5]
     nd = 2 if unit == "배" else 1
     trs = "".join(
-        f'<tr><td style="text-align:left"><a href="/s/{_esc(r["code"])}">{_esc(r["name"])}</a></td>'
+        f'<tr><td style="text-align:left"><a href="/s/{_esc(r["code"])}">{_esc(r["name"])}</a>'
+        f'{_smallcap_mark(r)}</td>'
         f'<td>{"★"*r["dims"][dim_key]["stars"]}</td>'
         f'<td>{_fmt(r.get(metric_key), nd)}{unit}</td></tr>' for r in top)
     return trs or '<tr><td colspan=3 class="muted">데이터 부족</td></tr>'
@@ -612,7 +627,8 @@ def render_monthly_health(rows, anomaly_count, asof, canonical, movers_up=None, 
     """이번 달 건강점수 랭킹 — 종합점수 TOP20 + 4차원별 최고 TOP5."""
     top20 = sorted(rows, key=lambda r: r.get("score") or 0, reverse=True)[:20]
     top_rows = "".join(
-        f'<tr><td style="text-align:left"><a href="/s/{_esc(r["code"])}">{_esc(r["name"])}</a> '
+        f'<tr><td style="text-align:left"><a href="/s/{_esc(r["code"])}">{_esc(r["name"])}</a>'
+        f'{_smallcap_mark(r)} '
         f'<span class="muted">{_esc(r["code"])}</span></td><td><b>{_fmt(r.get("score"))}</b></td>'
         f'<td>{_fmt(r.get("per"))}</td><td>{_fmt(r.get("pbr"),2)}</td>'
         f'<td>{_fmt(r.get("roe"))}</td></tr>' for r in top20)
@@ -625,7 +641,8 @@ def render_monthly_health(rows, anomaly_count, asof, canonical, movers_up=None, 
                          f'</tbody></table></div>')
     body = f"""
 <h1>{_ic('target')} 이번 달 건강점수 랭킹 <span class="muted" style="font-size:14px">({_esc(asof)} 기준)</span></h1>
-<p class="muted">시총 3,000억 이상 유니버스 기준, 가치+퀄리티 종합점수 TOP20과 4차원 건강검진 별점 랭킹입니다.</p>
+<p class="muted">코스피·코스닥 전 종목 대상, 가치+퀄리티 종합점수 TOP20과 4차원 건강검진 별점 랭킹입니다.
+(시총 3,000억 미만 소형주는 백테스트 미검증 참고용입니다.)</p>
 <p>밸류에이션·수익성·안정성·성장성 4차원 건강검진 별점을 기준으로 이번 달 상위 기업을 정리했습니다.
 매수·매도 추천이 아니라 <b>같은 유니버스 내 상대 비교</b> 스냅샷입니다.</p>
 
@@ -659,7 +676,7 @@ def render_weekly(strong, weak, asof, canonical, movers_up=None, movers_down=Non
 
     body = f"""
 <h1>{_ic('news')} 주간 한국주식 시장 리포트 <span class="muted" style="font-size:14px">({_esc(asof)} 기준)</span></h1>
-<p class="muted">시총 3,000억 이상 유니버스 기준, 최근 1개월 테마 동일가중 수익률 강세·약세 순위입니다.</p>
+<p class="muted">코스피·코스닥 전 종목 대상, 최근 1개월 테마 동일가중 수익률 강세·약세 순위입니다.</p>
 <p>최근 1개월 기준 가장 강했던 테마는 <b>{_esc(top_theme)}</b> 입니다. 아래는 테마별
 구성종목 동일가중 수익률로 본 강세·약세 순위입니다. 가치+퀄리티 팩터 종합순위는
 <a href="/monthly">월간 건강랭킹</a>에서 확인하세요. 매매 추천이 아니라 데이터로 본
@@ -964,7 +981,7 @@ def render_compare_page(a, b, canonical):
 
     sector = a.get("sector") or "기타"
     body = f"""
-<h1>{_ic('barchart')} {_esc(a['name'])} vs {_esc(b['name'])} — 재무·밸류에이션 비교</h1>
+<h1>{_ic('barchart')} {_esc(a['name'])}{_smallcap_mark(a)} vs {_esc(b['name'])}{_smallcap_mark(b)} — 재무·밸류에이션 비교</h1>
 <p class="muted">같은 업종({_esc(sector)}) 내 시가총액 상위 종목끼리 자동으로 비교한 페이지입니다.
 최근 연간 재무제표·최신 시세 기준.</p>
 <p>{verdict_html} (같은 유니버스·업종 내 상대 비교이며, 매수·매도 추천이 아닙니다.)</p>
@@ -983,7 +1000,8 @@ def render_compare_page(a, b, canonical):
 <tbody>{rows_html}</tbody>
 </table></div>
 <p class="muted footnote">파란 굵은 글씨가 해당 지표에서 더 나은 쪽입니다. 데이터: DART 최신 사업보고서·KRX 시세.
-팩터점수는 시총 3,000억 이상 유니버스 내 백분위 기준입니다.</p>
+팩터점수는 코스피·코스닥 전 종목 대상 백분위 기준이며, 시총 3,000억 미만 소형주는
+백테스트로 검증되지 않아 참고용입니다.</p>
 """
     title = f"{a['name']} vs {b['name']} 비교 — PER·PBR·ROE·건강점수"
     desc = f"{a['name']}과 {b['name']}의 PER·PBR·ROE·부채비율·배당수익률·건강점수를 비교합니다."

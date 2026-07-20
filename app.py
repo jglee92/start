@@ -248,6 +248,7 @@ def api_ranking():
             "roe": _r(r["roe"]), "op_margin": _r(r["op_margin"]),
             "debt_ratio": _r(r["debt_ratio"], 0),
             "marcap_eok": round(r["marcap"] / 1e8),
+            "small_cap": r.get("small_cap", False),
             "fiscal_year": r["fiscal_year"],
             "price": price, "chg_pct": _r(chg_pct, 2), "live": bool(lp),
             "prev_close": prev_close,
@@ -318,6 +319,7 @@ def api_stock(code: str):
             "div_yield": _r(row.get("div_yield"), 2), "rev_growth": _r(row.get("rev_growth")),
             "breakdown": row["breakdown"], "dims": row.get("dims"),
             "flags": row.get("flags") or [],
+            "small_cap": row.get("small_cap", False),
         },
         "financials": [{
             "year": f[0], "revenue": f[1], "op_profit": f[2], "net_income": f[3],
@@ -390,7 +392,8 @@ def api_theme(ident: str):
                            "score": r["score"], "per": _r(r["per"]),
                            "pbr": _r(r["pbr"], 2), "roe": _r(r["roe"]),
                            "marcap_eok": round(r["marcap"] / 1e8),
-                           "sector": r.get("sector")})
+                           "sector": r.get("sector"),
+                           "small_cap": r.get("small_cap", False)})
         else:
             stocks.append({"code": c, "name": _name_of(c), "in_rank": False})
     stocks.sort(key=lambda s: (s["in_rank"], s.get("score", 0)), reverse=True)
@@ -715,7 +718,8 @@ def _theme_stocks(theme):
             stocks.append({"code": c, "name": r["name"], "in_rank": True,
                            "score": r["score"], "per": _r(r["per"]),
                            "pbr": _r(r["pbr"], 2), "roe": _r(r["roe"]),
-                           "sector": r.get("sector")})
+                           "sector": r.get("sector"),
+                           "small_cap": r.get("small_cap", False)})
         else:
             stocks.append({"code": c, "name": _name_of(c), "in_rank": False})
     stocks.sort(key=lambda s: (s["in_rank"], s.get("score") or 0), reverse=True)
@@ -781,7 +785,8 @@ def stock_page(code: str):
         "psr": _r(row["psr"], 2), "roe": _r(row["roe"]), "op_margin": _r(row["op_margin"]),
         "debt_ratio": _r(row["debt_ratio"], 0), "div_yield": _r(row.get("div_yield"), 2),
         "marcap_eok": round(row["marcap"] / 1e8),
-        "dims": row.get("dims"), "flags": row.get("flags") or []}
+        "dims": row.get("dims"), "flags": row.get("flags") or [],
+        "small_cap": row.get("small_cap", False)}
     financials = [{"year": f[0], "revenue": f[1], "op_profit": f[2],
                    "net_income": f[3], "equity": f[4], "debt_ratio": _r(f[6], 0),
                    "op_margin": _r(f[7])} for f in fins]

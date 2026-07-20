@@ -17,9 +17,11 @@ FISCAL_LAG = 1
 # ===================== 유니버스 =====================
 MARKETS = ["KOSPI", "KOSDAQ"]
 MIN_LISTING_DAYS = 250        # 상장 후 최소 경과(신규상장 첫해 제외)
-# 리밸런싱 시점 추정 시가총액 하한(원). 초소형 잡주/유동성 위험 제외.
+# 리밸런싱 시점 추정 시가총액 하한(원). 백테스트 유니버스는 이 이상만 검증됨(factor/backtest.py).
 #   marcap_est = 현재상장주식수 × 그날 종가 (근사; 과거 주식수 변화는 한계로 명시)
-MIN_MARKET_CAP = 300_000_000_000      # 3000억 (v1: 유동성 있는 중대형. 소형은 확장 시)
+# 실시간 대시보드(factor/current.py)는 이 값 미만 종목도 전부 보여주되 다만
+# "small_cap"(참고용·백테스트 미검증) 플래그로만 구분한다 — 제외하지 않음.
+MIN_MARKET_CAP = 300_000_000_000      # 3000억 (백테스트 검증 기준선. 소형주 포함 검증은 별도 진행 예정)
 NAME_EXCLUDE_KEYWORDS = [
     "스팩", "KODEX", "TIGER", "KBSTAR", "ARIRANG", "HANARO", "KOSEF",
     "ACE ", "PLUS ", "RISE ", "SOL ", "ETN", "리츠", "우B", "우C",

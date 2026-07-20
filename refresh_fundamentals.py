@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 """
-현재 대시보드 유니버스의 재무/배당을 '최신 회계연도'로 갱신.
+코스피·코스닥 전체 상장 종목(소형주 포함)의 재무/배당을 '최신 회계연도'로 갱신.
+시총 필터 없이 전체를 대상으로 하되, DART 일일한도 보호를 위해 시총 큰 순으로 처리한다.
 
 DART 사업보고서는 매년 3월말 공시되므로, 연중이면 전년도(예: 2026년 → FY2025)가 있다.
 팩터 백테스트 수집은 시점정합상 과거 연도까지만 받으므로, 대시보드 최신성을 위해
@@ -34,14 +35,18 @@ def main():
     asof = conn.execute("SELECT MAX(date) FROM daily_prices").fetchone()[0]
     elig = eligible_at(master, asof, cfg)
 
-    # 시총 필터로 대시보드 유니버스만 추림
-    codes = []
+    # 전종목 대상(시총 필터 제거 — 소형주도 포함해 전체 코스피·코스닥 커버).
+    # 시총 큰 순으로 정렬 — DART 일일한도(2만건) 초과로 중간에 멈춰도
+    # 중요도 높은 종목부터 채워지고, 다음 실행일에 이어서 나머지가 채워짐.
+    codes_marcap = []
     for r in elig.itertuples(index=False):
         if r.shares is None:
             continue
         p = price_asof(conn, r.code, asof)
-        if p and r.shares * p[0] >= cfg.MIN_MARKET_CAP:
-            codes.append(r.code)
+        marcap = r.shares * p[0] if p else 0
+        codes_marcap.append((r.code, marcap))
+    codes_marcap.sort(key=lambda x: x[1], reverse=True)
+    codes = [c for c, _ in codes_marcap]
     print(f"유니버스 {len(codes)}종목 · FY{LATEST_FY} 재무/배당 갱신", flush=True)
 
     dart = DartClient(os.getenv("DART_API_KEY"))
@@ -80,6 +85,7 @@ def main():
                 db.save_audit_opinion(conn, code, LATEST_FY, op["auditor"], op["opinion"])
                 audit_got += 1
         # 분기재무: 최근 2개 연도 중 아직 없는 분기만 증분 수집
+        quota_exceeded = False
         for y in QUARTER_YEARS:
             have = sum(1 for q in (1, 2, 3, 4) if db.get_quarterly(conn, code, y, q))
             if have == 4:
@@ -89,9 +95,11 @@ def main():
                 try:
                     cum[q] = dart.get_period_financials(code, y, reprt)
                 except DartError as e:
-                    print(f"[중단] {e}"); break
+                    print(f"[중단] {e}"); quota_exceeded = True; break
                 except Exception:
                     cum[q] = None
+            if quota_exceeded:
+                break
             standalone = standalone_from_cumulative(cum.get(1), cum.get(2), cum.get(3), cum.get(4))
             for q in (1, 2, 3, 4):
                 s = standalone.get(q)
@@ -105,6 +113,8 @@ def main():
                                   s.get("net_income"), ddate,
                                   debt_ratio=s.get("debt_ratio"), op_margin=s.get("op_margin"))
                 q_got += 1
+        if quota_exceeded:
+            break
         if i % 50 == 0:
             print(f"  ...{i}/{len(codes)} (재무 {fin_got}, 배당 {div_got}, "
                   f"감사의견 {audit_got}, 분기재무 {q_got})", flush=True)
