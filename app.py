@@ -1839,6 +1839,65 @@ def api_backtest_methodology():
     return {"html": _extract_body(html)}
 
 
+def _sector_quarterly_perf():
+    """섹터(17개 대분류)별 최근 분기(약 63거래일=3개월) 동일가중 수익률 — 시총상위
+    10종목 기준. factor/themes.py::_perf_context와 같은 계산(21/63거래일 전 종가 대비)을
+    테마가 아니라 섹터 단위로 재사용(그쪽은 네이버 테마 태그가 있는 종목만 커버해서
+    전 종목을 도는 이 용도엔 안 맞음). data/sector_rotation.json(연도별 백테스트,
+    2018~)과 짝지어, '역대 패턴 + 이번 분기 현재 스냅샷'을 같이 보여주는 용도."""
+    rk = get_ranking()
+    marcap_by_code = {r["code"]: r["marcap"] for r in rk}
+    by_sector = {}
+    for r in rk:
+        by_sector.setdefault(r.get("sector") or "기타", []).append(r["code"])
+    conn = _conn()
+    out = []
+    for sector, codes in by_sector.items():
+        top_codes = sorted(codes, key=lambda c: marcap_by_code.get(c, 0), reverse=True)[:10]
+        rets_1m, rets_3m = [], []
+        for c in top_codes:
+            rows = conn.execute(
+                "SELECT close FROM daily_prices WHERE code=? AND close IS NOT NULL "
+                "ORDER BY date DESC LIMIT 64", (c,)).fetchall()
+            cl = [x[0] for x in rows]
+            if len(cl) >= 22 and cl[21]:
+                rets_1m.append(cl[0] / cl[21] - 1)
+            if len(cl) >= 64 and cl[63]:
+                rets_3m.append(cl[0] / cl[63] - 1)
+        out.append({
+            "sector": sector, "count": len(codes),
+            "ret_1m": round(sum(rets_1m) / len(rets_1m) * 100, 1) if rets_1m else None,
+            "ret_3m": round(sum(rets_3m) / len(rets_3m) * 100, 1) if rets_3m else None,
+        })
+    conn.close()
+    out.sort(key=lambda x: (x["ret_3m"] is not None, x["ret_3m"]), reverse=True)
+    return out
+
+
+def _sector_rotation_history():
+    import json
+    path = os.path.join(os.path.dirname(__file__), "data", "sector_rotation.json")
+    if not os.path.isfile(path):
+        return None
+    with open(path, encoding="utf-8") as f:
+        return json.load(f)
+
+
+@app.get("/sector-rotation-review", response_class=HTMLResponse)
+def sector_rotation_review():
+    from content import render_sector_rotation_review
+    return render_sector_rotation_review(_sector_quarterly_perf(), _sector_rotation_history(),
+                                         f"{BASE_URL}/sector-rotation-review")
+
+
+@app.get("/api/sector-rotation-review")
+def api_sector_rotation_review():
+    from content import render_sector_rotation_review
+    html = render_sector_rotation_review(_sector_quarterly_perf(), _sector_rotation_history(),
+                                         f"{BASE_URL}/sector-rotation-review")
+    return {"html": _extract_body(html)}
+
+
 @app.get("/themes-index", response_class=HTMLResponse)
 def themes_index():
     from content import layout
@@ -1964,7 +2023,7 @@ def sitemap():
             ("/sector-report", "monthly", "0.8"), ("/monthly", "monthly", "0.8"),
             ("/earnings-report", "daily", "0.8"), ("/compare", "weekly", "0.7"),
             ("/themes-index", "weekly", "0.7"), ("/about", "monthly", "0.5"),
-            ("/backtest", "monthly", "0.8")]
+            ("/backtest", "monthly", "0.8"), ("/sector-rotation-review", "weekly", "0.8")]
     urls += [(f"/insights/{d}", "monthly", "0.8") for d in _insight_dates()]
     urls += [(f"/learn/{slug}", "monthly", "0.7") for slug in TERMS]
     urls += [(f"/sector-report/{slug}", "monthly", "0.7") for slug in SLUGS.values()]

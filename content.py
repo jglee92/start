@@ -1076,3 +1076,75 @@ def render_backtest_methodology(canonical):
     title = "건강점수 백테스트 검증 — 시점정합·생존편향 제거·거래비용까지 반영한 결과"
     desc = "가치+퀄리티 건강점수가 실제로 초과수익을 냈는지, 시점정합·생존편향·거래비용까지 반영해 검증한 전 과정."
     return layout(title, desc, canonical, body)
+
+
+# ── 섹터 로테이션 리뷰 ───────────────────────────────────────────────────────
+# 사용자 요청: "이번 분기는 어느 섹터가 강했나"를 factor/sector_rotation.py의 연도별
+# 백테스트 데이터로 우려내되, 실제 파일은 연도 단위(2018~)이지 분기 단위가 아니라서
+# '분기별 시계열'이라고 과장하지 않는다 — 대신 (1) 현재 스냅샷은 app.py::
+# _sector_quarterly_perf()로 방금 계산한 진짜 최근 3개월치, (2) 역대 흐름은 실제
+# 있는 연도별 데이터를 정직하게 인용하는 두 축으로 구성한다.
+def render_sector_rotation_review(current_perf, history, canonical):
+    top = [p for p in current_perf if p["ret_3m"] is not None][:5]
+    bottom = [p for p in current_perf if p["ret_3m"] is not None][-5:][::-1]
+
+    def row(p):
+        r1 = f"{p['ret_1m']:+.1f}%" if p["ret_1m"] is not None else "–"
+        r3 = f"{p['ret_3m']:+.1f}%" if p["ret_3m"] is not None else "–"
+        return (f'<tr><td style="text-align:left">{_esc(p["sector"])}</td>'
+               f'<td>{r1}</td><td>{r3}</td><td class="muted">{p["count"]}</td></tr>')
+
+    lead = top[0] if top else None
+    lag = bottom[0] if bottom else None
+    lead_txt = (f"최근 3개월 기준 <b>{_esc(lead['sector'])}</b>이 {lead['ret_3m']:+.1f}%로 "
+               f"가장 강했고, " if lead else "")
+    lag_txt = (f"<b>{_esc(lag['sector'])}</b>이 {lag['ret_3m']:+.1f}%로 가장 부진했습니다."
+              if lag else "")
+
+    history_html = ""
+    if history:
+        from collections import Counter
+        best = history.get("best", {})
+        wins = Counter(best.values())
+        top_hist = wins.most_common(5)
+        years_line = " · ".join(f"{y}년 {_esc(s)}" for y, s in sorted(best.items(), reverse=True)[:5])
+        hist_rows = "".join(
+            f'<tr><td style="text-align:left">{_esc(s)}</td><td>{n}회</td></tr>'
+            for s, n in top_hist)
+        history_html = f"""
+<h2>역대 흐름은 어땠나 (2018년~)</h2>
+<p>최근 연도별 최강 섹터: {years_line}. {history.get('years', [None])[0]}년부터 지금까지
+연간 1위를 가장 많이 차지한 섹터는 다음과 같습니다.</p>
+<div class="wrap"><table>
+<thead><tr><th style="text-align:left">섹터</th><th>연간 1위 횟수</th></tr></thead>
+<tbody>{hist_rows}</tbody></table></div>
+<p class="muted">이 표는 <a href="/api/sectors">시점정합·상장폐지 포함 백테스트</a>로 검증한
+연도별(2018~) 결과입니다. 자세한 검증 방법은 <a href="/backtest">백테스트 방법론</a> 참고.</p>
+"""
+
+    body = f"""
+<h1>{_ic('refresh')} 이번 분기 국내 증시, 어느 섹터가 강했나 — 섹터 로테이션 리뷰</h1>
+<p class="muted">최근 3개월(약 63거래일) 기준, 섹터(17개 대분류)별 시가총액 상위 10종목
+동일가중 수익률입니다. {lead_txt}{lag_txt}</p>
+
+<h2>이번 분기 섹터 성과 TOP5 · 부진 TOP5</h2>
+<div class="wrap"><table>
+<thead><tr><th style="text-align:left">섹터</th><th>1개월</th><th>3개월</th><th>종목수</th></tr></thead>
+<tbody>{"".join(row(p) for p in top)}</tbody></table></div>
+<h3 style="margin-top:22px">부진 섹터</h3>
+<div class="wrap"><table>
+<thead><tr><th style="text-align:left">섹터</th><th>1개월</th><th>3개월</th><th>종목수</th></tr></thead>
+<tbody>{"".join(row(p) for p in bottom)}</tbody></table></div>
+{history_html}
+<h2>섹터 로테이션을 왜 보나</h2>
+<p>시장 전체가 오르내리는 국면에서도, 그 안에서 자금이 몰리는 섹터는 계속 바뀝니다("로테이션").
+한 섹터가 몇 년 연속 1위를 차지하기도 하고, 반대로 오래 부진하던 섹터가 갑자기 반등하기도
+합니다. 개별 종목보다 섹터 단위 흐름을 먼저 보면, 지금 시장이 어떤 이야기를 하고 있는지
+큰 그림을 잡는 데 도움이 됩니다.</p>
+<p>개별 종목의 건강점수·재무제표는 <a href="/">홈</a>에서, 같은 업종 라이벌끼리 직접 비교는
+<a href="/compare">종목 비교</a>에서 확인하실 수 있습니다.</p>
+<p class="muted footnote">※ 이 페이지는 공개 데이터를 정리한 정보 제공용 콘텐츠이며, 특정 섹터나
+종목에 대한 매수·매도 추천이 아닙니다. 과거 성과가 미래 수익을 보장하지 않습니다.</p>
+"""
+    desc = "국내 증시 섹터별 최근 3개월 수익률과 2018년 이후 연도별 로테이션 패턴을 정리했습니다."
+    return layout("섹터 로테이션 리뷰 — 이번 분기 강세·부진 업종 정리", desc, canonical, body)
