@@ -1767,6 +1767,65 @@ def api_insight_article(date_str: str):
     return {"html": _extract_body(html)}
 
 
+def _compare_pairs():
+    """업종 내 시총 상위 종목끼리 자동 페어링 — 수작업 큐레이션 없이 sitemap/색인용
+    '엄선된 라이벌 쌍' 목록을 만든다. /compare/{code1}/{code2} 자체는 이 목록과 무관하게
+    아무 종목 조합이나 받는 범용 라우트라, 검색으로 고른 조합도 항상 렌더링된다."""
+    rk = get_ranking()
+    by_sector = {}
+    for r in rk:
+        by_sector.setdefault(r.get("sector") or "기타", []).append(r)
+    pairs = []
+    for items in by_sector.values():
+        top = sorted(items, key=lambda r: r["marcap"], reverse=True)[:4]
+        if len(top) >= 2:
+            pairs.append((top[0], top[1]))
+        if len(top) >= 3:
+            pairs.append((top[0], top[2]))
+    return pairs
+
+
+def _compare_html(code1, code2):
+    from content import render_compare_page
+    if code1 == code2:
+        return None
+    rk = get_ranking()
+    a = next((r for r in rk if r["code"] == code1), None)
+    b = next((r for r in rk if r["code"] == code2), None)
+    if not a or not b:
+        return None
+    return render_compare_page(a, b, f"{BASE_URL}/compare/{code1}/{code2}")
+
+
+@app.get("/compare", response_class=HTMLResponse)
+def compare_index():
+    from content import render_compare_index
+    return render_compare_index(_compare_pairs(), f"{BASE_URL}/compare")
+
+
+@app.get("/api/compare")
+def api_compare_index():
+    from content import render_compare_index
+    html = render_compare_index(_compare_pairs(), f"{BASE_URL}/compare")
+    return {"html": _extract_body(html)}
+
+
+@app.get("/compare/{code1}/{code2}", response_class=HTMLResponse)
+def compare_page(code1: str, code2: str):
+    html = _compare_html(code1, code2)
+    if html is None:
+        raise HTTPException(404, "비교할 수 없는 종목 조합입니다")
+    return html
+
+
+@app.get("/api/compare/{code1}/{code2}")
+def api_compare_page(code1: str, code2: str):
+    html = _compare_html(code1, code2)
+    if html is None:
+        raise HTTPException(404, "비교할 수 없는 종목 조합입니다")
+    return {"html": _extract_body(html)}
+
+
 @app.get("/themes-index", response_class=HTMLResponse)
 def themes_index():
     from content import layout
@@ -1890,11 +1949,15 @@ def sitemap():
             ("/weekly", "weekly", "0.9"),
             ("/anomaly-report", "weekly", "0.8"), ("/learn", "monthly", "0.8"),
             ("/sector-report", "monthly", "0.8"), ("/monthly", "monthly", "0.8"),
-            ("/earnings-report", "daily", "0.8"),
+            ("/earnings-report", "daily", "0.8"), ("/compare", "weekly", "0.7"),
             ("/themes-index", "weekly", "0.7"), ("/about", "monthly", "0.5")]
     urls += [(f"/insights/{d}", "monthly", "0.8") for d in _insight_dates()]
     urls += [(f"/learn/{slug}", "monthly", "0.7") for slug in TERMS]
     urls += [(f"/sector-report/{slug}", "monthly", "0.7") for slug in SLUGS.values()]
+    # /compare/{code1}/{code2}는 어떤 조합이든 렌더링되는 범용 라우트지만(검색으로 고른
+    # 조합도 항상 동작), sitemap엔 업종+시총 기반 자동 큐레이션 쌍만 노출한다(전체 조합은
+    # 수십만 개라 sitemap에 다 넣는 게 오히려 스팸성으로 보일 수 있음).
+    urls += [(f"/compare/{a['code']}/{b['code']}", "monthly", "0.7") for a, b in _compare_pairs()]
     parts = [f"<url><loc>{BASE_URL}{p}</loc><lastmod>{today}</lastmod>"
              f"<changefreq>{cf}</changefreq><priority>{pr}</priority></url>"
              for p, cf, pr in urls]

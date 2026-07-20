@@ -15,6 +15,19 @@ def _esc(s):
     return html.escape(str(s if s is not None else ""))
 
 
+def _josa_ga(name):
+    """이름 마지막 글자 받침 유무로 '이'/'가' 조사를 고른다(한글 유니코드 완성형은
+    (초성*21+중성)*28+종성+0xAC00으로 인코딩돼, %28==0이면 받침 없음).
+    영문/숫자로 끝나는 종목명(예: LG, SK)은 받침 없는 것으로 간주해 '가'를 쓴다."""
+    if not name:
+        return "가"
+    ch = name[-1]
+    code = ord(ch) - 0xAC00
+    if 0 <= code <= 11171:
+        return "가" if code % 28 == 0 else "이"
+    return "가"
+
+
 _ICON_SVG = {
     "mail": '<rect x="3" y="5" width="18" height="14" rx="2"/><path d="m3.5 6 8.5 7 8.5-7"/>',
     "news": '<rect x="3.5" y="5.5" width="12" height="14" rx="1.2"/><path d="M15.5 8.5h4.2a.8.8 0 0 1 .8.8v8.2a1.8 1.8 0 0 1-1.8 1.8h-3.2"/><path d="M6.3 9h6M6.3 12h6M6.3 15h4"/>',
@@ -887,3 +900,106 @@ def render_insights_index(entries, canonical):
 """
     desc = "코스피·코스닥 급등락·실적발표·이상신호·주도테마를 매일 정리한 데일리 마켓 브리핑 아카이브 — 머니체크업."
     return layout("데일리 마켓 브리핑 — 코스피·코스닥 매일 시장 정리", desc, canonical, body)
+
+
+# ── 종목 비교 ("A vs B") ────────────────────────────────────────────────────
+# 검색 의도가 뚜렷한 에버그린 콘텐츠("삼성전자 vs SK하이닉스") — /s/{code}와 같은 패턴으로
+# 어떤 두 종목이든 받는 범용 SSR 페이지를 만들되, sitemap엔 업종+시총으로 자동 페어링한
+# '라이벌 쌍'만 큐레이션해서 올린다(app.py::_compare_pairs — 수작업 리스트업 없음).
+_COMPARE_METRICS = [
+    ("PER", "per", True, lambda v: f"{v:.1f}배"),
+    ("PBR", "pbr", True, lambda v: f"{v:.2f}배"),
+    ("ROE%", "roe", False, lambda v: f"{v:.1f}%"),
+    ("영업이익률%", "op_margin", False, lambda v: f"{v:.1f}%"),
+    ("부채비율%", "debt_ratio", True, lambda v: f"{v:.0f}%"),
+    ("배당수익률%", "div_yield", False, lambda v: f"{v:.2f}%"),
+    ("시가총액", "marcap", False, lambda v: f"{round(v/1e8):,}억"),
+    ("건강점수", "score", False, lambda v: f"{v:.1f}"),
+]
+_COMPARE_DIM_ORDER = [("value", "밸류에이션"), ("profit", "수익성"),
+                      ("safety", "안정성"), ("growth", "성장성")]
+
+
+def render_compare_page(a, b, canonical):
+    """a, b: get_ranking() row(dims 포함). 같은 업종·시총 상위끼리 자동 페어링된
+    비교 페이지 — 표만 있으면 얇은 콘텐츠라, dims(별점)를 4차원별로 직접 비교하는
+    산문 해석을 반드시 붙인다."""
+    def cell(v, fmt):
+        return fmt(v) if v is not None else "–"
+
+    def winner(key, lower_better):
+        va, vb = a.get(key), b.get(key)
+        if va is None or vb is None or va == vb:
+            return None
+        if lower_better:
+            return "a" if va < vb else "b"
+        return "a" if va > vb else "b"
+
+    rows_html = ""
+    for label, key, lower_better, fmt in _COMPARE_METRICS:
+        w = winner(key, lower_better)
+        ca = ' style="font-weight:700;color:#1a63cf"' if w == "a" else ""
+        cb = ' style="font-weight:700;color:#1a63cf"' if w == "b" else ""
+        rows_html += (f'<tr><td style="text-align:left">{_esc(label)}</td>'
+                     f'<td{ca}>{cell(a.get(key), fmt)}</td>'
+                     f'<td{cb}>{cell(b.get(key), fmt)}</td></tr>')
+
+    dims_a, dims_b = a.get("dims") or {}, b.get("dims") or {}
+    verdict = []
+    for key, label in _COMPARE_DIM_ORDER:
+        da, db_ = dims_a.get(key), dims_b.get(key)
+        if da and db_ and da.get("stars") is not None and db_.get("stars") is not None:
+            if da["stars"] > db_["stars"]:
+                verdict.append(f"<b>{_esc(label)}</b>은 {_esc(a['name'])}{_josa_ga(a['name'])} 상대적으로 우위")
+            elif db_["stars"] > da["stars"]:
+                verdict.append(f"<b>{_esc(label)}</b>은 {_esc(b['name'])}{_josa_ga(b['name'])} 상대적으로 우위")
+            else:
+                verdict.append(f"<b>{_esc(label)}</b>은 비슷한 수준")
+    verdict_html = (", ".join(verdict) + "입니다."
+                    if verdict else "두 종목의 지표를 비교할 데이터가 부족합니다.")
+
+    sector = a.get("sector") or "기타"
+    body = f"""
+<h1>{_ic('barchart')} {_esc(a['name'])} vs {_esc(b['name'])} — 재무·밸류에이션 비교</h1>
+<p class="muted">같은 업종({_esc(sector)}) 내 시가총액 상위 종목끼리 자동으로 비교한 페이지입니다.
+최근 연간 재무제표·최신 시세 기준.</p>
+<p>{verdict_html} (같은 유니버스·업종 내 상대 비교이며, 매수·매도 추천이 아닙니다.)</p>
+<div class="wrap"><table>
+<thead><tr><th style="text-align:left">지표</th>
+<th><a href="/s/{a['code']}">{_esc(a['name'])}</a></th>
+<th><a href="/s/{b['code']}">{_esc(b['name'])}</a></th></tr></thead>
+<tbody>{rows_html}</tbody>
+</table></div>
+<p class="muted footnote">파란 굵은 글씨가 해당 지표에서 더 나은 쪽입니다. 데이터: DART 최신 사업보고서·KRX 시세.
+팩터점수는 시총 3,000억 이상 유니버스 내 백분위 기준입니다.</p>
+"""
+    title = f"{a['name']} vs {b['name']} 비교 — PER·PBR·ROE·건강점수"
+    desc = f"{a['name']}과 {b['name']}의 PER·PBR·ROE·부채비율·배당수익률·건강점수를 비교합니다."
+    return layout(f"{title} | 한국주식", desc, canonical, body, show_subscribe=False)
+
+
+def render_compare_index(pairs, canonical):
+    """엄선된 '라이벌 쌍' 목록. pairs: [(a_row, b_row)]."""
+    cards = []
+    for a, b in pairs:
+        cards.append(
+            f'<a href="/compare/{a["code"]}/{b["code"]}" class="cmp-card">'
+            f'<div class="cmp-title">{_esc(a["name"])} vs {_esc(b["name"])}</div>'
+            f'<div class="cmp-sub muted">{_esc(a.get("sector") or "기타")} · '
+            f'건강점수 {_fmt(a.get("score"))} vs {_fmt(b.get("score"))}</div></a>')
+    cards_html = "\n".join(cards) or '<p class="muted">아직 준비된 비교가 없습니다.</p>'
+    body = f"""
+<h1>{_ic('barchart')} 종목 비교</h1>
+<p>같은 업종 내 시가총액 상위 종목끼리 PER·PBR·ROE·부채비율·건강점수를 자동으로 비교합니다.
+원하는 두 종목을 직접 비교하고 싶다면 검색으로 종목 2개를 골라보세요.</p>
+<style>
+.cmp-card{{display:block;border:1px solid #8883;border-radius:10px;padding:14px 16px;
+ margin:10px 0;text-decoration:none;color:inherit;font-weight:400}}
+.cmp-card:hover{{border-color:#1a63cf;text-decoration:none}}
+.cmp-title{{font-weight:700;font-size:15.5px}}
+.cmp-sub{{font-size:13px;margin-top:3px}}
+</style>
+{cards_html}
+"""
+    desc = "같은 업종 라이벌 종목끼리 PER·PBR·ROE·부채비율·건강점수를 비교하는 페이지 모음."
+    return layout("종목 비교 — 라이벌 종목 재무·밸류에이션 비교", desc, canonical, body)
