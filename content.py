@@ -946,12 +946,16 @@ def render_compare_page(a, b, canonical):
 
     dims_a, dims_b = a.get("dims") or {}, b.get("dims") or {}
     verdict = []
+    dims_rows_html = ""
     for key, label in _COMPARE_DIM_ORDER:
         da, db_ = dims_a.get(key), dims_b.get(key)
-        if da and db_ and da.get("stars") is not None and db_.get("stars") is not None:
-            if da["stars"] > db_["stars"]:
+        sa, sb = (da or {}).get("stars"), (db_ or {}).get("stars")
+        dims_rows_html += (f'<tr><td style="text-align:left">{_esc(label)}</td>'
+                          f'<td>{_stars_html(sa)}</td><td>{_stars_html(sb)}</td></tr>')
+        if da and db_ and sa is not None and sb is not None:
+            if sa > sb:
                 verdict.append(f"<b>{_esc(label)}</b>은 {_esc(a['name'])}{_josa_ga(a['name'])} 상대적으로 우위")
-            elif db_["stars"] > da["stars"]:
+            elif sb > sa:
                 verdict.append(f"<b>{_esc(label)}</b>은 {_esc(b['name'])}{_josa_ga(b['name'])} 상대적으로 우위")
             else:
                 verdict.append(f"<b>{_esc(label)}</b>은 비슷한 수준")
@@ -964,6 +968,14 @@ def render_compare_page(a, b, canonical):
 <p class="muted">같은 업종({_esc(sector)}) 내 시가총액 상위 종목끼리 자동으로 비교한 페이지입니다.
 최근 연간 재무제표·최신 시세 기준.</p>
 <p>{verdict_html} (같은 유니버스·업종 내 상대 비교이며, 매수·매도 추천이 아닙니다.)</p>
+<h2>건강검진 별점 비교</h2>
+<div class="wrap"><table>
+<thead><tr><th style="text-align:left">항목</th>
+<th><a href="/s/{a['code']}">{_esc(a['name'])}</a></th>
+<th><a href="/s/{b['code']}">{_esc(b['name'])}</a></th></tr></thead>
+<tbody>{dims_rows_html}</tbody>
+</table></div>
+<h2>세부 지표</h2>
 <div class="wrap"><table>
 <thead><tr><th style="text-align:left">지표</th>
 <th><a href="/s/{a['code']}">{_esc(a['name'])}</a></th>
