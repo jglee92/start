@@ -33,6 +33,9 @@ jobs:
       - name: 블로그 초안 + 인스타 카드뉴스·캡션 생성
         env:
           KR_DB_PATH: data/screener_deploy.db
+          # 안 넣으면 app.py::BASE_URL이 https://example.com으로 폴백돼 블로그 초안 본문의
+          # "전 종목 스크리닝..." 링크가 그대로 example.com으로 박힘(실제로 발생했던 버그).
+          SITE_BASE_URL: https://getmoneycheckup.com
         run: python daily_content.py
 
       - name: 변경사항 커밋 + 푸시
