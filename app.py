@@ -1826,6 +1826,19 @@ def api_compare_page(code1: str, code2: str):
     return {"html": _extract_body(html)}
 
 
+@app.get("/backtest", response_class=HTMLResponse)
+def backtest_methodology():
+    from content import render_backtest_methodology
+    return render_backtest_methodology(f"{BASE_URL}/backtest")
+
+
+@app.get("/api/backtest-methodology")
+def api_backtest_methodology():
+    from content import render_backtest_methodology
+    html = render_backtest_methodology(f"{BASE_URL}/backtest")
+    return {"html": _extract_body(html)}
+
+
 @app.get("/themes-index", response_class=HTMLResponse)
 def themes_index():
     from content import layout
@@ -1950,7 +1963,8 @@ def sitemap():
             ("/anomaly-report", "weekly", "0.8"), ("/learn", "monthly", "0.8"),
             ("/sector-report", "monthly", "0.8"), ("/monthly", "monthly", "0.8"),
             ("/earnings-report", "daily", "0.8"), ("/compare", "weekly", "0.7"),
-            ("/themes-index", "weekly", "0.7"), ("/about", "monthly", "0.5")]
+            ("/themes-index", "weekly", "0.7"), ("/about", "monthly", "0.5"),
+            ("/backtest", "monthly", "0.8")]
     urls += [(f"/insights/{d}", "monthly", "0.8") for d in _insight_dates()]
     urls += [(f"/learn/{slug}", "monthly", "0.7") for slug in TERMS]
     urls += [(f"/sector-report/{slug}", "monthly", "0.7") for slug in SLUGS.values()]

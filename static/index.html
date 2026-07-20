@@ -327,6 +327,7 @@
     <details class="nav-group">
       <summary><svg class="gic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8"/><path d="M12 11v5"/><circle cx="12" cy="8" r=".3" fill="currentColor" stroke-width="2.4"/></svg>정보<svg class="chev" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5l7 7-7 7"/></svg></summary>
       <div class="nav-item" data-v="about"><svg class="ic-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8"/><path d="M12 11v5"/><circle cx="12" cy="8" r=".3" fill="currentColor" stroke-width="2.4"/></svg> 소개·방법론</div>
+      <div class="nav-item" data-v="backtest"><svg class="ic-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="4.2"/><circle cx="12" cy="12" r="0.8" fill="currentColor" stroke="none"/></svg> 백테스트 검증</div>
       <div class="nav-item" data-v="learn"><svg class="ic-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5.5A2 2 0 0 1 6 4h11a1 1 0 0 1 1 1v13a1 1 0 0 1-1 1H6a2 2 0 0 0-2 2z"/><path d="M4 18.5A2 2 0 0 1 6 17h12"/></svg> 투자 용어 해설</div>
     </details>
   </aside>
@@ -460,6 +461,7 @@
     <div id="view-anomaly" class="wrap about-content" style="display:none"></div>
     <div id="view-themesall" class="wrap about-content" style="display:none"></div>
     <div id="view-about" class="wrap about-content" style="display:none"></div>
+    <div id="view-backtest" class="wrap about-content" style="display:none"></div>
     <div id="view-learn" class="wrap about-content" style="display:none"></div>
     <div id="view-monthly" class="wrap about-content" style="display:none"></div>
     <div id="view-sectorreport" class="wrap about-content" style="display:none"></div>
@@ -896,7 +898,7 @@ document.addEventListener('click',function(e){
 const ALL_PANELS=['view-home','view-screener','theme','sec','view-table',
   'view-weekly','view-anomaly','view-themesall','view-about','view-learn',
   'view-monthly','view-sectorreport','view-earnings','view-insights',
-  'comparePickerWrap','view-compare'];
+  'comparePickerWrap','view-compare','view-backtest'];
 function switchView(v){
   curView=v;
   history.replaceState(null,'',v==='home'?location.pathname:'#'+v);
@@ -910,6 +912,7 @@ function switchView(v){
   if(v==='anomaly'){document.getElementById('view-anomaly').style.display='';renderAnomalyPanel();return;}
   if(v==='themesall'){document.getElementById('view-themesall').style.display='';loadThemesAll();return;}
   if(v==='about'){document.getElementById('view-about').style.display='';loadAbout();return;}
+  if(v==='backtest'){document.getElementById('view-backtest').style.display='';loadBacktest();return;}
   if(v==='learn'){document.getElementById('view-learn').style.display='';loadLearnIndex();return;}
   if(v==='monthly'){document.getElementById('view-monthly').style.display='';loadMonthly();return;}
   if(v==='sectorreport'){document.getElementById('view-sectorreport').style.display='';loadSectorReportIndex();return;}
@@ -1070,10 +1073,22 @@ async function loadAbout(){
   el.dataset.done='1';
   scrollToPending();
 }
+async function loadBacktest(){
+  const el=document.getElementById('view-backtest');
+  if(el.dataset.done){wireInlineLinks(el);return;}
+  el.innerHTML='<span class="mut">불러오는 중…</span>';
+  try{
+    const d=await fetch('/api/backtest-methodology').then(x=>x.json());
+    el.innerHTML=d.html;
+    wireInlineLinks(el);
+  }catch(e){el.innerHTML='<p class="mut">불러오지 못했습니다. <a href="/backtest">/backtest 페이지로 이동</a></p>';return;}
+  el.dataset.done='1';
+}
 let LEARN_INDEX_HTML=null;
 const SITE_NAV_MAP={'/':'home','/weekly':'weekly','/themes-index':'themesall',
   '/about':'about','/learn':'learn','/anomaly-report':'anomaly',
-  '/monthly':'monthly','/sector-report':'sectorreport','/earnings-report':'earnings'};
+  '/monthly':'monthly','/sector-report':'sectorreport','/earnings-report':'earnings',
+  '/backtest':'backtest'};
 function wireInlineLinks(el){
   el.querySelectorAll('a[href]').forEach(a=>{
     const href=a.getAttribute('href');
