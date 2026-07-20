@@ -1446,23 +1446,27 @@ def _blog_draft_text():
                 b.append(f"  - {t['name']}: {t['ret_1m']:+.1f}%{ex}")
         blocks["theme"] = b
 
-    # 순서 룰셋 — 각 순열은 그 자체로 자연스럽게 읽히도록 구성(완전 무작위 X). 그날 데이터가
-    # 있는 블록만 순서대로 조립. featured는 이 뒤에 별도로 고정 배치.
-    order = _rot(f"{seed}|order", [
-        ["market", "movers", "earnings", "anomaly", "theme"],
-        ["movers", "market", "theme", "earnings", "anomaly"],
-        ["market", "theme", "movers", "anomaly", "earnings"],
-        ["movers", "earnings", "anomaly", "theme", "market"],
-        ["market", "movers", "theme", "earnings", "anomaly"],
-    ])
-    present = [n for n in order if n in blocks]
+    # 미국증시·급등락은 시황 파악에 필수라는 요청으로 매일 고정 — 맨 앞에 이 순서 그대로
+    # 두고 로테이션 대상에서 뺀다. 나머지(실적/이상신호/테마 + 오늘의 픽)만 순서를 섞어서
+    # 다양성을 준다. featured(이달의 기업 종합검진)는 이 뒤에 별도로 고정 배치(항상 마지막).
+    fixed_head = [n for n in ("market", "movers") if n in blocks]
 
-    # '오늘의 픽' 후보 중 하루 하나를 랜덤으로 골라 코어 섹션 사이에 끼워넣는다(위치도 랜덤).
+    order = _rot(f"{seed}|order", [
+        ["earnings", "anomaly", "theme"],
+        ["theme", "earnings", "anomaly"],
+        ["anomaly", "theme", "earnings"],
+        ["theme", "anomaly", "earnings"],
+        ["earnings", "theme", "anomaly"],
+    ])
+    present = fixed_head + [n for n in order if n in blocks]
+
+    # '오늘의 픽' 후보 중 하루 하나를 랜덤으로 골라 끼워넣는다 — 위치는 고정 헤더(미국증시·
+    # 급등락) 뒤에서만 랜덤(헤더보다 앞에 오면 안 되므로).
     bonus = _bonus_blocks(seed)
     if bonus:
         pick = _rot(f"{seed}|bonuspick", sorted(bonus.keys()))
         blocks[pick] = bonus[pick]
-        pos = random.Random(f"{seed}|bonuspos").randint(0, len(present))
+        pos = random.Random(f"{seed}|bonuspos").randint(len(fixed_head), len(present))
         present.insert(pos, pick)
 
     lines = [intro[0], intro[1], ""]
