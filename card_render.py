@@ -282,12 +282,57 @@ def _dim_box(d, x, y, w, h, label, dim):
 
 # ---------------- 카드별 렌더 ----------------
 
+def pick_cover_highlights(data, name_of):
+    """표지 카드 하단에 보여줄 '오늘 한눈에 보기' 스탯 3~4개를 우선순위로 고른다.
+    사용자 요청 — 표지가 헤드라인 하나로 스와이프를 유도하는 대신, 오늘의 핵심 숫자를
+    한 장에서 바로 보여주자는 컨셉(레퍼런스 이미지의 '요약 먼저' 구조는 차용하되, 비주얼은
+    우리 신문 노트패드 톤 그대로 유지 — 캐릭터 일러스트 없이 데이터만으로 임팩트).
+    이미 _blog_draft_data()에 있는 값만 써서 새 데이터 수집은 필요 없다."""
+    picks = []
+    ix = data.get("us_indices") or {}
+    kospi = ix.get("kospi")
+    if kospi and kospi.get("chg_pct") is not None:
+        picks.append(("코스피", f"{kospi['chg_pct']:+.1f}%", _sign_color(kospi["chg_pct"])))
+    if data.get("gainers"):
+        code, pct = data["gainers"][0]
+        picks.append((name_of(code), f"{pct:+.1f}%", GOOD))
+    if data.get("themes"):
+        top = data["themes"][0]
+        picks.append((top["mid"], f"{top['ret_1m']:+.1f}%", _sign_color(top["ret_1m"])))
+    if data.get("anomalies"):
+        picks.append(("이상신호", f"{len(data['anomalies'])}건", BAD))
+    elif data.get("earnings"):
+        n_s = sum(1 for e in data["earnings"] if e["tag"] == "surprise")
+        if n_s:
+            picks.append(("어닝서프라이즈", f"{n_s}건", GOOD))
+    return picks[:4]
+
+
+def _highlight_row(d, x0, x1, y, highlights):
+    """스탯 박스 가로 배열 — 라벨(업종·종목명 등)은 길 수 있어 2줄까지 접는다."""
+    n = len(highlights)
+    gap = 16
+    box_w = (x1 - x0 - gap * (n - 1)) / n
+    box_h = 128
+    for i, (label, value, color) in enumerate(highlights):
+        bx = x0 + i * (box_w + gap)
+        d.rounded_rectangle([bx, y, bx + box_w, y + box_h], radius=14, outline=RULE, width=2)
+        pad = 16
+        ly = y + 14
+        for line in _wrap(d, label, font("regular", 17), box_w - pad * 2)[:2]:
+            d.text((bx + pad, ly), line, font=font("regular", 17), fill=DIM)
+            ly += 22
+        vfont = _display_font(value, 30)
+        d.text((bx + pad, y + box_h - 46), value, font=vfont, fill=color)
+
+
 def render_cover(headline_lines, subtitle, date_str, page, total,
-                  section_label="장전 브리핑", dateline_suffix="오늘의 한 장"):
+                  section_label="장전 브리핑", dateline_suffix="오늘의 한 장", highlights=None):
     img, d = _notepad_card()
     x0, y0, x1, y1 = CARD
     cx = (x0 + x1) // 2
-    y = _masthead(img, d, x0 + 56, x1 - 56, y0 + 46, section_label, f"{date_str} · {dateline_suffix}")
+    ex, ey = x0 + 56, x1 - 56
+    y = _masthead(img, d, ex, ey, y0 + 46, section_label, f"{date_str} · {dateline_suffix}")
 
     y += 90
     n = len(headline_lines)
@@ -302,6 +347,12 @@ def render_cover(headline_lines, subtitle, date_str, page, total,
         for line in _wrap(d, subtitle, font("bold", 26), x1 - x0 - 200)[:2]:
             _center_display(d, line, 26, cx, y, INK_SOFT)
             y += 38
+
+    if highlights:
+        y += 34
+        _draw_display(d, "오늘 한눈에 보기", 24, ex, y, INK)
+        y += 44
+        _highlight_row(d, ex, ey, y, highlights)
 
     _footer(img, d, x0, x1, y1, date_str, page, total)
     return img
@@ -771,7 +822,8 @@ def generate_cards(data, name_of, headline_lines, subtitle, date_str, out_dir="c
     total = 1 + len(sections)  # 총 장수를 렌더링 전에 먼저 확정(페이지 번호 불일치 방지)
     paths = []
 
-    cover = render_cover(headline_lines, subtitle, date_str, 1, total)
+    highlights = pick_cover_highlights(data, name_of)
+    cover = render_cover(headline_lines, subtitle, date_str, 1, total, highlights=highlights)
     p = os.path.join(out_dir, "01.png")
     cover.save(p)
     paths.append(p)
