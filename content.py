@@ -75,10 +75,13 @@ def _fmt(v, nd=1):
         return "–"
 
 
-def layout(title, desc, canonical, body, show_subscribe=True, noindex=False):
+def layout(title, desc, canonical, body, show_subscribe=True, noindex=False, extra_head=""):
     """noindex=True: 검색엔진 색인만 막고(noindex) 내부 링크는 계속 따라가게(follow) 한다
     — 사용자·SPA 기능엔 영향 없이, 애드센스 심사 관점에서 부가가치가 낮은 자동생성
-    페이지(예: /t/{테마})만 색인 대상에서 빼기 위한 용도(sitemap.xml 제외와 항상 짝지어 씀)."""
+    페이지(예: /t/{테마})만 색인 대상에서 빼기 위한 용도(sitemap.xml 제외와 항상 짝지어 씀).
+    extra_head: 페이지별 추가 JSON-LD 등을 <head>에 끼워넣는 용도(예: 인사이트 아티클의
+    Article 스키마 — 전체 페이지에 다 필요한 게 아니라 layout() 공통 인자로는 안 두고
+    호출부에서 선택적으로 넘긴다)."""
     parts = urlsplit(canonical)
     og_image = f"{parts.scheme}://{parts.netloc}/static/og-image.png"
     subscribe_html = f"""<!--newsletter-block-->
@@ -154,7 +157,7 @@ document.getElementById('newsletterForm').addEventListener('submit', async (e) =
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:image" content="{_esc(og_image)}">
 <script type="application/ld+json">{_breadcrumb_ld(title, canonical)}</script>
-<link rel="stylesheet" as="style" crossorigin
+{extra_head}<link rel="stylesheet" as="style" crossorigin
   href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.css">
 <style>
 body{{max-width:900px;margin:0 auto;padding:20px 18px 60px;line-height:1.7;font-size:14.5px;
@@ -793,6 +796,33 @@ def _strip_web_tail(body_text):
     return "\n".join(kept)
 
 
+def _article_ld(title, desc, canonical, date_str):
+    """인사이트 아티클용 Article 구조화 데이터 — 브레드크럼만으로는 "이게 진짜 발행된
+    기사"라는 신호가 약해서, headline/datePublished/author/publisher를 명시해 구글이
+    아티클로 인식하도록 돕는다. 실제 발행 시각까진 기록해두지 않아 daily-content.yml
+    실행 목표 시각(KST 07:30 전후)을 근사치로 쓴다 — 날짜 단위 신선도 신호가 목적이라
+    분 단위 정확도는 중요하지 않음. 작성자는 실명 필자가 아니라 자동 분석 엔진이므로
+    Person이 아닌 Organization으로 정직하게 표기."""
+    parts = urlsplit(canonical)
+    site = f"{parts.scheme}://{parts.netloc}"
+    published = f"{date_str}T07:30:00+09:00"
+    data = {
+        "@context": "https://schema.org",
+        "@type": "Article",
+        "headline": title[:110],
+        "description": desc,
+        "datePublished": published,
+        "dateModified": published,
+        "inLanguage": "ko",
+        "author": {"@type": "Organization", "name": "머니체크업", "url": f"{site}/"},
+        "publisher": {"@type": "Organization", "name": "머니체크업",
+                      "logo": {"@type": "ImageObject", "url": f"{site}/static/og-image.png"}},
+        "image": [f"{site}/static/og-image.png"],
+        "mainEntityOfPage": {"@type": "WebPage", "@id": canonical},
+    }
+    return f'<script type="application/ld+json">{json.dumps(data, ensure_ascii=False)}</script>\n'
+
+
 def render_insight(date_str, title, body_text, prev_key, next_key, canonical):
     """개별 인사이트 아티클 페이지. prev_key/next_key: 인접 날짜(YYYY-MM-DD) 또는 None."""
     body_text = _strip_web_tail(body_text)
@@ -823,7 +853,8 @@ def render_insight(date_str, title, body_text, prev_key, next_key, canonical):
             snippet = s
             break
     desc = (snippet or title)[:150]
-    return layout(title, desc, canonical, body)
+    return layout(title, desc, canonical, body,
+                  extra_head=_article_ld(title, desc, canonical, date_str))
 
 
 def render_insights_index(entries, canonical):
