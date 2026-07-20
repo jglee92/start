@@ -15,6 +15,10 @@ permissions:
 jobs:
   update:
     runs-on: ubuntu-latest
+    # 스크립트 자체가 5시간에서 깔끔히 멈추지만(refresh_fundamentals.py의
+    # MAX_RUNTIME_SEC), 혹시 모를 행업 대비 GH 기본 6시간 하드킬보다 여유있게
+    # 잡 자체도 340분에서 끊어 커밋 단계 전에 죽는 사고(2026-07-20 실제 발생)를 방지.
+    timeout-minutes: 340
     steps:
       - uses: actions/checkout@v4
 
