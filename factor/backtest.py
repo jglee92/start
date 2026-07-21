@@ -124,7 +124,7 @@ def stock_return(conn, code, buy_date, sell_date, div_year=None):
     sell = s[0] * RT_SELL
     ret = sell / buy - 1
     if cfg.INCLUDE_DIVIDENDS and div_year is not None:
-        dps = db.get_dividend(conn, code, div_year)
+        dps = db.sane_dps(db.get_dividend(conn, code, div_year), b[0])
         if dps:
             ret += (dps * (1 - DIV_TAX)) / b[0]   # 세후 배당수익률 가산
     return ret

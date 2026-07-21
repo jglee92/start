@@ -329,6 +329,17 @@ def get_dividend(conn, code: str, year: int):
     return r[0] if r else None
 
 
+def sane_dps(dps, price, max_yield_pct: float = 50.0):
+    """DART가 간혹 '주당 현금배당금' 대신 '현금배당금총액'을 잘못 반환하는 경우가
+    실제로 있었음(예: 067900 — 배당수익률이 3천만%로 계산됨). 배당수익률이 이
+    상식 밖 상한(기본 50%)을 넘으면 데이터 이상치로 보고 버린다(None)."""
+    if dps is None or not price:
+        return dps
+    if dps / price * 100 > max_yield_pct:
+        return None
+    return dps
+
+
 def cache_history(conn, code: str, hist_df) -> None:
     rows = [
         (code, idx.strftime("%Y-%m-%d"),

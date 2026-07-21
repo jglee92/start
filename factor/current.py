@@ -94,7 +94,7 @@ def compute_ranking(conn, master=None, asof=None, ref_date=None):
             continue
         prev = _prev_close(conn, r.code, p[1])
         chg_pct = ((p[0] / prev - 1) * 100) if prev else None
-        dps = db.get_dividend(conn, r.code, fin["year"])
+        dps = db.sane_dps(db.get_dividend(conn, r.code, fin["year"]), p[0])
         div_yield = (dps / p[0] * 100) if dps else None
         audit = db.get_audit_opinion(conn, r.code, fin["year"]) or db.get_audit_opinion(conn, r.code)
         pf = _prior_financials(conn, r.code, fin["year"])

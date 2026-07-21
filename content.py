@@ -194,6 +194,13 @@ th:first-child,td:first-child{{text-align:left}}
 .warn{{background:rgba(242,85,90,.08);border:1px solid rgba(242,85,90,.3);padding:8px 14px;
   border-radius:7px;font-size:13.5px}}
 .badge{{display:inline-block;padding:1px 8px;border-radius:10px;background:#8881;font-size:12.5px;margin:2px 3px 0 0}}
+.cat-details{{border:1px solid #8883;border-radius:10px;margin:14px 0;overflow:hidden}}
+.cat-details>summary{{display:flex;align-items:center;gap:6px;padding:11px 14px;cursor:pointer;
+  list-style:none;background:#8881}}
+.cat-details>summary::-webkit-details-marker{{display:none}}
+.cat-details>summary:before{{content:"▸";color:#4a5563;flex:none}}
+.cat-details[open]>summary:before{{content:"▾"}}
+.cat-details>.cat-body{{padding:12px 14px 14px}}
 .dimgrid{{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin:10px 0}}
 @media(max-width:560px){{.dimgrid{{grid-template-columns:1fr}}}}
 .dimcard{{border:1px solid #8883;border-radius:10px;padding:12px 14px;background:#8880.06}}
@@ -545,14 +552,17 @@ def render_anomaly_report(grouped, asof, canonical):
             f'<tr><td style="text-align:left"><a href="/s/{_esc(s["code"])}">{_esc(s["name"])}</a> '
             f'<span class="muted">{_esc(s["code"])}</span></td>'
             f'<td style="text-align:left">{_esc(s["text"])}</td></tr>' for s in items)
-        sections += (f'<h2>{items[0]["emoji"]} {_esc(label)} <span class="muted" '
-                    f'style="font-size:13px;font-weight:400">· {len(items)}개 종목</span></h2>'
-                    f'<p>{_esc(_FLAG_EXPLAIN.get(label, ""))}</p>'
+        open_attr = " open" if len(items) <= 8 else ""
+        sections += (f'<details class="cat-details"{open_attr}><summary>'
+                    f'{items[0]["emoji"]} <b style="font-size:15px">{_esc(label)}</b> '
+                    f'<span class="muted" style="font-size:13px;font-weight:400">'
+                    f'· {len(items)}개 종목</span></summary><div class="cat-body">'
+                    f'<p style="margin-top:0">{_esc(_FLAG_EXPLAIN.get(label, ""))}</p>'
                     f'<div class="wrap"><table style="table-layout:fixed;width:100%">'
                     f'<colgroup><col style="width:30%"><col style="width:70%"></colgroup>'
                     f'<thead><tr><th style="text-align:left">종목</th>'
                     f'<th style="text-align:left">내용</th></tr></thead>'
-                    f'<tbody>{rows}</tbody></table></div>')
+                    f'<tbody>{rows}</tbody></table></div></div></details>')
     if not sections:
         sections = '<p class="muted">현재 이상신호가 감지된 종목이 없습니다.</p>'
     body = f"""
