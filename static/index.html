@@ -482,7 +482,7 @@
     <div id="view-insights" class="wrap about-content" style="display:none"></div>
     <div id="comparePickerWrap" class="wrap about-content" style="display:none">
       <h1 style="margin-top:0"><svg class="ic-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M8 4v16M16 4v16"/><path d="M4 9h4M4 15h4M16 9h4M16 15h4"/></svg> 종목 비교</h1>
-      <p class="sub">같은 업종 라이벌 종목끼리 자동 비교하거나, 원하는 두 종목을 직접 골라 비교하세요.</p>
+      <p class="sub">비교하고 싶은 두 종목을 검색해서 골라보세요.</p>
       <div class="compare-picker">
         <div class="home-search cmp-slot">
           <input type="search" id="cmpA" placeholder="종목 1 검색" autocomplete="off">
@@ -936,7 +936,6 @@ function switchView(v){
   if(v==='compare'){
     document.getElementById('comparePickerWrap').style.display='';
     document.getElementById('view-compare').style.display='';
-    loadCompareIndex();
     return;
   }
   if(VIEWS[v]){
@@ -1149,7 +1148,7 @@ function wireInlineLinks(el){
     a.onclick=(e)=>{e.preventDefault();openCompare(parts[1],parts[2]);};
   });
   el.querySelectorAll('a[href="/compare"]').forEach(a=>{
-    a.onclick=(e)=>{e.preventDefault();loadCompareIndex();};
+    a.onclick=(e)=>{e.preventDefault();switchView('compare');};
   });
 }
 let SECTOR_REPORT_INDEX_HTML=null;
@@ -1264,15 +1263,11 @@ async function openInsight(date){
 }
 function showInsight(date){ showPanel('view-insights','insights'); openInsight(date); }
 
-// 종목 비교 — 업종 내 자동 페어링 목록(/api/compare)은 리포트류와 같은 인라인 주입 방식,
-// 직접 두 종목 고르는 피커는 홈 검색창(homeSearch)과 같은 RANK 클라이언트 필터링 패턴.
+// 종목 비교 — 앱 화면에서는 검색으로 직접 두 종목 고르는 피커만 제공(홈 검색창과 같은
+// RANK 클라이언트 필터링 패턴). 업종 내 자동 페어링 목록(/api/compare)은 SEO용 SSR
+// 인덱스(/compare)에만 남겨두고 앱 화면에는 안 보여준다 — 검색 중 화면 공간을 잡아먹는다는
+// 피드백 반영.
 let CMP_A_CODE=null, CMP_B_CODE=null;
-async function loadCompareIndex(){
-  const el=document.getElementById('view-compare');
-  el.innerHTML='<span class="mut">불러오는 중…</span>';
-  try{ el.innerHTML=(await fetch('/api/compare').then(x=>x.json())).html; wireInlineLinks(el); }
-  catch(e){ el.innerHTML='<p class="mut">불러오지 못했습니다.</p>'; }
-}
 async function openCompare(code1, code2, fromBack){
   showPanel('view-compare','compare');
   document.getElementById('comparePickerWrap').style.display='';
@@ -1280,7 +1275,7 @@ async function openCompare(code1, code2, fromBack){
   el.innerHTML='<span class="mut">불러오는 중…</span>';
   try{
     const d=await fetch(`/api/compare/${code1}/${code2}`).then(x=>x.json());
-    el.innerHTML='<button class="backbtn" onclick="loadCompareIndex()">← 비교 목록으로</button>'+d.html;
+    el.innerHTML=d.html;
     wireInlineLinks(el);
     el.scrollIntoView({block:'start'});
   }catch(e){ el.innerHTML='<p class="mut">불러오지 못했습니다.</p>'; }
