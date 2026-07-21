@@ -17,11 +17,15 @@ FISCAL_LAG = 1
 # ===================== 유니버스 =====================
 MARKETS = ["KOSPI", "KOSDAQ"]
 MIN_LISTING_DAYS = 250        # 상장 후 최소 경과(신규상장 첫해 제외)
-# 리밸런싱 시점 추정 시가총액 하한(원). 백테스트 유니버스는 이 이상만 검증됨(factor/backtest.py).
+# 리밸런싱 시점 추정 시가총액 하한(원). 메인 백테스트 유니버스는 이 이상만 검증됨(factor/backtest.py).
 #   marcap_est = 현재상장주식수 × 그날 종가 (근사; 과거 주식수 변화는 한계로 명시)
-# 실시간 대시보드(factor/current.py)는 이 값 미만 종목도 전부 보여주되 다만
-# "small_cap"(참고용·백테스트 미검증) 플래그로만 구분한다 — 제외하지 않음.
-MIN_MARKET_CAP = 300_000_000_000      # 3000억 (백테스트 검증 기준선. 소형주 포함 검증은 별도 진행 예정)
+MIN_MARKET_CAP = 300_000_000_000      # 3000억 (메인 백테스트 검증 기준선)
+# 2026-07 별도 소형주 백테스트(bt_smallcap.py, 2018-2024·7년)로 이 구간도 검증됨:
+# CAGR +1.9%(전략) vs -2.0%(유니버스 동일가중) vs +0.4%(코스피) — 소형주 구간에서도
+# 팩터가 유니버스 평균·코스피를 모두 이김. 실시간 대시보드(factor/current.py)는 이
+# 값도 이 값도 랭킹에서 제외하지 않지만, MIN_MARKET_CAP_VALIDATED 미만(진짜 미검증
+# 초소형주)만 "small_cap"(참고용) 플래그로 구분한다.
+MIN_MARKET_CAP_VALIDATED = 30_000_000_000   # 300억 (소형주 백테스트 검증 하한)
 NAME_EXCLUDE_KEYWORDS = [
     "스팩", "KODEX", "TIGER", "KBSTAR", "ARIRANG", "HANARO", "KOSEF",
     "ACE ", "PLUS ", "RISE ", "SOL ", "ETN", "리츠", "우B", "우C",

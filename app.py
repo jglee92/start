@@ -724,7 +724,7 @@ def _home_ssr_html():
     return f'''<section class="home-ssr" style="margin-top:26px">
   <h2>건강점수 상위 종목</h2>
   <p class="mut" style="font-size:13px">가치(저평가)와 퀄리티(수익성·안정성)를 합친 종합 건강점수 상위 종목입니다
-    (시총 3,000억 이상 유니버스 · 최근 연간 재무제표 기준 · 매매 추천 아님). 종목명을 누르면
+    (코스피·코스닥 전 종목 유니버스 · 최근 연간 재무제표 기준 · 매매 추천 아님). 종목명을 누르면
     재무제표·회계감사의견·이상신호까지 한 페이지에서 볼 수 있습니다.</p>
   {top_table}
   <h2 style="margin-top:24px">최신 데일리 브리핑</h2>

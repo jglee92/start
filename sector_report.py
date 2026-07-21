@@ -80,8 +80,8 @@ def render_sector_report(sector_name, stats, market_avg, canonical):
 
     body = f"""
 <h1>{_ic('barchart')} {_esc(sector_name)} 업종 밸류에이션 리포트</h1>
-<p class="muted">시총 3,000억 이상 상장기업 {stats['count']}개 기준. 테마(모멘텀) 관점이 아닌
-<b>밸류에이션(저평가·우량) 관점</b>의 업종 분석입니다.</p>
+<p class="muted">코스피·코스닥 상장기업 {stats['count']}개 기준(시총 300억 미만 초소형주는 참고용).
+테마(모멘텀) 관점이 아닌 <b>밸류에이션(저평가·우량) 관점</b>의 업종 분석입니다.</p>
 <p>{summary}</p>
 
 <h2>저평가 상위 (PER 낮은 순)</h2>
@@ -95,7 +95,7 @@ def render_sector_report(sector_name, stats, market_avg, canonical):
 <th>점수</th><th>PER</th><th>PBR</th><th>ROE%</th></tr></thead>
 <tbody>{top_rows}</tbody></table></div>
 
-<p class="muted footnote">매매 추천이 아닙니다. 데이터: 시총 3,000억 이상 유니버스 기준.
+<p class="muted footnote">매매 추천이 아닙니다. 데이터: 코스피·코스닥 전 종목 유니버스 기준(시총 300억 미만은 참고용).
 <a href="/learn/per">PER</a>·<a href="/learn/pbr">PBR</a>·<a href="/learn/roe">ROE</a>
 용어가 익숙하지 않다면 용어해설을 참고하세요.
 <a href="/sector-report">← 업종별 리포트 전체</a></p>
@@ -123,7 +123,7 @@ def render_sector_index(rk, canonical):
             f'<div class="wrap"><table><thead><tr><th style="text-align:left">업종</th>'
             f'<th>종목수</th><th>평균PER</th><th>평균PBR</th><th>평균ROE%</th><th>평균부채%</th>'
             f'</tr></thead><tbody>{trs}</tbody></table></div>'
-            f'<p class="muted footnote">데이터: 시총 3,000억 이상 유니버스 기준.</p>')
+            f'<p class="muted footnote">데이터: 코스피·코스닥 전 종목 유니버스 기준(시총 300억 미만은 참고용).</p>')
     return layout("업종별 밸류에이션 리포트 전체 — 저평가·우량 종목 분석",
                   "반도체·2차전지·바이오 등 16개 업종의 평균 밸류에이션과 저평가·우량 종목을 "
                   "정리한 업종별 리포트 목록.", canonical, body, show_subscribe=False)

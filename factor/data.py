@@ -36,13 +36,16 @@ def _fetch_one(code, start, end):
 
 def ensure_prices(conn, codes, start: str, end: str, min_rows: int = 30,
                   log_every: int = 100, workers: int = 10, per_timeout: int = 25):
-    """codes 각 종목 일봉을 daily_prices 에 적재. 스레드풀+하드타임아웃(hang 방지)."""
+    """codes 각 종목 일봉을 daily_prices 에 적재. 스레드풀+하드타임아웃(hang 방지).
+    단순 row수만 보면 '최근 데이터만 있는' 종목(예: 최근 전종목 확장으로 새로 들어와
+    최근 시세만 쌓인 소형주)을 이미 커버된 걸로 오판해 과거(start) 데이터를 영영
+    못 채우는 문제가 실제로 있었음 — MIN(date)가 start를 못 따라잡으면 대상에 포함."""
     from concurrent.futures import ThreadPoolExecutor
     todo = []
     for c in codes:
-        n = conn.execute("SELECT COUNT(*) FROM daily_prices WHERE code=?",
-                         (c,)).fetchone()[0]
-        if n < min_rows:
+        n, min_date = conn.execute(
+            "SELECT COUNT(*), MIN(date) FROM daily_prices WHERE code=?", (c,)).fetchone()
+        if n < min_rows or min_date is None or min_date > start:
             todo.append(c)
     print(f"가격 수집: 대상 {len(todo)}/{len(codes)}종목 (workers={workers})",
           flush=True)

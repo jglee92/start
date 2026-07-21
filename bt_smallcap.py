@@ -26,7 +26,7 @@ from factor.universe import build_master, eligible_at
 from factor import data as D
 from factor.backtest import rebal_date, score_universe, ew_return, kospi_above_ma, _kospi_return
 
-MIN_MARKET_CAP_SMALL = 30_000_000_000       # 300억 하한(극소형 잡주 제외)
+MIN_MARKET_CAP_SMALL = cfg.MIN_MARKET_CAP_VALIDATED   # 300억 하한(극소형 잡주 제외)
 MAX_MARKET_CAP_SMALL = cfg.MIN_MARKET_CAP    # 3,000억 상한(기존 검증 구간과 안 겹침)
 # 200/년 — 매일 밤 도는 전종목 분기재무 백필(daily-fundamentals.yml)과 DART
 # 일일한도(2만건)를 나눠 써야 해서, 한 번에 하루 한도를 다 쓰지 않게 낮춰둠.

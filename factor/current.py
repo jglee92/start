@@ -107,7 +107,7 @@ def compute_ranking(conn, master=None, asof=None, ref_date=None):
             "sector": classify(getattr(r, "industry", None), r.code),
             "industry": getattr(r, "industry", None),
             "price": p[0], "price_date": p[1], "chg_pct": chg_pct, "prev_close": prev,
-            "marcap": marcap, "small_cap": marcap < cfg.MIN_MARKET_CAP,
+            "marcap": marcap, "small_cap": marcap < cfg.MIN_MARKET_CAP_VALIDATED,
             "fiscal_year": fin["year"], "fin": fin,
             "revenue": rev, "op_profit": op, "net_income": ni,
             "div_yield": div_yield, "rev_growth": rev_growth, "op_growth": op_growth,
