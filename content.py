@@ -572,6 +572,54 @@ def render_anomaly_report(grouped, asof, canonical):
                   desc, canonical, body, show_subscribe=False)
 
 
+def render_halted_stocks(rows, asof, canonical):
+    """현재 거래정지 종목 모음 — 매수·매도 자체가 안 되는 종목이라 일반 랭킹·비교·섹터
+    분석에서는 전부 제외하고, 여기 따로 모아 최근 공시로 재개 여부를 살펴보게 한다."""
+    def disc_html(items):
+        if not items:
+            return '<span class="muted" style="font-size:12px">최근 공시 없음</span>'
+        return "".join(
+            f'<div style="font-size:12.5px;margin:3px 0"><a href="{_esc(d.get("link",""))}" '
+            f'target="_blank" rel="noopener">{_esc(d.get("title",""))}</a> '
+            f'<span class="muted">{_esc(d.get("date",""))}</span></div>' for d in items[:3])
+
+    def price_cell(r):
+        if r.get("last_price") is None:
+            return '<span class="muted">–</span>'
+        return f'{r["last_price"]:,.0f}원 <span class="muted" style="font-size:12px">({_esc(r.get("last_date") or "")})</span>'
+
+    trs = "".join(
+        f'<tr><td style="text-align:left"><a href="/s/{_esc(r["code"])}">{_esc(r["name"])}</a> '
+        f'<span class="muted">{_esc(r["code"])}</span></td>'
+        f'<td class="muted">{_esc(r.get("market") or "")}</td>'
+        f'<td>{price_cell(r)}</td>'
+        f'<td style="text-align:left">{disc_html(r.get("disclosures"))}</td></tr>' for r in rows)
+    if not trs:
+        trs = '<tr><td colspan=4 class="muted">현재 거래정지 종목이 없습니다.</td></tr>'
+
+    body = f"""
+<h1>{_ic('alert')} 거래정지 종목 <span class="muted" style="font-size:14px">({_esc(asof)} 기준 · {len(rows)}개)</span></h1>
+<p class="muted">현재 매수·매도 자체가 불가능한 거래정지 종목만 따로 모은 페이지입니다.
+이 사이트의 랭킹·조건검색·종목비교·업종분석 등 다른 모든 화면에서는 거래정지 종목을
+전부 제외합니다 — 어차피 사고 팔 수 없는 종목이 팩터 점수·비교 결과에 섞여 나오면
+오해를 부를 수 있어서입니다.</p>
+<p>거래정지 사유는 하나가 아닙니다. 감사의견 비적정·관리종목 지정·불성실공시법인 지정처럼
+투자자 보호 성격의 정지도 있고, 합병·분할·액면분할 같은 <b>단순 기업 이벤트 처리</b> 때문에
+잠깐 멈추는 경우도 있습니다. 정지 자체가 곧 "위험 종목"이라는 뜻은 아니니, 아래 최근 공시를
+직접 확인해서 정지 사유와 재개 여부를 판단하시기 바랍니다.</p>
+<div class="wrap"><table>
+<thead><tr><th style="text-align:left">종목</th><th>시장</th><th>정지 전 마지막가</th>
+<th style="text-align:left">최근 공시</th></tr></thead>
+<tbody>{trs}</tbody>
+</table></div>
+<p class="muted footnote">정지 전 마지막가는 daily_prices 기준 최근 종가이며 실시간 재개
+여부와는 별개입니다. 공시: DART 공식 공시목록 API. 매수·매도 추천이 아닙니다.</p>
+"""
+    desc = f"{asof} 기준 거래정지 중인 한국 상장기업 {len(rows)}개와 최근 공시 모음. 정지 사유 확인용."
+    return layout(f"거래정지 종목 ({asof}) — 정지 사유·재개 여부 확인",
+                  desc, canonical, body, show_subscribe=False, noindex=True)
+
+
 def _movers_rows(movers):
     if not movers:
         return '<tr><td colspan="4" class="muted">데이터 부족</td></tr>'

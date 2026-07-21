@@ -61,17 +61,22 @@ def _fetch_one(code: str):
                 prev_close = price_f - float(str(diff).replace(",", ""))
             except ValueError:
                 prev_close = None
+        # tradeStopType.code: "1"=정상거래, "2"=거래정지 — 같은 응답에서 공짜로 얻어짐
+        # (별도 호출 불필요). 코드가 없거나 "1"이 아니면 정지로 간주.
+        tst = d.get("tradeStopType") or {}
+        halted = tst.get("code") not in (None, "1")
         return {
             "price": price_f,
             "chg_pct": float(pct) if pct is not None else None,
             "prev_close": prev_close,
+            "halted": halted,
         }
     except Exception:
         return None
 
 
 def fetch_many(codes, workers: int = 10):
-    """codes -> {code: {"price":, "chg_pct":}} (실패한 종목은 결과에서 제외)."""
+    """codes -> {code: {"price":, "chg_pct":, "halted":}} (실패한 종목은 결과에서 제외)."""
     out = {}
     with ThreadPoolExecutor(max_workers=workers) as ex:
         futs = {c: ex.submit(_fetch_one, c) for c in codes}
@@ -83,3 +88,9 @@ def fetch_many(codes, workers: int = 10):
             if r:
                 out[c] = r
     return out
+
+
+def fetch_halted_set(codes, workers: int = 20):
+    """codes 중 현재 거래정지 상태인 코드 집합. 전체 유니버스처럼 넓은 대상을
+    스캔할 때 쓰는 용도(가격표시용 fetch_many보다 병렬도를 높게 잡음)."""
+    return {c for c, info in fetch_many(codes, workers=workers).items() if info.get("halted")}

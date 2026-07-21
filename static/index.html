@@ -323,6 +323,7 @@
       <div class="nav-item" data-v="monthly"><svg class="ic-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="4.2"/><circle cx="12" cy="12" r="0.8" fill="currentColor" stroke="none"/></svg> 월간 건강랭킹</div>
       <div class="nav-item" data-v="sectorreport"><svg class="ic-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M5 19V11"/><path d="M12 19V5"/><path d="M19 19v-7"/></svg> 업종 밸류리포트</div>
       <div class="nav-item" data-v="anomaly"><svg class="ic-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3.5 21 19.5H3z"/><path d="M12 10v3.6"/><circle cx="12" cy="16.7" r="0.9" fill="currentColor" stroke="none"/></svg> 이상신호 리포트</div>
+      <div class="nav-item" data-v="halted"><svg class="ic-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8.5"/><path d="M6.5 6.5l11 11"/></svg> 거래정지 종목</div>
       <div class="nav-item" data-v="earnings"><svg class="ic-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="5.5" width="16" height="14.5" rx="1.8"/><path d="M4 10h16M8 3.5v3.5M16 3.5v3.5"/></svg> 실적발표 현황</div>
     </details>
     <details class="nav-group">
@@ -468,6 +469,7 @@
     <div id="view-sectorreport" class="wrap about-content" style="display:none"></div>
     <div id="view-earnings" class="wrap about-content" style="display:none"></div>
     <div id="view-sectorquarterly" class="wrap about-content" style="display:none"></div>
+    <div id="view-halted" class="wrap about-content" style="display:none"></div>
     <div id="view-insights" class="wrap about-content" style="display:none"></div>
     <div id="comparePickerWrap" class="wrap about-content" style="display:none">
       <h1 style="margin-top:0"><svg class="ic-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M8 4v16M16 4v16"/><path d="M4 9h4M4 15h4M16 9h4M16 15h4"/></svg> 종목 비교</h1>
@@ -900,7 +902,7 @@ document.addEventListener('click',function(e){
 const ALL_PANELS=['view-home','view-screener','theme','sec','view-table',
   'view-weekly','view-anomaly','view-themesall','view-about','view-learn',
   'view-monthly','view-sectorreport','view-earnings','view-insights',
-  'comparePickerWrap','view-compare','view-backtest','view-sectorquarterly'];
+  'comparePickerWrap','view-compare','view-backtest','view-sectorquarterly','view-halted'];
 function switchView(v){
   curView=v;
   history.replaceState(null,'',v==='home'?location.pathname:'#'+v);
@@ -920,6 +922,7 @@ function switchView(v){
   if(v==='sectorreport'){document.getElementById('view-sectorreport').style.display='';loadSectorReportIndex();return;}
   if(v==='earnings'){document.getElementById('view-earnings').style.display='';loadEarnings();return;}
   if(v==='sectorquarterly'){document.getElementById('view-sectorquarterly').style.display='';loadSectorQuarterly();return;}
+  if(v==='halted'){document.getElementById('view-halted').style.display='';loadHalted();return;}
   if(v==='insights'){document.getElementById('view-insights').style.display='';loadInsightsIndex();return;}
   if(v==='compare'){
     document.getElementById('comparePickerWrap').style.display='';
@@ -1091,7 +1094,7 @@ let LEARN_INDEX_HTML=null;
 const SITE_NAV_MAP={'/':'home','/weekly':'weekly','/themes-index':'themesall',
   '/about':'about','/learn':'learn','/anomaly-report':'anomaly',
   '/monthly':'monthly','/sector-report':'sectorreport','/earnings-report':'earnings',
-  '/backtest':'backtest'};
+  '/backtest':'backtest', '/halted':'halted'};
 function wireInlineLinks(el){
   el.querySelectorAll('a[href]').forEach(a=>{
     const href=a.getAttribute('href');
@@ -1186,6 +1189,17 @@ async function loadSectorQuarterly(){
   el.innerHTML='<span class="mut">불러오는 중… (최초 계산 수초)</span>';
   try{
     const d=await fetch('/api/sector-rotation-review').then(x=>x.json());
+    el.innerHTML=d.html;
+    wireInlineLinks(el);
+  }catch(e){ el.innerHTML='<p class="mut">불러오지 못했습니다.</p>'; return; }
+  el.dataset.done='1';
+}
+async function loadHalted(){
+  const el=document.getElementById('view-halted');
+  if(el.dataset.done){wireInlineLinks(el);return;}
+  el.innerHTML='<span class="mut">불러오는 중…</span>';
+  try{
+    const d=await fetch('/api/halted').then(x=>x.json());
     el.innerHTML=d.html;
     wireInlineLinks(el);
   }catch(e){ el.innerHTML='<p class="mut">불러오지 못했습니다.</p>'; return; }

@@ -85,7 +85,43 @@ def get_ranking():
             _cache["master"] = build_master()
         _cache["ranking"] = compute_ranking(conn, master=_cache["master"])
         conn.close()
-    return _cache["ranking"]
+    halted = get_halted_codes()
+    if not halted:
+        return _cache["ranking"]
+    return [r for r in _cache["ranking"] if r["code"] not in halted]
+
+
+def get_halted_codes():
+    """현재 거래정지 상태인 종목 코드 집합 — 전 종목 대상, 매수·매도 자체가 불가능한
+    종목이 랭킹·섹터·비교 등 어디에도 섞여 나오지 않도록 get_ranking()에서 걸러내는 용도.
+    거래정지는 분단위로 바뀌는 게 아니라서 실시간가(get_live_prices)보다 훨씬 긴 TTL로
+    캐시(폴링 서버 부담도 줄임). 오래됐어도 즉시 반환하고 갱신은 백그라운드에서."""
+    import threading
+    from datetime import datetime
+    import live_price
+    from factor.universe import eligible_at
+    import factor_config as fcfg
+    TTL = 1800   # 30분
+    ts = _cache.get("halted_ts")
+    now_kst = datetime.now(live_price.KST)
+    stale = ts is None or (now_kst - ts).total_seconds() > TTL
+    if stale and not _cache.get("halted_refreshing"):
+        _cache["halted_refreshing"] = True
+
+        def _bg():
+            try:
+                if _cache["master"] is None:
+                    _cache["master"] = build_master()
+                asof = get_asof()
+                elig = eligible_at(_cache["master"], asof, fcfg)
+                codes = [r.code for r in elig.itertuples(index=False)]
+                _cache["halted"] = live_price.fetch_halted_set(codes)
+                _cache["halted_ts"] = datetime.now(live_price.KST)
+            finally:
+                _cache["halted_refreshing"] = False
+
+        threading.Thread(target=_bg, daemon=True).start()
+    return _cache.get("halted") or set()
 
 
 def get_asof():
@@ -900,6 +936,47 @@ def anomaly_report():
                 "code": r["code"], "name": r["name"], "marcap_eok": r.get("marcap_eok"),
                 "text": f["text"], "emoji": f["emoji"]})
     return render_anomaly_report(grouped, asof, f"{BASE_URL}/anomaly-report")
+
+
+def _halted_stocks_data():
+    """현재 거래정지 종목 상세 — 이름/시장/정지 전 마지막가·날짜/최근 공시.
+    get_ranking()은 이 종목들을 이미 걸러내므로, 여기서는 get_halted_codes()로
+    별도 조회한다."""
+    halted = get_halted_codes()
+    if not halted:
+        return []
+    m = _cache.get("master")
+    if m is None:
+        m = _cache["master"] = build_master()
+    conn = _conn()
+    out = []
+    for code in halted:
+        hit = m[m["code"] == code]
+        name = hit.iloc[0]["name"] if len(hit) else _name_of(code)
+        market = hit.iloc[0]["market"] if len(hit) else None
+        row = conn.execute(
+            "SELECT close,date FROM daily_prices WHERE code=? AND close IS NOT NULL "
+            "ORDER BY date DESC LIMIT 1", (code,)).fetchone()
+        last_price, last_date = (row[0], row[1]) if row else (None, None)
+        disc = api_disclosures(code).get("items", [])[:3]
+        out.append({"code": code, "name": name, "market": market,
+                    "last_price": last_price, "last_date": last_date, "disclosures": disc})
+    conn.close()
+    out.sort(key=lambda x: x["last_date"] or "", reverse=True)
+    return out
+
+
+@app.get("/api/halted")
+def api_halted():
+    from content import render_halted_stocks
+    html = render_halted_stocks(_halted_stocks_data(), get_asof(), f"{BASE_URL}/halted")
+    return {"html": _extract_body(html)}
+
+
+@app.get("/halted", response_class=HTMLResponse)
+def halted_page():
+    from content import render_halted_stocks
+    return render_halted_stocks(_halted_stocks_data(), get_asof(), f"{BASE_URL}/halted")
 
 
 def _anomaly_count(rk):
