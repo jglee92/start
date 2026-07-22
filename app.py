@@ -468,6 +468,18 @@ def _name_of(code):
     return hit.iloc[0]["name"] if len(hit) else code
 
 
+# 전종목 확장(2026-07) 이후 /s/{code}가 434개→1,400여개로 늘면서 sitemap의 종목상세
+# 비중이 92.6%까지 치솟음(애드센스가 반려했던 시점의 얇은 콘텐츠 비중보다 오히려 나쁨).
+# 재무 연혁이 1개년뿐인 신규 소형주(1,242개 중 다수)는 실질적으로 얇은 페이지라, 테마
+# 페이지(/t/{no})에 했던 것과 같은 패턴(noindex,follow + sitemap 제외, 사용자 열람은
+# 그대로)을 적용한다. 3개년 이상 재무 연혁 = 진짜 트렌드를 보여줄 만한 종목으로 간주.
+MIN_FIN_YEARS_FOR_INDEX = 3
+
+
+def _stock_index_worthy(fin_year_count):
+    return fin_year_count >= MIN_FIN_YEARS_FOR_INDEX
+
+
 @app.get("/api/sectors")
 def api_sectors():
     """섹터 로테이션(연도별 섹터 수익률) + 현재 유니버스 섹터 요약."""
@@ -832,7 +844,7 @@ def stock_page(code: str):
     disclosures = api_disclosures(code).get("items", [])
     return render_stock_page(code, name, summary, financials, prices_l, news,
                              themes, disclosures, period_returns, f"{BASE_URL}/s/{code}",
-                             audit, quarterly)
+                             audit, quarterly, noindex=not _stock_index_worthy(len(fins)))
 
 
 def _weekly_ctx():
@@ -2127,9 +2139,17 @@ def sitemap():
     # 최근 1개월 수익률 X%" 식으로 사실상 동일 템플릿에 숫자만 바뀌는 얇은 콘텐츠라(애드센스
     # "부가가치 없는 자동생성 콘텐츠" 지적과 맞물림), content.py::render_theme_page에서도
     # noindex,follow를 짝지어 붙였다. 페이지 자체는 그대로 열람 가능(사용자 기능 무손실).
-    # 개별 종목 페이지(/s/{code}) — 랭킹 유니버스 전 종목. 실제 검색어("삼성전자 PER" 등)에
-    # 대응하는 SSR 랜딩페이지라 색인 가치가 큼. 데이터 없는 얇은 페이지는 랭킹에 없으니 자동 제외.
+    # 개별 종목 페이지(/s/{code}) — 실제 검색어("삼성전자 PER" 등)에 대응하는 SSR
+    # 랜딩페이지라 색인 가치가 큼. 다만 재무 연혁이 MIN_FIN_YEARS_FOR_INDEX 미만인
+    # 신규 소형주(전종목 확장으로 늘어난 1개년치 종목들)는 얇은 페이지라 제외한다
+    # (stock_page() 라우트의 noindex 처리와 동일 기준 — 위 테마페이지와 같은 패턴).
+    conn = _conn()
+    fin_year_counts = dict(conn.execute(
+        "SELECT code, COUNT(*) FROM financials GROUP BY code").fetchall())
+    conn.close()
     for r in get_ranking():
+        if not _stock_index_worthy(fin_year_counts.get(r["code"], 0)):
+            continue
         parts.append(f"<url><loc>{BASE_URL}/s/{r['code']}</loc><lastmod>{today}</lastmod>"
                      f"<changefreq>daily</changefreq><priority>0.7</priority></url>")
     xml = ('<?xml version="1.0" encoding="UTF-8"?>'

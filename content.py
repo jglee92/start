@@ -406,7 +406,8 @@ def _quarterly_rows_html(quarterly):
 
 
 def render_stock_page(code, name, summary, financials, prices, news, themes,
-                      disclosures, period_returns, canonical, audit=None, quarterly=None):
+                      disclosures, period_returns, canonical, audit=None, quarterly=None,
+                      noindex=False):
     def eok(v):
         return "–" if v is None else f"{round(v/1e8):,}"
     head = f'<h1>{_ic("barchart")} {_esc(name)} <span class="muted" style="font-size:15px">{_esc(code)}</span></h1>'
@@ -464,7 +465,8 @@ def render_stock_page(code, name, summary, financials, prices, news, themes,
 {news_html}
 <p class="muted" style="margin-top:16px"><a href="/">← 대시보드에서 전체 종목 보기</a></p>"""
     desc = f"{name}({code}) 재무제표(매출·영업이익·ROE·부채비율), 밸류에이션, 관련 뉴스."
-    return layout(f"{name} ({code}) 재무·밸류에이션·뉴스 | 한국주식", desc, canonical, body)
+    return layout(f"{name} ({code}) 재무·밸류에이션·뉴스 | 한국주식", desc, canonical, body,
+                  noindex=noindex)
 
 
 def render_theme_page(name, stocks, perf, canonical):
