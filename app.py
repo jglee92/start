@@ -954,9 +954,16 @@ def _halted_stocks_data():
         hit = m[m["code"] == code]
         name = hit.iloc[0]["name"] if len(hit) else _name_of(code)
         market = hit.iloc[0]["market"] if len(hit) else None
+        # 거래정지 중엔 시세제공사가 마지막 체결가를 그대로 매일 반복해서 내려주는
+        # 경우가 있어(거래량 0), 단순 "최신 row"는 정지 시작일이 아니라 오늘 날짜처럼
+        # 보여 오해를 부른다 — 실제 거래(volume>0)가 있었던 마지막 날을 정지 시작일로 본다.
         row = conn.execute(
             "SELECT close,date FROM daily_prices WHERE code=? AND close IS NOT NULL "
-            "ORDER BY date DESC LIMIT 1", (code,)).fetchone()
+            "AND volume>0 ORDER BY date DESC LIMIT 1", (code,)).fetchone()
+        if not row:
+            row = conn.execute(
+                "SELECT close,date FROM daily_prices WHERE code=? AND close IS NOT NULL "
+                "ORDER BY date DESC LIMIT 1", (code,)).fetchone()
         last_price, last_date = (row[0], row[1]) if row else (None, None)
         disc = api_disclosures(code).get("items", [])[:3]
         out.append({"code": code, "name": name, "market": market,

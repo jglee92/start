@@ -620,12 +620,13 @@ def render_halted_stocks(rows, asof, canonical):
 잠깐 멈추는 경우도 있습니다. 정지 자체가 곧 "위험 종목"이라는 뜻은 아니니, 아래 최근 공시를
 직접 확인해서 정지 사유와 재개 여부를 판단하시기 바랍니다.</p>
 <div class="wrap"><table>
-<thead><tr><th style="text-align:left">종목</th><th>시장</th><th>정지 전 마지막가</th>
+<thead><tr><th style="text-align:left">종목</th><th>시장</th><th>정지 전 마지막가(정지 시작일)</th>
 <th style="text-align:left">최근 공시</th></tr></thead>
 <tbody>{trs}</tbody>
 </table></div>
-<p class="muted footnote">정지 전 마지막가는 daily_prices 기준 최근 종가이며 실시간 재개
-여부와는 별개입니다. 공시: DART 공식 공시목록 API. 매수·매도 추천이 아닙니다.</p>
+<p class="muted footnote">괄호 안 날짜는 실제 마지막 거래(거래량 0 초과)가 있었던 날로, 정지
+시작 시점을 뜻합니다. 실시간 재개 여부와는 별개입니다. 공시: DART 공식 공시목록 API.
+매수·매도 추천이 아닙니다.</p>
 """
     desc = f"{asof} 기준 거래정지 중인 한국 상장기업 {len(rows)}개와 최근 공시 모음. 정지 사유 확인용."
     return layout(f"거래정지 종목 ({asof}) — 정지 사유·재개 여부 확인",
