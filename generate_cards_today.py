@@ -29,7 +29,7 @@ def main():
 
     data_for_caption = dict(data)
     data_for_caption["_name_of"] = A._name_of
-    caption = caption_generator.build_caption(data_for_caption, headline_lines, subtitle)
+    caption = caption_generator.build_caption(data_for_caption, headline_lines, subtitle, date_str)
     caption_path = "cards_out/caption.txt"
     with open(caption_path, "w", encoding="utf-8") as f:
         f.write(caption)

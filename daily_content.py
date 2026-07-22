@@ -41,7 +41,7 @@ def _main_daily():
     print(f"카드뉴스 {len(paths)}장 저장 완료 (표지 템플릿: {tid})")
 
     data["_name_of"] = A._name_of
-    caption = caption_generator.build_caption(data, headline_lines, subtitle)
+    caption = caption_generator.build_caption(data, headline_lines, subtitle, date_str)
     with open(os.path.join(cards_dir, "caption.txt"), "w", encoding="utf-8") as f:
         f.write(caption)
     print("캡션 저장 완료")
@@ -67,7 +67,7 @@ def _main_weekly():
                                                date_str.replace("-", "."), out_dir=cards_dir)
     print(f"주간 카드뉴스 {len(paths)}장 저장 완료 (표지 템플릿: {tid})")
 
-    caption = caption_generator.build_weekly_caption(data, headline_lines, subtitle)
+    caption = caption_generator.build_weekly_caption(data, headline_lines, subtitle, date_str)
     with open(os.path.join(cards_dir, "caption.txt"), "w", encoding="utf-8") as f:
         f.write(caption)
     print("캡션 저장 완료")
