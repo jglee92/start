@@ -22,7 +22,11 @@ jobs:
         with:
           python-version: '3.12'
 
-      - name: 발행 (3일 간격 자동 게이트)
+      - name: 발행 (3일 간격 자동 게이트, 큐 비면 Claude API로 자동 생성)
+        env:
+          # 큐(손으로 쓴 글)가 비었을 때만 Claude API로 새 글을 생성한다.
+          # 미설정이면 생성은 건너뛰고 발행만 시도(경고만).
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
         run: python publish_blog_article.py
 
       - name: 변경사항 커밋 + 푸시

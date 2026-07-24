@@ -68,7 +68,20 @@ def main():
     published = set(st.get("published", []))
     nxt = next((p for p in queue if p not in published), None)
     if not nxt:
-        print("::warning::큐에 발행할 새 글이 없습니다. blog_articles/에 글을 추가하고 queue.txt에 등록하세요.")
+        # 손으로 쓴 글이 큐에 없으면 Claude API로 한 편 자동 생성해서 채운다
+        # (ANTHROPIC_API_KEY 없으면 generate_one이 경고만 내고 None 반환).
+        print("큐에 발행할 글이 없음 — 자동 생성 시도.")
+        try:
+            import generate_blog_article
+            generate_blog_article.generate_one()
+        except Exception as e:
+            print(f"::warning::자동 생성 실패: {e}")
+        queue = load_queue()
+        st = load_state()  # generate_one이 state를 갱신했을 수 있음
+        published = set(st.get("published", []))
+        nxt = next((p for p in queue if p not in published), None)
+    if not nxt:
+        print("::warning::발행할 글이 없습니다(큐 비었고 자동 생성도 안 됨). 스킵.")
         return
 
     src = os.path.join(ARTICLES_DIR, *nxt.split("/"))
