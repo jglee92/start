@@ -1,0 +1,46 @@
+name: 에버그린 블로그 글 발행 (3일 1편)
+
+on:
+  schedule:
+    # 매일 UTC 20:30 = KST 05:30. 매일 돌지만 publish_blog_article.py가 3일 간격을
+    # 스스로 게이트하므로 실제 발행은 3일에 1편. daily-content.yml(05:45 KST 목표)보다
+    # 조금 먼저 돌려서, 아침 sync_content.bat(07:00/07:20 KST)가 받아가기 전에 커밋되게
+    # 한다. 교육글은 시의성이 없어 휴장일·주말에도 발행 OK라 요일 제한 없이 매일(*).
+    - cron: '30 20 * * *'
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: 발행 (3일 간격 자동 게이트)
+        run: python publish_blog_article.py
+
+      - name: 변경사항 커밋 + 푸시
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add content_out/ data/blog_article_state.json
+          git diff --staged --quiet && echo "변경 없음(발행 없거나 대기 중)" || {
+            DATE_KST=$(TZ='Asia/Seoul' date +%Y-%m-%d)
+            git commit -m "chore: 에버그린 블로그 글 발행 $DATE_KST"
+            # 다른 워크플로우(daily-content 등)가 그 사이 먼저 커밋했을 수 있어
+            # rebase로 따라잡은 뒤 push(재무 워크플로우와 동일한 안전장치).
+            git fetch origin main
+            if git rebase origin/main; then
+              git push
+            else
+              echo "::error::rebase 충돌 — content_out을 동시에 건드린 다른 작업 확인 필요."
+              git rebase --abort
+              exit 1
+            fi
+          }
