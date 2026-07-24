@@ -520,6 +520,8 @@ def api_refresh():
     _cache["theme_perf"] = None
     _cache["theme_groups"] = None
     _cache["asof"] = None
+    _cache["halted_page"] = None   # 거래정지 페이지 조립 캐시도 무효화(데이터 갱신 반영)
+    _cache["halted_page_ts"] = None
     for k in [k for k in _cache if k.startswith("rk_")]:
         _cache[k] = None
     rk = get_ranking()
@@ -953,15 +955,31 @@ def anomaly_report():
 def _halted_stocks_data():
     """현재 거래정지 종목 상세 — 이름/시장/정지 전 마지막가·날짜/최근 공시.
     get_ranking()은 이 종목들을 이미 걸러내므로, 여기서는 get_halted_codes()로
-    별도 조회한다."""
+    별도 조회한다.
+
+    거래정지 종목이 100개 넘어서, 종목마다 DART 공시를 '순차'로 부르면 1~2분씩
+    걸렸음(실제 문제). (1) 조립 결과를 30분 캐시하고 (2) 느린 DART 공시 호출만
+    스레드풀로 병렬화한다. DB(sqlite) 조회는 스레드 공유가 안전하지 않아 메인
+    스레드에서 먼저 끝내고, 네트워크(DART) 호출만 병렬로 돌린다."""
+    from concurrent.futures import ThreadPoolExecutor
+    TTL = 1800  # 30분
+    cached = _cache.get("halted_page")
+    ts = _cache.get("halted_page_ts")
+    if cached is not None and ts is not None and (time.time() - ts) < TTL:
+        return cached
+
     halted = get_halted_codes()
     if not halted:
+        _cache["halted_page"] = []
+        _cache["halted_page_ts"] = time.time()
         return []
     m = _cache.get("master")
     if m is None:
         m = _cache["master"] = build_master()
+
+    # 1) 메인 스레드에서 이름/시장/정지 전 마지막가(DB) 먼저 — 빠르고 네트워크 없음.
     conn = _conn()
-    out = []
+    base = []
     for code in halted:
         hit = m[m["code"] == code]
         name = hit.iloc[0]["name"] if len(hit) else _name_of(code)
@@ -977,12 +995,21 @@ def _halted_stocks_data():
                 "SELECT close,date FROM daily_prices WHERE code=? AND close IS NOT NULL "
                 "ORDER BY date DESC LIMIT 1", (code,)).fetchone()
         last_price, last_date = (row[0], row[1]) if row else (None, None)
-        disc = api_disclosures(code).get("items", [])[:3]
-        out.append({"code": code, "name": name, "market": market,
-                    "last_price": last_price, "last_date": last_date, "disclosures": disc})
+        base.append({"code": code, "name": name, "market": market,
+                     "last_price": last_price, "last_date": last_date})
     conn.close()
-    out.sort(key=lambda x: x["last_date"] or "", reverse=True)
-    return out
+
+    # 2) 느린 DART 공시 호출만 병렬로(6시간 캐시라 웜이면 즉시 반환됨).
+    with ThreadPoolExecutor(max_workers=16) as ex:
+        discs = list(ex.map(lambda c: api_disclosures(c).get("items", [])[:3],
+                            [b["code"] for b in base]))
+    for b, d in zip(base, discs):
+        b["disclosures"] = d
+
+    base.sort(key=lambda x: x["last_date"] or "", reverse=True)
+    _cache["halted_page"] = base
+    _cache["halted_page_ts"] = time.time()
+    return base
 
 
 @app.get("/api/halted")
