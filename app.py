@@ -122,6 +122,24 @@ def _conn():
     return db.connect()
 
 
+@app.get("/api/debug/halt-status")
+def debug_halt_status():
+    """거래정지 스캔 진행 상태 원격 확인용(운영 진단). 콜드부팅 직후 첫 스캔이
+    실제로 얼마나 걸리는지, 멈춰 있는 건 아닌지 값을 안 기다리고 바로 볼 수 있다."""
+    from datetime import datetime
+    import live_price
+    ts = _cache.get("halted_ts")
+    age = None
+    if ts:
+        age = round((datetime.now(live_price.KST) - ts).total_seconds(), 1)
+    return {
+        "halted_refreshing": bool(_cache.get("halted_refreshing")),
+        "halted_ts": ts.isoformat() if ts else None,
+        "halted_ts_age_sec": age,
+        "halted_count": len(_cache.get("halted") or []),
+    }
+
+
 def get_ranking():
     if _cache["ranking"] is None:
         conn = _conn()
