@@ -1,0 +1,21 @@
+name: 서버 슬립 방지 (Keep-alive)
+
+on:
+  schedule:
+    # Render 무료티어는 15분간 요청이 없으면 슬립되고, 다음 요청이 서버를 깨우면
+    # 모든 인메모리 캐시가 초기화된 채로 시작한다(랭킹·테마수익률·거래정지 스캔 등
+    # 전부 콜드 상태) — 그 첫 요청을 받은 실제 사용자가 시장동향·리포트 섹션 전부를
+    # 수십초~수분씩 기다리는 문제로 실제 발생. 12분 간격으로 가볍게 핑을 보내
+    # 15분 슬립 타이머가 아예 리셋되도록 해서 슬립 자체를 방지한다.
+    - cron: '*/12 * * * *'
+  workflow_dispatch: {}
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - name: 홈페이지에 가벼운 요청 (서버 깨어있게 유지)
+        run: |
+          curl -sf -o /dev/null -w "status=%{http_code} time=%{time_total}s\n" \
+            https://getmoneycheckup.com/ --max-time 60 || \
+            echo "::warning::핑 실패 — 서버가 슬립에서 깨어나는 중이었을 수 있음(다음 실행에서 정상화)"

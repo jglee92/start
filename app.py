@@ -47,6 +47,50 @@ def _start_proactive_refresh():
             _time.sleep(30)
 
     threading.Thread(target=_loop, daemon=True).start()
+    threading.Thread(target=_warm_heavy_caches, daemon=True).start()
+
+
+def _warm_heavy_caches():
+    """Render 무료티어는 15분 무접속 시 슬립되고, 다음 요청이 서버를 깨우면 모든
+    인메모리 캐시가 초기화된 상태로 시작한다. 그 첫 요청을 받은 사용자가 시장동향·
+    리포트 섹션 전부를 콜드로(수십 초씩) 계산하며 기다리는 문제가 실제로 있었음.
+    프로세스가 뜨자마자(콜드부팅이든 배포 재시작이든) 무거운 캐시들을 백그라운드에서
+    미리 계산해둬서, 실제 첫 방문자가 오기 전에 최대한 데워두는 게 목적."""
+    import time as _time
+    try:
+        get_ranking()
+    except Exception:
+        pass
+    try:
+        get_halted_codes()   # 자체적으로 백그라운드 스레드를 또 띄우지만 최대한 빨리 트리거
+    except Exception:
+        pass
+    try:
+        from factor.themes import compute_theme_perf
+        conn = _conn()
+        _cache["theme_perf"] = compute_theme_perf(conn, get_tmap())
+        conn.close()
+    except Exception:
+        pass
+    try:
+        from factor.themes import compute_group_hierarchy
+        conn = _conn()
+        if _cache["master"] is None:
+            _cache["master"] = build_master()
+        _cache["theme_groups"] = compute_group_hierarchy(conn, get_tmap(), master=_cache["master"])
+        conn.close()
+    except Exception:
+        pass
+    # get_halted_codes()의 전종목 스캔은 30~120초 걸릴 수 있어, 완료될 때까지
+    # 잠깐 더 기다렸다가 거래정지 페이지 조립 캐시까지 같이 데워둔다(있으면 즉시 반환).
+    for _ in range(24):    # 최대 2분 대기(5초 x 24)
+        if not _cache.get("halted_refreshing"):
+            break
+        _time.sleep(5)
+    try:
+        _halted_stocks_data()
+    except Exception:
+        pass
 
 # --- 백테스트 결과 (정직본, factor.backtest 실행값) ---
 BACKTEST = {
