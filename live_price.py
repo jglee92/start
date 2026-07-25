@@ -42,9 +42,9 @@ def should_refresh_live(now=None) -> bool:
     return 9 * 60 <= t <= 19 * 60
 
 
-def _fetch_one(code: str):
+def _fetch_one(code: str, timeout=6):
     try:
-        r = requests.get(_URL.format(code=code), headers=H, timeout=6)
+        r = requests.get(_URL.format(code=code), headers=H, timeout=timeout)
         js = r.json()
         d = (js.get("datas") or [None])[0]
         if not d:
@@ -75,14 +75,19 @@ def _fetch_one(code: str):
         return None
 
 
-def fetch_many(codes, workers: int = 10):
-    """codes -> {code: {"price":, "chg_pct":, "halted":}} (실패한 종목은 결과에서 제외)."""
+def fetch_many(codes, workers: int = 10, timeout=6):
+    """codes -> {code: {"price":, "chg_pct":, "halted":}} (실패한 종목은 결과에서 제외).
+
+    실제 사고: Render 배포환경→네이버 API 개별 요청이 로컬보다 훨씬 느려서(또는
+    상당수가 타임아웃까지 감), 전종목(~2,456개) 스캔이 이론상 최악치(2456/20*6초
+    ≈12분)를 넘겨 15분 넘게 안 끝나는 문제가 실제 발생. per-요청 timeout을 호출부
+    (fetch_halted_set)에서 짧게 넘겨 최악의 경우도 확 줄인다."""
     out = {}
     with ThreadPoolExecutor(max_workers=workers) as ex:
-        futs = {c: ex.submit(_fetch_one, c) for c in codes}
+        futs = {c: ex.submit(_fetch_one, c, timeout) for c in codes}
         for c, fut in futs.items():
             try:
-                r = fut.result(timeout=10)
+                r = fut.result(timeout=timeout + 2)
             except Exception:
                 r = None
             if r:
@@ -90,7 +95,10 @@ def fetch_many(codes, workers: int = 10):
     return out
 
 
-def fetch_halted_set(codes, workers: int = 20):
+def fetch_halted_set(codes, workers: int = 40, timeout=2.5):
     """codes 중 현재 거래정지 상태인 코드 집합. 전체 유니버스처럼 넓은 대상을
-    스캔할 때 쓰는 용도(가격표시용 fetch_many보다 병렬도를 높게 잡음)."""
-    return {c for c, info in fetch_many(codes, workers=workers).items() if info.get("halted")}
+    스캔할 때 쓰는 용도라 가격표시용 fetch_many보다 병렬도는 높이고 개별
+    타임아웃은 짧게(2.5초) — 거래정지는 30분 캐시라 가끔 느린 응답 하나 놓쳐도
+    다음 스캔에서 다시 잡히므로, 정확도보다 전체 완료 시간을 짧게 잡는 게 안전."""
+    return {c for c, info in fetch_many(codes, workers=workers, timeout=timeout).items()
+            if info.get("halted")}
