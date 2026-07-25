@@ -58,13 +58,17 @@ def _warm_heavy_caches():
     미리 계산해둬서, 실제 첫 방문자가 오기 전에 최대한 데워두는 게 목적."""
     import time as _time
     try:
-        get_ranking()
+        get_ranking()   # 내부에서 get_halted_codes()도 같이 트리거됨
     except Exception:
         pass
-    try:
-        get_halted_codes()   # 자체적으로 백그라운드 스레드를 또 띄우지만 최대한 빨리 트리거
-    except Exception:
-        pass
+    # 실사고: theme_perf/theme_groups(pandas 연산, CPU-bound)를 거래정지 스캔(스레드풀
+    # HTTP I/O)과 동시에 돌렸더니, Render 무료티어의 제한된 CPU를 서로 뺏어가며
+    # 거래정지 스캔이 이론상 최악치(~5분)의 2배 이상(~12분)까지 늘어지는 문제가 실제
+    # 발생함. 무거운 CPU 작업을 시작하기 전에 스캔이 먼저 끝나도록 기다린다.
+    for _ in range(180):   # 최대 15분 대기(5초 x 180) — 스캔은 백그라운드 데몬 스레드라 안전
+        if not _cache.get("halted_refreshing"):
+            break
+        _time.sleep(5)
     try:
         from factor.themes import compute_theme_perf
         conn = _conn()
@@ -81,12 +85,6 @@ def _warm_heavy_caches():
         conn.close()
     except Exception:
         pass
-    # get_halted_codes()의 전종목 스캔은 30~120초 걸릴 수 있어, 완료될 때까지
-    # 잠깐 더 기다렸다가 거래정지 페이지 조립 캐시까지 같이 데워둔다(있으면 즉시 반환).
-    for _ in range(24):    # 최대 2분 대기(5초 x 24)
-        if not _cache.get("halted_refreshing"):
-            break
-        _time.sleep(5)
     try:
         _halted_stocks_data()
     except Exception:
