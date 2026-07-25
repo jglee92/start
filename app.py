@@ -1027,7 +1027,14 @@ def _halted_stocks_data():
     TTL = 1800  # 30분
     cached = _cache.get("halted_page")
     ts = _cache.get("halted_page_ts")
-    if cached is not None and ts is not None and (time.time() - ts) < TTL:
+    # 콜드부팅 직후엔 get_halted_codes()가 아직 빈 채로 "0개" 페이지가 먼저 캐시될 수
+    # 있고, 그 뒤 종목 스캔(halted_ts)이 나중에 끝나도 페이지 캐시 자체는 자기 30분
+    # TTL만 보고 그대로 "0개"를 계속 서빙하는 문제가 실제 있었음. 종목 스캔이 페이지
+    # 캐시보다 더 최근이면(=스캔이 나중에 갱신됨) 자기 TTL과 무관하게 새로 조립한다.
+    halted_ts = _cache.get("halted_ts")
+    stale_by_rescan = (halted_ts is not None and ts is not None
+                       and halted_ts.timestamp() > ts)
+    if cached is not None and ts is not None and (time.time() - ts) < TTL and not stale_by_rescan:
         return cached
 
     halted = get_halted_codes()
