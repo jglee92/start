@@ -57,7 +57,19 @@ def main():
         print("RESEND_API_KEY / RESEND_AUDIENCE_ID 미설정 - 발송 스킵")
         return
 
-    title, body = A._weekly_wrap_text() if is_saturday else A._blog_draft_text()
+    # daily_content.py와 같은 이유로 Claude 생성 우선 시도, 실패 시 템플릿 폴백
+    # (뉴스레터는 daily_content.py와 별도 실행이라 여기서도 독립적으로 시도해야 함).
+    import generate_kr_briefing
+    if is_saturday:
+        data = A._weekly_wrap_data()
+        claude_body = generate_kr_briefing.generate_weekly_body(data)
+        title = f"{data['date'].month}월 {data['date'].day}일 이번주 국내증시 마무리 | 머니체크업"
+        body = claude_body or A._weekly_wrap_text(data)[1]
+    else:
+        data = A._blog_draft_data()
+        claude_body = generate_kr_briefing.generate_daily_body(data)
+        title = f"{data['date'].month}월 {data['date'].day}일 장전 체크포인트 | 국내증시 브리핑"
+        body = claude_body or A._blog_draft_text()[1]
     r = requests.post(
         "https://api.resend.com/broadcasts",
         headers={"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"},

@@ -13,8 +13,13 @@ import app as A
 import caption_generator
 import card_render
 import card_templates
+import generate_kr_briefing
 
 OUT_DIR = "content_out"
+
+
+def _daily_title(now):
+    return f"{now.month}월 {now.day}일 장전 체크포인트 | 국내증시 브리핑"
 
 
 def _main_daily():
@@ -27,11 +32,18 @@ def _main_daily():
     day_dir = os.path.join(OUT_DIR, date_str)
     os.makedirs(day_dir, exist_ok=True)
 
-    # 1) 블로그 초안
-    title, body = A._blog_draft_text()
+    # 1) 블로그 초안 — Claude 생성 우선 시도, 실패하면(API 키 없음·오류) 기존 템플릿으로
+    # 조용히 폴백(라이브 사이트라 이 안전장치가 핵심 — 어느 쪽이든 콘텐츠는 나가야 함).
+    claude_body = generate_kr_briefing.generate_daily_body(data)
+    if claude_body:
+        title = _daily_title(data["date"])
+        body = claude_body
+        print("블로그 초안 저장 완료 (Claude 생성)")
+    else:
+        title, body = A._blog_draft_text()
+        print("블로그 초안 저장 완료 (템플릿 폴백)")
     with open(os.path.join(day_dir, "blog_draft.txt"), "w", encoding="utf-8") as f:
         f.write(f"{title}\n{'=' * len(title)}\n\n{body}")
-    print("블로그 초안 저장 완료")
 
     # 2) 인스타 카드뉴스 + 캡션 (같은 구조화 데이터 재사용, 텍스트 재파싱 없음)
     headline_lines, subtitle, tid = card_templates.pick_cover_headline(data, A._name_of, date_str)
@@ -48,17 +60,27 @@ def _main_daily():
     print(f"\n저장 위치: {day_dir}")
 
 
+def _weekly_title(now):
+    return f"{now.month}월 {now.day}일 이번주 국내증시 마무리 | 머니체크업"
+
+
 def _main_weekly():
     data = A._weekly_wrap_data()
     date_str = data["date"].strftime("%Y-%m-%d")
     day_dir = os.path.join(OUT_DIR, date_str)
     os.makedirs(day_dir, exist_ok=True)
 
-    # 1) 블로그 초안(주간 마무리) — 뉴스레터(send_newsletter.py)와 같은 텍스트
-    title, body = A._weekly_wrap_text(data)
+    # 1) 블로그 초안(주간 마무리) — 뉴스레터(send_newsletter.py)와 같은 텍스트.
+    # 일간과 동일하게 Claude 생성 우선, 실패 시 템플릿 폴백.
+    claude_body = generate_kr_briefing.generate_weekly_body(data)
+    if claude_body:
+        title, body = _weekly_title(data["date"]), claude_body
+        print("주간 블로그 초안 저장 완료 (Claude 생성)")
+    else:
+        title, body = A._weekly_wrap_text(data)
+        print("주간 블로그 초안 저장 완료 (템플릿 폴백)")
     with open(os.path.join(day_dir, "blog_draft.txt"), "w", encoding="utf-8") as f:
         f.write(f"{title}\n{'=' * len(title)}\n\n{body}")
-    print("주간 블로그 초안 저장 완료")
 
     # 2) 인스타 카드뉴스 + 캡션
     headline_lines, subtitle, tid = card_templates.pick_weekly_cover_headline(data, date_str)
