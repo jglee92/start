@@ -1,0 +1,9 @@
+{
+ "total_calls": 0,
+ "total_success": 0,
+ "total_fallbacks": 0,
+ "by_reason": {},
+ "last_success": null,
+ "last_fallback": null,
+ "recent_failures": []
+}

@@ -39,7 +39,7 @@ jobs:
           git config user.email "github-actions[bot]@users.noreply.github.com"
           # 자동 생성 시 blog_articles/(새 글 파일 + queue.txt)도 바뀌므로 함께 스테이징해야
           # rebase 전에 unstaged 에러가 안 남(실제로 겪은 문제).
-          git add content_out/ data/blog_article_state.json blog_articles/
+          git add content_out/ data/blog_article_state.json data/claude_api_status.json blog_articles/
           git diff --staged --quiet && echo "변경 없음(발행 없거나 대기 중)" || {
             DATE_KST=$(TZ='Asia/Seoul' date +%Y-%m-%d)
             git commit -m "chore: 에버그린 블로그 글 발행 $DATE_KST"

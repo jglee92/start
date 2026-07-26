@@ -123,6 +123,8 @@ def _category_name(folder):
 
 
 def _call_claude(category, topic, api_key):
+    import claude_status
+    script = "generate_blog_article"
     body = {
         "model": MODEL,
         "max_tokens": 3000,
@@ -138,12 +140,15 @@ def _call_claude(category, topic, api_key):
         "content-type": "application/json",
     }, json=body, timeout=120)
     if r.status_code != 200:
+        claude_status.record_result(script, False, status_code=r.status_code, response_text=r.text)
         raise RuntimeError(f"Claude API 오류 {r.status_code}: {r.text[:300]}")
     data = r.json()
     parts = [b.get("text", "") for b in data.get("content", []) if b.get("type") == "text"]
     text = "".join(parts).strip()
     if not text:
+        claude_status.record_result(script, False, reason="other")
         raise RuntimeError("Claude 응답이 비어 있음")
+    claude_status.record_result(script, True)
     return text
 
 
@@ -153,6 +158,8 @@ def generate_one():
     api_key = os.getenv("ANTHROPIC_API_KEY")
     if not api_key:
         print("::warning::ANTHROPIC_API_KEY 미설정 — 자동 생성 건너뜀.")
+        import claude_status
+        claude_status.record_result("generate_blog_article", False, reason="no_api_key")
         return None
     st = _load_state()
     nt = _next_topic(st)

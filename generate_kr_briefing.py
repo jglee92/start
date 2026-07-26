@@ -143,9 +143,12 @@ def _serialize_weekly(data):
 
 
 def _call_claude(context, label):
+    import claude_status
+    script = "generate_kr_briefing"
     api_key = os.getenv("ANTHROPIC_API_KEY")
     if not api_key:
         print("::warning::ANTHROPIC_API_KEY 미설정 — 템플릿으로 폴백.")
+        claude_status.record_result(script, False, reason="no_api_key")
         return None
     try:
         r = requests.post(API_URL, headers={
@@ -158,12 +161,18 @@ def _call_claude(context, label):
         }, timeout=120)
         if r.status_code != 200:
             print(f"::warning::Claude API 오류 {r.status_code}: {r.text[:300]} — 템플릿으로 폴백.")
+            claude_status.record_result(script, False, status_code=r.status_code, response_text=r.text)
             return None
         parts = [b.get("text", "") for b in r.json().get("content", []) if b.get("type") == "text"]
         text = "".join(parts).strip()
-        return text or None
+        if not text:
+            claude_status.record_result(script, False, reason="other")
+            return None
+        claude_status.record_result(script, True)
+        return text
     except Exception as e:
         print(f"::warning::Claude API 호출 실패: {type(e).__name__}: {e} — 템플릿으로 폴백.")
+        claude_status.record_result(script, False, response_text=str(e))
         return None
 
 

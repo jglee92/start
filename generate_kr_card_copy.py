@@ -63,9 +63,12 @@ def generate_card_copy(data, is_weekly=False):
     """(headline_lines[2], subtitle, caption_lines) 또는 실패 시 None.
     길이 제약을 어기거나 API 실패 시 무조건 None — 호출부가 기존 템플릿 로테이션으로
     폴백한다(카드 이미지가 깨지는 것보다 템플릿이 안전)."""
+    import claude_status
+    script = "generate_kr_card_copy"
     api_key = os.getenv("ANTHROPIC_API_KEY")
     if not api_key:
         print("::warning::ANTHROPIC_API_KEY 미설정 — 카드 템플릿으로 폴백.")
+        claude_status.record_result(script, False, reason="no_api_key")
         return None
     context = _serialize_brief(data, is_weekly)
     try:
@@ -79,6 +82,7 @@ def generate_card_copy(data, is_weekly=False):
         }, timeout=60)
         if r.status_code != 200:
             print(f"::warning::Claude API 오류 {r.status_code} — 카드 템플릿으로 폴백.")
+            claude_status.record_result(script, False, status_code=r.status_code, response_text=r.text)
             return None
         parts = [b.get("text", "") for b in r.json().get("content", []) if b.get("type") == "text"]
         text = "".join(parts).strip()
@@ -88,10 +92,13 @@ def generate_card_copy(data, is_weekly=False):
         parsed = json.loads(text)
     except Exception as e:
         print(f"::warning::카드 카피 생성 실패: {type(e).__name__}: {e} — 템플릿으로 폴백.")
+        claude_status.record_result(script, False, response_text=str(e))
         return None
 
     if not _valid(parsed):
         print("::warning::Claude 카드 카피가 길이 제약을 벗어남 — 템플릿으로 폴백.")
+        claude_status.record_result(script, False, reason="other")
         return None
 
+    claude_status.record_result(script, True)
     return [parsed["headline1"], parsed["headline2"]], parsed["subtitle"], parsed["caption_lines"]

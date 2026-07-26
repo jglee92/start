@@ -48,7 +48,7 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add content_out/
+          git add content_out/ data/claude_api_status.json
           # 커밋 메시지 날짜는 UTC가 아니라 KST로 — content_out/ 폴더명(KST 기준)과
           # 어긋나서 헷갈렸던 적이 있었음(UTC 밤 실행이라 폴더는 다음날인데 커밋 메시지는
           # 실행 당일로 찍힘).
