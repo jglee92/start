@@ -14,6 +14,7 @@ import caption_generator
 import card_render
 import card_templates
 import generate_kr_briefing
+import generate_kr_card_copy
 
 OUT_DIR = "content_out"
 
@@ -46,14 +47,26 @@ def _main_daily():
         f.write(f"{title}\n{'=' * len(title)}\n\n{body}")
 
     # 2) 인스타 카드뉴스 + 캡션 (같은 구조화 데이터 재사용, 텍스트 재파싱 없음)
-    headline_lines, subtitle, tid = card_templates.pick_cover_headline(data, A._name_of, date_str)
+    # 헤드라인은 카드 이미지에 고정폰트로 렌더링되는 텍스트라 길이 위반 시 카드가
+    # 깨질 수 있음 — Claude 결과가 길이 제약을 못 지키면 조용히 템플릿으로 폴백.
+    data["_name_of"] = A._name_of
+    card_copy = generate_kr_card_copy.generate_card_copy(data, is_weekly=False)
+    if card_copy:
+        headline_lines, subtitle, caption_lines = card_copy
+        tid = "claude"
+        caption = "\n".join([" ".join(headline_lines), subtitle, ""] + caption_lines
+                             + caption_generator._closing_lines(date_str, "daily"))
+        print("카드 카피 (Claude 생성)")
+    else:
+        headline_lines, subtitle, tid = card_templates.pick_cover_headline(data, A._name_of, date_str)
+        caption = caption_generator.build_caption(data, headline_lines, subtitle, date_str)
+        print(f"카드 카피 (템플릿 폴백: {tid})")
+
     cards_dir = os.path.join(day_dir, "cards")
     paths = card_render.generate_cards(data, A._name_of, headline_lines, subtitle,
                                         date_str.replace("-", "."), out_dir=cards_dir)
     print(f"카드뉴스 {len(paths)}장 저장 완료 (표지 템플릿: {tid})")
 
-    data["_name_of"] = A._name_of
-    caption = caption_generator.build_caption(data, headline_lines, subtitle, date_str)
     with open(os.path.join(cards_dir, "caption.txt"), "w", encoding="utf-8") as f:
         f.write(caption)
     print("캡션 저장 완료")
@@ -83,13 +96,23 @@ def _main_weekly():
         f.write(f"{title}\n{'=' * len(title)}\n\n{body}")
 
     # 2) 인스타 카드뉴스 + 캡션
-    headline_lines, subtitle, tid = card_templates.pick_weekly_cover_headline(data, date_str)
+    card_copy = generate_kr_card_copy.generate_card_copy(data, is_weekly=True)
+    if card_copy:
+        headline_lines, subtitle, caption_lines = card_copy
+        tid = "claude"
+        caption = "\n".join([" ".join(headline_lines), subtitle, ""] + caption_lines
+                             + caption_generator._closing_lines(date_str, "weekly"))
+        print("카드 카피 (Claude 생성)")
+    else:
+        headline_lines, subtitle, tid = card_templates.pick_weekly_cover_headline(data, date_str)
+        caption = caption_generator.build_weekly_caption(data, headline_lines, subtitle, date_str)
+        print(f"카드 카피 (템플릿 폴백: {tid})")
+
     cards_dir = os.path.join(day_dir, "cards")
     paths = card_render.generate_weekly_cards(data, headline_lines, subtitle,
                                                date_str.replace("-", "."), out_dir=cards_dir)
     print(f"주간 카드뉴스 {len(paths)}장 저장 완료 (표지 템플릿: {tid})")
 
-    caption = caption_generator.build_weekly_caption(data, headline_lines, subtitle, date_str)
     with open(os.path.join(cards_dir, "caption.txt"), "w", encoding="utf-8") as f:
         f.write(caption)
     print("캡션 저장 완료")
