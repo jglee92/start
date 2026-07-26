@@ -62,11 +62,15 @@ def _serialize_daily(data):
 
     gainers, losers = data.get("gainers") or [], data.get("losers") or []
     if gainers or losers:
+        # _blog_draft_data()의 gainers/losers는 (code, pct) 튜플뿐이라(이름 미포함) —
+        # 실제 라이브 테스트(2026-07-27 첫 생성분)에서 "종목코드 475150"처럼 이름 없이
+        # 나온 걸 발견해서 여기서 직접 이름을 붙인다.
+        import app as _A
         lines.append(f"\n{data.get('movers_date', '어제')} 급등·급락:")
         for code, pct in gainers:
-            lines.append(f"- (급등) 종목코드 {code}: {_fmt_pct(pct)}")
+            lines.append(f"- (급등) {_A._name_of(code)}({code}): {_fmt_pct(pct)}")
         for code, pct in losers:
-            lines.append(f"- (급락) 종목코드 {code}: {_fmt_pct(pct)}")
+            lines.append(f"- (급락) {_A._name_of(code)}({code}): {_fmt_pct(pct)}")
 
     if data.get("earnings"):
         lines.append("\n최근 1개월 내 실적 발표(전년동기대비):")
