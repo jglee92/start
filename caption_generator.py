@@ -27,6 +27,11 @@ _LINK_LINES = [
 
 
 def _closing_lines(today_str, tag):
+    """generate_kr_card_copy.py(Claude 카드 카피 경로)가 쓰는 마감부 — 기존
+    build_caption()/build_weekly_caption()(템플릿 경로)이 항상 붙이던 해시태그가
+    여기엔 빠져 있어서 Claude가 성공한 날은 캡션에 해시태그가 아예 안 붙던 버그를
+    발견해 고쳤다(사용자가 실제 게시물 보고 지적)."""
+    tags = WEEKLY_HASHTAGS if tag == "weekly" else HASHTAGS
     return [
         "",
         _rot(f"{today_str}|{tag}|cta", _CTA_LINES),
@@ -35,6 +40,7 @@ def _closing_lines(today_str, tag):
         "※ 이 게시물은 공개 데이터를 정리한 정보 제공용 콘텐츠이며, 특정 종목에 대한",
         "매수·매도 추천이 아닙니다. 투자 판단과 책임은 본인에게 있습니다.",
         "",
+        tags,
     ]
 
 
