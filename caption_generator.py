@@ -20,9 +20,9 @@ _CTA_LINES = [
     "이 정보들, 머니체크업에서 전 종목 무료로 직접 확인해보실 수 있어요.",
 ]
 _LINK_LINES = [
-    "\U0001F449 getmoneycheckup.com (프로필 링크 클릭)",
-    "\U0001F449 프로필 링크에서 바로 확인하세요 — getmoneycheckup.com",
-    "\U0001F449 자세히 보기: getmoneycheckup.com (프로필 링크)",
+    "\U0001F449 https://getmoneycheckup.com (프로필 링크 클릭)",
+    "\U0001F449 프로필 링크에서 바로 확인하세요 — https://getmoneycheckup.com",
+    "\U0001F449 자세히 보기: https://getmoneycheckup.com (프로필 링크)",
 ]
 
 
