@@ -31,4 +31,7 @@ jobs:
           # 안 넣으면 app.py::BASE_URL이 https://example.com으로 폴백돼 실제 구독자 메일의
           # "전 종목 스크리닝..." 링크가 죽은 example.com으로 나감(실제로 발생했던 버그).
           SITE_BASE_URL: https://getmoneycheckup.com
+          # daily-content.yml과 같은 이유로 필요 — 없으면 generate_kr_briefing.py가
+          # 매번 조용히 템플릿 폴백만 탐(Claude 전환이 실제로는 한 번도 작동 안 함).
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
         run: python send_newsletter.py
