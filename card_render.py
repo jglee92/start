@@ -326,6 +326,17 @@ def _highlight_row(d, x0, x1, y, highlights):
         d.text((bx + pad, y + box_h - 46), value, font=vfont, fill=color)
 
 
+def _headline_size(text, base=62, ref_len=9, per_char=2.2, min_size=50):
+    """글자 수가 적은 줄은 같은 크기라도 더 크고 진하게 보이는 착시가 있어서
+    (예: 오렌지색 7자 줄이 검정색 9자 줄보다 두드러져 보임 — 실제 사용자 스크린샷
+    피드백으로 발견) 기준 길이(ref_len)보다 짧으면 그만큼 살짝 줄인다. 너무 작아지진
+    않게 하한(min_size)을 둔다."""
+    n = len(text)
+    if n >= ref_len:
+        return base
+    return max(min_size, round(base - (ref_len - n) * per_char))
+
+
 def render_cover(headline_lines, subtitle, date_str, page, total,
                   section_label="장전 브리핑", dateline_suffix="오늘의 한 장", highlights=None):
     img, d = _notepad_card()
@@ -338,7 +349,7 @@ def render_cover(headline_lines, subtitle, date_str, page, total,
     n = len(headline_lines)
     for i, line in enumerate(headline_lines):
         color = ORANGE if i == n - 1 else INK
-        _center_display(d, line, 62, cx, y, color)
+        _center_display(d, line, _headline_size(line), cx, y, color)
         y += 76
     y += 18
     d.line([(cx - 60, y), (cx + 60, y)], fill=RULE, width=3)
