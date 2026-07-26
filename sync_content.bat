@@ -18,3 +18,20 @@ if errorlevel 1 (
 ) else (
   echo [%date% %time%] pull done >> content_sync.log
 )
+
+rem ---------------------------------------------------------------------
+rem Integrity check: a clean pull should never leave tracked files
+rem locally missing. This happened once (2026-07-27, 4 card PNGs vanished
+rem from the working copy even though the pull itself only touched
+rem unrelated files per its own diffstat) - exact cause unconfirmed
+rem (antivirus/indexer lock on this PC is the leading guess), so this
+rem auto-heals it and logs it instead of leaving stale/missing files
+rem sitting there until someone happens to notice.
+rem ---------------------------------------------------------------------
+git status --porcelain content_out\ | findstr /c:" D " > nul
+if not errorlevel 1 (
+  echo [%date% %time%] WARNING: local files missing after pull - restoring >> content_sync.log
+  git status --porcelain content_out\ >> content_sync.log
+  git checkout -- content_out\
+  echo [%date% %time%] restore done >> content_sync.log
+)
