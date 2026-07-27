@@ -341,14 +341,24 @@ def sane_dps(dps, price, max_yield_pct: float = 50.0):
 
 
 def cache_history(conn, code: str, hist_df) -> None:
-    rows = [
-        (code, idx.strftime("%Y-%m-%d"),
-         _f(row.get("open")), _f(row.get("high")), _f(row.get("low")),
-         _f(row.get("close")), _i(row.get("volume")))
-        for idx, row in hist_df.iterrows()
-    ]
+    """daily_prices 컬럼 구성이 DB마다 다를 수 있다 — 배포용 슬림 DB(screener_deploy.db)는
+    2026-07 실제로 GitHub의 파일당 100MB 제한에 걸려 매일 push가 거부되던 걸 발견해,
+    화면 어디에서도 안 쓰는(종가·거래량만 사용) open/high/low를 빼서 82MB로 줄였음
+    (원본 로컬 DB는 bt_run.py가 시가를 실제로 쓰므로 그대로 유지). 그래서 이 함수는
+    고정 7컬럼 INSERT 대신, 그 DB에 실제로 있는 컬럼만 골라서 넣는다 — 두 스키마
+    모두에서 동작해야 하기 때문."""
+    cols = {r[1] for r in conn.execute("PRAGMA table_info(daily_prices)").fetchall()}
+    optional = [c for c in ("open", "high", "low") if c in cols]
+    fields = ["code", "date"] + optional + ["close", "volume"]
+    rows = []
+    for idx, row in hist_df.iterrows():
+        vals = [code, idx.strftime("%Y-%m-%d")]
+        vals += [_f(row.get(c)) for c in optional]
+        vals += [_f(row.get("close")), _i(row.get("volume"))]
+        rows.append(tuple(vals))
+    placeholders = ",".join("?" * len(fields))
     conn.executemany(
-        "INSERT OR REPLACE INTO daily_prices VALUES (?,?,?,?,?,?,?)", rows)
+        f"INSERT OR REPLACE INTO daily_prices ({','.join(fields)}) VALUES ({placeholders})", rows)
     conn.commit()
 
 

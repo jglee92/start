@@ -22,5 +22,9 @@
  {
   "date": "2026-07-15",
   "template_id": "earnings_split"
+ },
+ {
+  "date": "2026-07-28",
+  "template_id": "earnings_extreme"
  }
 ]

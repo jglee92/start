@@ -380,6 +380,7 @@ def _period_returns(conn, code):
 
 @app.get("/api/stock/{code}")
 def api_stock(code: str):
+    from datetime import datetime, timedelta
     rk = get_ranking()
     row = next((r for r in rk if r["code"] == code), None)
     conn = _conn()
@@ -387,9 +388,14 @@ def api_stock(code: str):
         "SELECT year,revenue,op_profit,net_income,equity,liabilities,"
         "debt_ratio,op_margin FROM financials WHERE code=? ORDER BY year", (code,)
     ).fetchall()
+    # 절대날짜 고정("2023-01-01")이면 시간이 지날수록 차트 범위가 계속 늘어나 배포 DB의
+    # 보존기간(update_data.py의 롤링 삭제 정책)과 어긋나게 됨 — "오늘로부터 2년"으로
+    # 상대화(실제 2026-07 배포 DB가 GitHub 100MB 제한에 걸려 무한증식 못 하게 롤링
+    # 보존으로 바꾼 것과 짝을 맞춤).
+    cutoff = (datetime.now() - timedelta(days=730)).strftime("%Y-%m-%d")
     prices = conn.execute(
         "SELECT date,close FROM daily_prices WHERE code=? AND close IS NOT NULL "
-        "AND date>=? ORDER BY date", (code, "2023-01-01")).fetchall()
+        "AND date>=? ORDER BY date", (code, cutoff)).fetchall()
     period_returns = _period_returns(conn, code)
     audit = db.get_audit_opinion(conn, code)
     quarterly = db.get_quarterly_series(conn, code)
@@ -873,6 +879,7 @@ def api_theme_page(no: str):
 @app.get("/s/{code}", response_class=HTMLResponse)
 def stock_page(code: str):
     from content import render_stock_page
+    from datetime import datetime, timedelta
     rk = get_ranking()
     row = next((r for r in rk if r["code"] == code), None)
     conn = _conn()
@@ -880,9 +887,11 @@ def stock_page(code: str):
         "SELECT year,revenue,op_profit,net_income,equity,liabilities,"
         "debt_ratio,op_margin FROM financials WHERE code=? ORDER BY year", (code,)
     ).fetchall()
+    # api_stock()과 같은 이유로 상대날짜화(위 주석 참고).
+    cutoff = (datetime.now() - timedelta(days=730)).strftime("%Y-%m-%d")
     prices = conn.execute(
         "SELECT date,close FROM daily_prices WHERE code=? AND close IS NOT NULL "
-        "AND date>=? ORDER BY date", (code, "2024-04-01")).fetchall()
+        "AND date>=? ORDER BY date", (code, cutoff)).fetchall()
     period_returns = _period_returns(conn, code)
     audit = db.get_audit_opinion(conn, code)
     quarterly = db.get_quarterly_series(conn, code)
