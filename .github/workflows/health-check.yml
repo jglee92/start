@@ -1,0 +1,39 @@
+name: 파이프라인 헬스체크
+
+on:
+  schedule:
+    # UTC 00:00 (월~토) = KST 09:00 (월~토). daily-content(05:45 KST 목표, 실측 최대
+    # 1시간+ 지연)·daily-prices(전날 저녁 KST) 이후로 충분히 뒤에 돌려서, 오늘자 콘텐츠와
+    # 최신 시세가 이미 커밋된 상태에서 점검한다. 일요일(콘텐츠 미생성)엔 안 돈다.
+    - cron: '0 0 * * 1-6'
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+  actions: read
+  issues: write
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: 의존성 설치
+        run: pip install -r requirements.txt
+
+      - name: health-alert 라벨 보장(없으면 생성)
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh label create health-alert --color b60205 --description "파이프라인 헬스체크 알림" 2>/dev/null || true
+
+      - name: 헬스체크 실행
+        env:
+          KR_DB_PATH: data/screener_deploy.db
+          SITE_BASE_URL: https://getmoneycheckup.com
+          GH_TOKEN: ${{ github.token }}
+        run: python health_check.py
