@@ -13,9 +13,26 @@ import app as A
 import caption_generator
 import card_render
 import card_templates
+import generate_kr_briefing
 import generate_kr_card_copy
 
 OUT_DIR = "content_out"
+
+
+def _write_insight(day_dir, title, data, weekly=False):
+    """사이트 데일리 브리핑(/insights) 전용 Claude 버전을 insight.txt로 따로 저장한다.
+    네이버용 blog_draft.txt는 SEO/조회수 이유로 룰베이스를 유지하되(2026-07-27 롤백),
+    사람이 읽는 사이트 브리핑은 자연스러운 산문이 낫다는 요청으로 분리(2026-07-28).
+    Claude 실패 시(키 없음·오류) insight.txt를 아예 안 만들고 조용히 넘어간다 —
+    그러면 app.py::_read_insight가 blog_draft.txt(룰베이스)로 자동 폴백한다."""
+    body = (generate_kr_briefing.generate_weekly_body(data) if weekly
+            else generate_kr_briefing.generate_daily_body(data))
+    if not body:
+        print("사이트 브리핑(insight.txt) — Claude 실패, blog_draft.txt로 폴백")
+        return
+    with open(os.path.join(day_dir, "insight.txt"), "w", encoding="utf-8") as f:
+        f.write(f"{title}\n{'=' * len(title)}\n\n{body}")
+    print("사이트 브리핑 저장 완료 (insight.txt · Claude 생성)")
 
 
 def _main_daily(target_date=None):
@@ -41,6 +58,9 @@ def _main_daily(target_date=None):
     with open(os.path.join(day_dir, "blog_draft.txt"), "w", encoding="utf-8") as f:
         f.write(f"{title}\n{'=' * len(title)}\n\n{body}")
     print("블로그 초안 저장 완료")
+
+    # 1-b) 사이트 데일리 브리핑(/insights) 전용 Claude 버전 — 같은 제목, 같은 data로.
+    _write_insight(day_dir, title, data, weekly=False)
 
     # 2) 인스타 카드뉴스 + 캡션 (같은 구조화 데이터 재사용, 텍스트 재파싱 없음)
     # 헤드라인은 카드 이미지에 고정폰트로 렌더링되는 텍스트라 길이 위반 시 카드가
@@ -85,6 +105,9 @@ def _main_weekly(target_date=None):
     with open(os.path.join(day_dir, "blog_draft.txt"), "w", encoding="utf-8") as f:
         f.write(f"{title}\n{'=' * len(title)}\n\n{body}")
     print("주간 블로그 초안 저장 완료")
+
+    # 1-b) 사이트 데일리 브리핑(/insights) 전용 Claude 주간 버전.
+    _write_insight(day_dir, title, data, weekly=True)
 
     # 2) 인스타 카드뉴스 + 캡션
     card_copy = generate_kr_card_copy.generate_card_copy(data, is_weekly=True)

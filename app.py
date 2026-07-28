@@ -1313,14 +1313,21 @@ def _company_of_the_day(rk, now):
     return order[(ordinal - 1) % len(order)]
 
 
-def _theme_examples(tmap, rk_by_code, no, n=3):
-    """테마 구성종목 중 시총 상위 n개 이름(블로그 초안용 예시 종목)."""
+def _theme_examples(tmap, rk_by_code, no, n=3, rng=None):
+    """테마 구성종목 예시 종목명(블로그·카드용). 예전엔 시총 상위 n개 고정이라 같은
+    테마엔 늘 같은 예시만 나왔음 — rng를 주면 시총 상위권(top-8) 안에서 그 시드로
+    셔플해 n개를 뽑아, 날짜별로 예시 종목도 로테이션되게 한다(여전히 시총 상위권
+    안에서만 뽑으므로 이름값 있는 종목이 나옴). rng 없으면 기존처럼 상위 n개 고정."""
     t = tmap.get("themes", {}).get(no)
     if not t:
         return []
     pool = [rk_by_code[c] for c in t.get("codes", []) if c in rk_by_code]
     pool.sort(key=lambda r: r.get("marcap", 0), reverse=True)
-    return [r["name"] for r in pool[:n]]
+    top = pool[:8]
+    if rng is not None and len(top) > n:
+        top = top[:]
+        rng.shuffle(top)
+    return [r["name"] for r in top[:n]]
 
 
 def _blog_draft_data():
@@ -1360,28 +1367,41 @@ def _blog_draft_data():
     tmap = get_tmap()
     rk_by_code = {r["code"]: r for r in rk}
 
-    earnings = []
-    for it in disclosures[:5]:
+    import random
+    seed_str = now.strftime("%Y-%m-%d")
+    day_seed = random.Random(seed_str)  # 날짜로 시드 고정 — 같은 날 안에서는 안정적이고,
+                                         # 날마다 다르게 로테이션
+
+    # 실적: 예전엔 disclosures[:5] 고정이라 최근 1개월 내내 같은 종목만 시그널 카드/블로그에
+    # 나왔음(사용자 피드백). 최근 공시 풀에서 서프라이즈·쇼크(태그) 있는 걸 우선하되 그
+    # 안에서 날짜별로 셔플해, 카드(서프라이즈2·쇼크1)와 블로그 목록이 매일 다른 종목으로
+    # 로테이션되게 한다.
+    earnings_pool = []
+    for it in disclosures[:14]:
         ni = it.get("ni_yoy")
         tag = "surprise" if (ni is not None and ni >= 20) else "shock" if (ni is not None and ni <= -20) else None
-        earnings.append({"name": it["name"], "code": it["code"], "year": it["year"],
-                          "quarter": it["quarter"], "rev_yoy": it.get("rev_yoy"),
-                          "rev_qoq": it.get("rev_qoq"), "ni_yoy": ni, "tag": tag})
-
-    import random
-    day_seed = random.Random(now.strftime("%Y-%m-%d"))  # 날짜로 시드 고정 — 같은 날 안에서는
-                                                          # 안정적이고, 날마다 다르게 로테이션
+        earnings_pool.append({"name": it["name"], "code": it["code"], "year": it["year"],
+                              "quarter": it["quarter"], "rev_yoy": it.get("rev_yoy"),
+                              "rev_qoq": it.get("rev_qoq"), "ni_yoy": ni, "tag": tag})
+    tagged = [e for e in earnings_pool if e["tag"]]
+    untagged = [e for e in earnings_pool if not e["tag"]]
+    day_seed.shuffle(tagged)
+    day_seed.shuffle(untagged)
+    earnings = (tagged + untagged)[:6]
 
     all_anomalies = [{"name": r["name"], "code": r["code"], **f}
                       for r in rk for f in (r.get("flags") or [])]
     reds = [a for a in all_anomalies if a["emoji"] == "\U0001F534"]
     yellows = [a for a in all_anomalies if a["emoji"] != "\U0001F534"]
-    # 빨강(고심각도)은 '다양성'을 이유로 절대 누락하지 않음 — 최대 5개까지 전부 노출.
-    # 노랑은 날짜별로 로테이션해서 매일 다른 종목이 섞여 보이게(항상 2개까지).
-    reds = reds[:5]
+    # 빨강(고심각도)은 노랑보다 항상 앞에 두되(우선순위 유지), 빨강도 예전엔 reds[:5]로
+    # 고정이라 매일 같은 종목이 시그널 카드 상단(3개)에 그대로 나왔음(연간재무 기반이라 잘
+    # 안 바뀜 — 사용자 피드백). 빨강·노랑 모두 날짜별로 셔플해, 카드에 뜨는 종목이 매일
+    # 로테이션되게 한다(빨강 최대 5 + 노랑 2, 빨강 우선 원칙은 그대로).
+    reds_shuffled = reds[:]
     yellows_shuffled = yellows[:]
+    day_seed.shuffle(reds_shuffled)
     day_seed.shuffle(yellows_shuffled)
-    anomalies = reds + yellows_shuffled[:2]
+    anomalies = reds_shuffled[:5] + yellows_shuffled[:2]
 
     mids_all = [m for maj in _cache["theme_groups"] for m in maj["mids"]
                 if m.get("used", 0) >= 3 and m.get("theme_count", 0) >= 1
@@ -1395,12 +1415,12 @@ def _blog_draft_data():
     fallers = sorted([m for m in mids_all if m["ret_1m"] < 0], key=lambda m: m["ret_1m"])
 
     def _pick_two(pool):
+        # 예전엔 1위(top_pool[0])를 고정하고 나머지 1개만 로테이션 → 4개 테마 중 2개가
+        # 매일 동일했음(사용자 피드백). 상위 6개 안에서 2개를 날짜별로 완전 로테이션한다
+        # (여전히 '상위권 강세/약세 테마' 안에서만 뽑으므로 아무거나 나오진 않음).
         top_pool = pool[:6]
-        picked = top_pool[:1]
-        rest = top_pool[1:]
-        day_seed.shuffle(rest)
-        picked += rest[:1]
-        return picked
+        day_seed.shuffle(top_pool)
+        return top_pool[:2]
 
     themes_pick = _pick_two(risers) + _pick_two(fallers)
 
@@ -1410,7 +1430,8 @@ def _blog_draft_data():
         sub.sort(key=lambda t: (t["ret_1m"] is not None, t["ret_1m"]), reverse=True)
         sub_out = []
         for t in sub[:3]:
-            examples = _theme_examples(tmap, rk_by_code, t["no"], 3)
+            examples = _theme_examples(tmap, rk_by_code, t["no"], 3,
+                                       rng=random.Random(f"{seed_str}|{t['no']}|ex"))
             sub_out.append({"name": t["name"], "ret_1m": t["ret_1m"], "examples": examples})
         themes.append({"mid": m["mid"], "ret_1m": m["ret_1m"], "sub": sub_out})
 
@@ -1721,8 +1742,11 @@ def _weekly_wrap_data():
     strong_themes = strong_themes[:5]
     rk_by_code = {r["code"]: r for r in rk}
     tmap = get_tmap()
+    import random
+    week_key = now.strftime("%Y-%W")  # 연-주차 — 한 주 안에서는 안정적, 주마다 로테이션
     for t in strong_themes:
-        t["examples"] = _theme_examples(tmap, rk_by_code, t["no"], 3)
+        t["examples"] = _theme_examples(tmap, rk_by_code, t["no"], 3,
+                                        rng=random.Random(f"{week_key}|{t['no']}|ex"))
 
     idx = []
     try:
@@ -1738,8 +1762,15 @@ def _weekly_wrap_data():
 
     # 지금 재무 이상신호가 떠 있는 종목(주간 리포트에도 이 차별 섹션을 노출). '이번주 새로'는
     # 지난주 신호 상태를 따로 저장하지 않아 단정 못 하므로 '체크할'로 표현(허위 방지).
-    anomalies = [{"name": r["name"], "code": r["code"], **f} for r in rk for f in (r.get("flags") or [])]
-    anomalies.sort(key=lambda a: 0 if a["emoji"] == "\U0001F534" else 1)
+    # 빨강 우선(노랑보다 앞)은 유지하되, 빨강·노랑 각각 주차 시드로 셔플해 매주 다른
+    # 종목이 3개 자리에 노출되게 한다(일간판의 이상신호 로테이션과 같은 취지).
+    all_wk = [{"name": r["name"], "code": r["code"], **f} for r in rk for f in (r.get("flags") or [])]
+    wk_reds = [a for a in all_wk if a["emoji"] == "\U0001F534"]
+    wk_yellows = [a for a in all_wk if a["emoji"] != "\U0001F534"]
+    week_seed = random.Random(week_key)
+    week_seed.shuffle(wk_reds)
+    week_seed.shuffle(wk_yellows)
+    anomalies = (wk_reds + wk_yellows)[:3]
 
     return {
         "date": now, "is_holiday": False, "week_date": week_date,
@@ -1747,7 +1778,7 @@ def _weekly_wrap_data():
         "gainers": [{"name": _name_of(c), "code": c, "pct": pct} for c, pct in week_gainers],
         "losers": [{"name": _name_of(c), "code": c, "pct": pct} for c, pct in week_losers],
         "strong_themes": strong_themes,
-        "anomalies": anomalies[:3],
+        "anomalies": anomalies,
         "score_up": score_up, "score_down": score_down,
     }
 
@@ -1891,8 +1922,14 @@ def _insight_dates():
 
 
 def _read_insight(date_str):
-    """blog_draft.txt를 (제목, 본문)으로 분리. 첫 줄=제목, '===='밑줄 이후=본문."""
-    path = os.path.join(_CONTENT_OUT, date_str, "blog_draft.txt")
+    """사이트 데일리 브리핑(/insights)용 (제목, 본문). 첫 줄=제목, '===='밑줄 이후=본문.
+    사이트 전용 Claude 버전(insight.txt)이 있으면 그걸 우선 쓰고(사람이 읽는 사이트엔
+    자연스러운 산문이 낫다는 요청), 없으면 네이버용 룰베이스 blog_draft.txt로 폴백한다
+    (blog_draft.txt는 네이버 SEO/조회수 이유로 룰베이스 유지 — 둘을 파일로 분리)."""
+    day_dir = os.path.join(_CONTENT_OUT, date_str)
+    path = os.path.join(day_dir, "insight.txt")
+    if not os.path.isfile(path):
+        path = os.path.join(day_dir, "blog_draft.txt")
     if not os.path.isfile(path):
         return None
     with open(path, "r", encoding="utf-8") as f:
