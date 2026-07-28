@@ -57,29 +57,27 @@ def _esc_html(s):
 
 def _send_email_alert(subject, html):
     """문제 감지 시 Resend로 알림 메일 발송(뉴스레터와 같은 API키·검증 도메인 재사용).
-    RESEND_API_KEY 미설정이면 조용히 스킵 — 이메일이 안 가도 이슈·Job Summary는 남는다."""
+    RESEND_API_KEY 미설정이면 조용히 스킵 — 이메일이 안 가도 이슈·Job Summary는 남는다.
+    발송은 urllib이 아니라 requests로 한다 — Resend API가 Cloudflare 뒤에 있어 urllib
+    기본 UA(Python-urllib)는 403(error 1010)으로 차단당함(실제로 겪음). send_newsletter.py가
+    requests로 정상 발송되는 것과 동일하게 맞춘다."""
     api_key = os.getenv("RESEND_API_KEY")
     if not api_key:
         print("::warning::RESEND_API_KEY 미설정 — 이메일 알림 스킵(이슈/Job Summary는 정상).")
         return
-    payload = json.dumps({
-        "from": FROM_ADDR, "to": [ALERT_EMAIL], "subject": subject, "html": html,
-    }).encode("utf-8")
-    req = urllib.request.Request(
-        "https://api.resend.com/emails", data=payload, method="POST",
-        headers={"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"})
     try:
-        with urllib.request.urlopen(req, timeout=30) as r:
-            r.read()
-        print(f"이메일 알림 발송 완료 → {ALERT_EMAIL}")
+        import requests
+        r = requests.post(
+            "https://api.resend.com/emails",
+            headers={"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"},
+            json={"from": FROM_ADDR, "to": [ALERT_EMAIL], "subject": subject, "html": html},
+            timeout=30)
+        if r.status_code >= 300:
+            print(f"::warning::이메일 알림 실패: HTTP {r.status_code} {r.text[:300]}")
+        else:
+            print(f"이메일 알림 발송 완료 → {ALERT_EMAIL}")
     except Exception as e:
-        detail = ""
-        if hasattr(e, "read"):
-            try:
-                detail = e.read().decode("utf-8")[:300]
-            except Exception:
-                pass
-        print(f"::warning::이메일 알림 실패: {type(e).__name__}: {e} {detail}")
+        print(f"::warning::이메일 알림 실패: {type(e).__name__}: {e}")
 
 
 now = datetime.now(KST)
