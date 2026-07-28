@@ -6,7 +6,12 @@ on:
     # 1시간+ 지연)·daily-prices(전날 저녁 KST) 이후로 충분히 뒤에 돌려서, 오늘자 콘텐츠와
     # 최신 시세가 이미 커밋된 상태에서 점검한다. 일요일(콘텐츠 미생성)엔 안 돈다.
     - cron: '0 0 * * 1-6'
-  workflow_dispatch: {}
+  workflow_dispatch:
+    inputs:
+      test_email:
+        description: "이메일 알림 연결 테스트(수신 확인용 테스트 메일 1통만 발송)"
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -36,4 +41,7 @@ jobs:
           KR_DB_PATH: data/screener_deploy.db
           SITE_BASE_URL: https://getmoneycheckup.com
           GH_TOKEN: ${{ github.token }}
-        run: python health_check.py
+          # 문제 감지 시 이메일 알림용(뉴스레터와 같은 Resend 계정 재사용). 미설정이면
+          # 이메일만 조용히 스킵되고 이슈·Job Summary 알림은 그대로 동작.
+          RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
+        run: python health_check.py ${{ (github.event_name == 'workflow_dispatch' && inputs.test_email) && '--test-email' || '' }}

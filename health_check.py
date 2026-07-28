@@ -28,6 +28,10 @@ sys.stdout.reconfigure(encoding="utf-8")
 KST = timezone(timedelta(hours=9))
 DB_PATH = os.getenv("KR_DB_PATH", "data/screener_deploy.db")
 SITE = os.getenv("SITE_BASE_URL", "https://getmoneycheckup.com").rstrip("/")
+# 문제 감지 시 이메일 알림 수신자. 발신은 뉴스레터와 같은 검증 도메인(getmoneycheckup.com)을
+# 재사용한다(Resend는 검증된 도메인에서만 발송 가능).
+ALERT_EMAIL = "whdrmsskfk92@gmail.com"
+FROM_ADDR = "머니체크업 헬스체크 <news@getmoneycheckup.com>"
 
 problems = []   # (severity, message) — severity: "critical" | "warn"
 notes = []      # 정상/참고 라인
@@ -47,7 +51,49 @@ def _http_json(url, timeout=40):
         return json.loads(r.read().decode("utf-8"))
 
 
+def _esc_html(s):
+    return (s or "").replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
+
+
+def _send_email_alert(subject, html):
+    """문제 감지 시 Resend로 알림 메일 발송(뉴스레터와 같은 API키·검증 도메인 재사용).
+    RESEND_API_KEY 미설정이면 조용히 스킵 — 이메일이 안 가도 이슈·Job Summary는 남는다."""
+    api_key = os.getenv("RESEND_API_KEY")
+    if not api_key:
+        print("::warning::RESEND_API_KEY 미설정 — 이메일 알림 스킵(이슈/Job Summary는 정상).")
+        return
+    payload = json.dumps({
+        "from": FROM_ADDR, "to": [ALERT_EMAIL], "subject": subject, "html": html,
+    }).encode("utf-8")
+    req = urllib.request.Request(
+        "https://api.resend.com/emails", data=payload, method="POST",
+        headers={"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"})
+    try:
+        with urllib.request.urlopen(req, timeout=30) as r:
+            r.read()
+        print(f"이메일 알림 발송 완료 → {ALERT_EMAIL}")
+    except Exception as e:
+        detail = ""
+        if hasattr(e, "read"):
+            try:
+                detail = e.read().decode("utf-8")[:300]
+            except Exception:
+                pass
+        print(f"::warning::이메일 알림 실패: {type(e).__name__}: {e} {detail}")
+
+
 now = datetime.now(KST)
+
+# 이메일 채널 검증용 — `--test-email`로 실행하면 실제 점검 없이 테스트 메일 1통만 보내고 끝낸다
+# (workflow_dispatch로 한 번 눌러 수신 확인용). 정상/예약 실행엔 이 인자가 없으므로 무영향.
+if "--test-email" in sys.argv:
+    _send_email_alert(
+        f"[헬스체크] 이메일 알림 테스트 {now:%Y-%m-%d %H:%M} KST",
+        "<h2>✅ 헬스체크 이메일 알림이 정상 연결됐습니다</h2>"
+        "<p>이 주소로 파이프라인 이상(콘텐츠 미발행·시세 정지·DB 용량 초과 등) 감지 시 "
+        "알림이 옵니다. 이건 연결 확인용 테스트 메일이에요.</p>"
+        "<p style='color:#999;font-size:12px'>머니체크업 자동 헬스체크 · health-check.yml</p>")
+    sys.exit(0)
 
 # 휴장 캘린더는 app의 단일 소스(_is_market_holiday + KR_MARKET_HOLIDAYS_2026)를 재사용한다.
 # app import 자체가 실패하면 사이트가 못 뜬다는 뜻이라 그 자체가 critical.
@@ -201,23 +247,41 @@ if gsp:
     with open(gsp, "a", encoding="utf-8") as f:
         f.write(summary + "\n")
 
-# ── 이슈 알림(문제 있을 때만, 라벨로 중복 방지) ────────────────────────────
-if (crits or warns) and os.environ.get("GH_TOKEN"):
-    body = summary + f"\n\n_자동 생성 · health-check.yml_"
+# ── 문제 있을 때만 알림: GitHub 이슈 + 이메일(Resend) ──────────────────────
+if crits or warns:
     title = (f"[헬스체크] {now:%Y-%m-%d} 파이프라인 이상 {len(crits)}건"
              if crits else f"[헬스체크] {now:%Y-%m-%d} 경고 {len(warns)}건")
-    try:
-        existing = json.loads(subprocess.check_output(
-            ["gh", "issue", "list", "--label", "health-alert", "--state", "open",
-             "--json", "number", "--limit", "1"], text=True, encoding="utf-8") or "[]")
-        if existing:
-            subprocess.run(["gh", "issue", "comment", str(existing[0]["number"]),
-                            "--body", body], check=False)
-        else:
-            subprocess.run(["gh", "issue", "create", "--title", title, "--body", body,
-                            "--label", "health-alert"], check=False)
-    except Exception as e:
-        print(f"::warning::이슈 알림 실패: {e}")
+
+    # (a) GitHub 이슈 — 열린 health-alert 이슈 있으면 코멘트, 없으면 생성(중복 방지)
+    if os.environ.get("GH_TOKEN"):
+        body = summary + "\n\n_자동 생성 · health-check.yml_"
+        try:
+            existing = json.loads(subprocess.check_output(
+                ["gh", "issue", "list", "--label", "health-alert", "--state", "open",
+                 "--json", "number", "--limit", "1"], text=True, encoding="utf-8") or "[]")
+            if existing:
+                subprocess.run(["gh", "issue", "comment", str(existing[0]["number"]),
+                                "--body", body], check=False)
+            else:
+                subprocess.run(["gh", "issue", "create", "--title", title, "--body", body,
+                                "--label", "health-alert"], check=False)
+        except Exception as e:
+            print(f"::warning::이슈 알림 실패: {e}")
+
+    # (b) 이메일 알림(Resend)
+    hue = "#b60205" if crits else "#b58900"
+    hb = [f'<h2 style="color:{hue};margin:0 0 10px">'
+          f'{"🔴 파이프라인 이상 감지" if crits else "🟡 헬스체크 경고"} · {_esc_html(ts)}</h2>', "<ul>"]
+    hb += [f'<li style="margin:4px 0"><b>🔴</b> {_esc_html(m)}</li>' for m in crits]
+    hb += [f'<li style="margin:4px 0">🟡 {_esc_html(m)}</li>' for m in warns]
+    hb.append("</ul>")
+    hb.append('<hr><p style="color:#666;font-size:13px;margin:8px 0 4px">점검 상세</p>'
+              '<ul style="color:#666;font-size:13px">')
+    hb += [f"<li>{_esc_html(n)}</li>" for n in notes]
+    hb.append("</ul>")
+    hb.append('<p style="color:#999;font-size:12px">머니체크업 자동 헬스체크 · '
+              'GitHub Actions health-check.yml</p>')
+    _send_email_alert(title, "\n".join(hb))
 
 if crits:
     sys.exit(1)
