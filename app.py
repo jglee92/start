@@ -748,7 +748,14 @@ async def _redirect_legacy_host(request, call_next):
         if request.url.query:
             target += f"?{request.url.query}"
         return RedirectResponse(target, status_code=301)
-    return await call_next(request)
+    resp = await call_next(request)
+    # 동적 데이터 API(랭킹·기준일 등)엔 캐시 금지 헤더를 붙인다. 2026-07 배포DB가 며칠
+    # 멈춰 있던 동안(GitHub 100MB 초과 push 실패) 브라우저·프록시가 옛 /api/ranking 응답
+    # (기준일 07-23)을 캐시했다가, DB를 고친 뒤에도 사용자 화면엔 계속 옛 날짜가 보였음.
+    # /api/*는 원래 캐시 헤더가 없어 휴리스틱 캐싱 여지가 있었으므로 no-store로 못박는다.
+    if request.url.path.startswith("/api/"):
+        resp.headers["Cache-Control"] = "no-store, must-revalidate"
+    return resp
 
 
 def _page(fname):
