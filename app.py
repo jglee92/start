@@ -2270,6 +2270,125 @@ def newsletter_subscribe(email: str = Body(..., embed=True)):
     return {"ok": True}
 
 
+# ── 투자 가이드(에버그린 교육글) 온사이트 노출 ─────────────────────────────
+# blog_articles/{폴더}/{slug}.txt에 쌓이는 교육글을 사이트에 인덱스되는 페이지로 낸다.
+# 예전엔 네이버 블로그에만 올려서 구글이 이 오리지널 콘텐츠를 아예 못 봤음(애드센스
+# low-value 대응 — 사이트에 진짜 교육 콘텐츠 층을 만든다). canonical은 사이트로 둔다.
+_GUIDES_DIR = os.path.join(os.path.dirname(__file__), "blog_articles")
+
+
+def _cat_from_folder(folder):
+    head, _, rest = folder.partition("_")
+    return rest if (rest and head.isdigit()) else folder
+
+
+def _guide_files():
+    """blog_articles/ 하위 모든 교육글(.txt) → [(slug, folder, path)]. topics/queue 제외."""
+    out = []
+    if not os.path.isdir(_GUIDES_DIR):
+        return out
+    for folder in sorted(os.listdir(_GUIDES_DIR)):
+        fdir = os.path.join(_GUIDES_DIR, folder)
+        if not os.path.isdir(fdir):
+            continue
+        for fn in sorted(os.listdir(fdir)):
+            if fn.endswith(".txt") and fn not in ("topics.txt", "queue.txt"):
+                out.append((fn[:-4], folder, os.path.join(fdir, fn)))
+    return out
+
+
+def _parse_guide(path):
+    """글 파일 → (title, category, body). body는 첫 구분선(─────) 이후 전체."""
+    with open(path, "r", encoding="utf-8") as f:
+        lines = f.read().split("\n")
+    title = category = None
+    for ln in lines[:8]:
+        s = ln.strip()
+        if s.startswith("[카테고리:"):
+            category = s.strip("[]").split(":", 1)[1].strip()
+        elif s.startswith("제목:"):
+            title = s.split(":", 1)[1].strip()
+    body_lines, started = [], False
+    for ln in lines:
+        if not started:
+            t = ln.strip()
+            if t and all(c == "─" for c in t):
+                started = True
+            continue
+        body_lines.append(ln)
+    return title, category, "\n".join(body_lines).strip("\n")
+
+
+def _guide_snippet(body):
+    from content import _strip_web_tail
+    for ln in _strip_web_tail(body).split("\n"):
+        s = ln.strip()
+        if s and not s.startswith(("■", "-", "#", "※", "(", "①", "②", "③", "④", "⑤")):
+            return s[:90]
+    return ""
+
+
+def _guides_entries():
+    entries = []
+    for slug, folder, path in _guide_files():
+        title, category, body = _parse_guide(path)
+        if not title:
+            continue
+        entries.append({"slug": slug, "title": title,
+                        "category": _cat_from_folder(folder),
+                        "snippet": _guide_snippet(body)})
+    return entries
+
+
+def _read_guide(slug):
+    for s, folder, path in _guide_files():
+        if s == slug:
+            title, category, body = _parse_guide(path)
+            date_str = None
+            try:
+                from datetime import datetime as _dt
+                date_str = _dt.fromtimestamp(os.path.getmtime(path)).strftime("%Y-%m-%d")
+            except Exception:
+                pass
+            return title, _cat_from_folder(folder), body, date_str
+    return None
+
+
+@app.get("/guides", response_class=HTMLResponse)
+def guides_index():
+    from content import render_guides_index
+    return render_guides_index(_guides_entries(), f"{BASE_URL}/guides")
+
+
+@app.get("/api/guides")
+def api_guides():
+    from content import render_guides_index
+    return {"html": _extract_body(render_guides_index(_guides_entries(), f"{BASE_URL}/guides"))}
+
+
+@app.get("/guides/{slug}", response_class=HTMLResponse)
+def guide_page(slug: str):
+    from content import render_guide
+    g = _read_guide(slug)
+    if not g:
+        raise HTTPException(404, "가이드 없음")
+    title, category, body, date_str = g
+    return render_guide(title, category, body, slug,
+                        f"{BASE_URL}/guides/{urllib.parse.quote(slug)}", date_str)
+
+
+@app.get("/api/guides/{slug}")
+def api_guide_page(slug: str):
+    from content import render_guide
+    g = _read_guide(slug)
+    if not g:
+        raise HTTPException(404, "가이드 없음")
+    title, category, body, date_str = g
+    html = render_guide(title, category, body, slug,
+                        f"{BASE_URL}/guides/{urllib.parse.quote(slug)}", date_str)
+    return {"html": _extract_body(html)}
+
+
 @app.get("/robots.txt", response_class=PlainTextResponse)
 def robots():
     return f"User-agent: *\nAllow: /\nSitemap: {BASE_URL}/sitemap.xml\n"
@@ -2295,12 +2414,13 @@ def sitemap():
     urls = [("/", "daily", "1.0"), ("/insights", "daily", "0.9"),
             ("/weekly", "weekly", "0.9"),
             ("/anomaly-report", "weekly", "0.8"), ("/audit-watch", "daily", "0.8"),
-            ("/learn", "monthly", "0.8"),
+            ("/learn", "monthly", "0.8"), ("/guides", "weekly", "0.8"),
             ("/sector-report", "monthly", "0.8"), ("/monthly", "monthly", "0.8"),
             ("/earnings-report", "daily", "0.8"), ("/compare", "weekly", "0.7"),
             ("/themes-index", "weekly", "0.7"), ("/about", "monthly", "0.5"),
             ("/backtest", "monthly", "0.8"), ("/sector-rotation-review", "weekly", "0.8")]
     urls += [(f"/insights/{d}", "monthly", "0.8") for d in _insight_dates()]
+    urls += [(f"/guides/{urllib.parse.quote(e['slug'])}", "monthly", "0.7") for e in _guides_entries()]
     urls += [(f"/learn/{slug}", "monthly", "0.7") for slug in TERMS]
     urls += [(f"/sector-report/{slug}", "monthly", "0.7") for slug in SLUGS.values()]
     # /compare/{code1}/{code2}는 어떤 조합이든 렌더링되는 범용 라우트지만(검색으로 고른

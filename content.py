@@ -579,7 +579,8 @@ def render_anomaly_report(grouped, asof, canonical):
 매수·매도 추천이 아닙니다. 심각도(적자전환 등) 높은 유형 순으로 정렬했으며, 신호가 뜬 종목은
 클릭해서 실제 재무제표·공시 원문을 직접 확인해보세요.</p>
 {sections}
-<p class="muted footnote">데이터: DART 최신 사업보고서. 규칙 기반 참고 신호이며 회계부정 진단이 아닙니다.</p>
+<p class="muted footnote">데이터: DART 최신 사업보고서. 규칙 기반 참고 신호이며 회계부정 진단이 아닙니다.
+관련 → <a href="/audit-watch">감사의견 주의 종목</a> · <a href="/guides">재무 이상신호 읽는 법 가이드</a></p>
 """
     desc = f"{asof} 기준 적자전환·부채비율급증·영업외손익의존·매출감소 등 재무 이상신호가 감지된 한국 상장기업 리포트."
     return layout(f"이상신호 리포트 ({asof}) — 적자전환·부채급증 감지 기업",
@@ -649,7 +650,8 @@ def render_audit_watch(items, asof, canonical):
 
 <p class="muted footnote">데이터: DART 최신 사업보고서·감사보고서 기준. 규칙이 아니라 실제 공시된 감사의견을
 집계한 것이며, 회계부정 진단이나 매수·매도 추천이 아닙니다. 종목을 클릭하면 재무제표·감사의견
-연혁을 직접 확인할 수 있습니다. 관련 → <a href="/anomaly-report">이상신호 리포트</a></p>
+연혁을 직접 확인할 수 있습니다. 관련 → <a href="/anomaly-report">이상신호 리포트</a> ·
+<a href="/guides">감사의견·리스크 읽는 법 가이드</a></p>
 """
     desc = (f"{asof} 기준 감사의견이 '적정'이 아닌(한정·부적정·의견거절) 한국 상장기업 {total}곳 "
             f"목록과 해설. 상장폐지 위험 신호 참고용.")
@@ -930,6 +932,9 @@ def _insight_body_html(body_text):
             out.append(f'<p class="tagrow">{tags}</p>')
         elif stripped.startswith("※"):
             out.append(f'<p class="footnote muted">{_esc(stripped)}</p>')
+        elif stripped.startswith("■"):
+            # 교육글·Claude 브리핑의 ■ 소제목 → h2 (■는 이모지 범위 밖이라 별도 처리)
+            out.append(f"<h2>{_esc(stripped.lstrip('■').strip())}</h2>")
         elif _lead_is_emoji(stripped) and not stripped.startswith("\U0001F449"):
             out.append(f"<h2>{_esc(stripped)}</h2>")
         else:
@@ -1051,6 +1056,94 @@ def render_insights_index(entries, canonical):
 """
     desc = "코스피·코스닥 급등락·실적발표·이상신호·주도테마를 매일 정리한 데일리 마켓 브리핑 아카이브 — 머니체크업."
     return layout("데일리 마켓 브리핑 — 코스피·코스닥 매일 시장 정리", desc, canonical, body)
+
+
+# 가이드 카테고리 → 관련 데이터/도구 페이지(3단계 상호링크). 교육 글을 읽은 뒤 우리
+# 사이트의 실제 데이터로 바로 넘어가게 해서 "데이터↔교육" 콘텐츠 구조를 만든다.
+_GUIDE_RELATED = {
+    "리스크신호": [("/audit-watch", "감사의견 주의 종목 보기"),
+                   ("/anomaly-report", "재무 이상신호 리포트")],
+    "백테스트팩터": [("/backtest", "정직한 백테스트 결과"),
+                     ("/", "가치+퀄리티 종목 랭킹")],
+    "재무제표실전": [("/anomaly-report", "재무 이상신호 리포트"),
+                     ("/audit-watch", "감사의견 주의 종목")],
+    "투자기초기": [("/", "종목 랭킹·건강점수 보기")],
+}
+
+
+def _guide_related_html(category):
+    rel = _GUIDE_RELATED.get(category)
+    if not rel:
+        return ""
+    links = " &nbsp;·&nbsp; ".join(f'<a href="{u}">{_esc(t)} →</a>' for u, t in rel)
+    return (f'<div style="border:1px solid var(--line);border-radius:10px;padding:13px 16px;'
+            f'margin:22px 0 0;background:var(--panel2)">'
+            f'<b>이 글과 관련된 실제 데이터</b><div style="font-size:14px;margin-top:6px;'
+            f'line-height:1.9">{links}</div></div>')
+
+
+def render_guide(title, category, body, slug, canonical, date_str=None):
+    """개별 교육 가이드 글 페이지(에버그린). body는 파일에서 [카테고리]·제목·구분선을 뗀
+    본문. 웹에선 _strip_web_tail로 CTA·면책·해시태그 꼬리를 잘라 애드센스 키워드스터핑
+    신호를 피한다(면책은 layout 푸터에 이미 있음). insights 아티클과 같은 렌더 파이프."""
+    from urllib.parse import quote  # noqa: F401 (slug 인코딩은 목록에서 사용)
+    body_web = _strip_web_tail(body)
+    body_html = _insight_body_html(body_web)
+    cat = _esc(category or "가이드")
+    eyebrow = f'{_ic("news")} <b>{cat}</b>' + (f' · {_insight_date_kr(date_str)}' if date_str else "")
+    article = f"""
+<nav class="muted" style="font-size:13px"><a href="/guides">← 투자 가이드 목록</a></nav>
+<article>
+<p class="muted" style="margin:8px 0 2px;font-size:12.5px;letter-spacing:.02em">{eyebrow}</p>
+<h1>{_esc(title)}</h1>
+{body_html}
+</article>
+{_guide_related_html(category)}
+<div class="muted" style="margin-top:22px;font-size:13px"><a href="/guides">← 투자 가이드 목록으로</a></div>
+"""
+    snippet = ""
+    for ln in body_web.split("\n"):
+        s = ln.strip()
+        if s and not s.startswith(("■", "-", "#", "※", "(", "①", "②", "③", "④", "⑤")):
+            snippet = s
+            break
+    desc = (snippet or title)[:150]
+    extra = _article_ld(title, desc, canonical, date_str) if date_str else ""
+    return layout(title, desc, canonical, article, show_subscribe=False, extra_head=extra)
+
+
+def render_guides_index(entries, canonical):
+    """가이드 아카이브 — 카테고리별로 묶은 글 목록. entries: [{slug,title,category,snippet}]."""
+    from urllib.parse import quote
+    bycat = {}
+    for e in entries:
+        bycat.setdefault(e["category"] or "가이드", []).append(e)
+    sections = ""
+    for cat in sorted(bycat.keys()):
+        cards = "\n".join(
+            f'<a href="/guides/{quote(e["slug"])}" class="insight-card">'
+            f'<div class="ic-title">{_esc(e["title"])}</div>'
+            f'<div class="ic-snip muted">{_esc(e["snippet"])}</div></a>' for e in bycat[cat])
+        sections += f'<h2>{_esc(cat)}</h2>{cards}'
+    if not entries:
+        sections = '<p class="muted">아직 발행된 가이드가 없습니다.</p>'
+    body = f"""
+<h1>{_ic('news')} 투자 가이드</h1>
+<p>재무제표·회계감사의견·재무 이상신호처럼 <b>위험을 미리 걸러내는 데 필요한 개념</b>을,
+초보도 실제로 확인하고 판단할 수 있게 단계별로 풀어쓴 교육 글 모음입니다. 특정 종목 추천이
+아니라, 스스로 판단하는 힘을 기르기 위한 정보·교육용 콘텐츠예요.</p>
+<style>
+.insight-card{{display:block;border:1px solid #8883;border-radius:10px;padding:14px 16px;
+ margin:10px 0;text-decoration:none;color:inherit;font-weight:400}}
+.insight-card:hover{{border-color:#1a63cf;text-decoration:none}}
+.insight-card .ic-title{{font-weight:700;font-size:15.5px;margin:0 0 3px}}
+.insight-card .ic-snip{{font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}}
+</style>
+{sections}
+"""
+    desc = ("재무제표·회계감사의견·재무 이상신호 등 위험을 걸러내는 투자 개념을 단계별로 "
+            "풀어쓴 교육 가이드 모음 — 머니체크업.")
+    return layout("투자 가이드 — 재무제표·감사의견·리스크 읽는 법", desc, canonical, body)
 
 
 # ── 종목 비교 ("A vs B") ────────────────────────────────────────────────────
