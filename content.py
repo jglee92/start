@@ -586,6 +586,77 @@ def render_anomaly_report(grouped, asof, canonical):
                   desc, canonical, body, show_subscribe=False)
 
 
+_AUDIT_ORDER = {"의견거절": 0, "부적정의견": 1, "한정의견": 2}
+_AUDIT_EXPLAIN = {
+    "의견거절": "감사인이 감사 범위의 큰 제약이나 중대한 불확실성 때문에 <b>‘의견을 표명하지 "
+                "않겠다’</b>고 밝힌 상태입니다. 감사의견 중 가장 심각한 신호로, 상장폐지 실질심사 "
+                "사유가 될 수 있습니다.",
+    "부적정의견": "재무제표가 회계기준을 <b>중대하게 위반</b>해 ‘적정하지 않다’고 판단한 의견입니다. "
+                  "매우 드물고 심각합니다.",
+    "한정의견": "대체로 적정하지만 일부 항목에서 감사 범위 제한이나 회계기준 위반이 있어 <b>‘단서를 "
+                "단’</b> 의견입니다. 어떤 항목에 단서가 붙었는지 감사보고서에서 반드시 확인해야 합니다.",
+}
+
+
+def render_audit_watch(items, asof, canonical):
+    """감사의견이 '적정'이 아닌 종목 목록 + 해설. 회계감사의견은 다른 곳에서 잘 정리해주지
+    않는 우리 사이트만의 고유 데이터 — 이를 '무엇을 확인해야 하는지' 교육 해설과 결합해
+    '데이터+해설' 고유 콘텐츠로 만든다(애드센스 low-value 대응의 핵심 페이지)."""
+    groups = {}
+    for it in items:
+        groups.setdefault(it["opinion"], []).append(it)
+    order = sorted(groups.keys(), key=lambda o: _AUDIT_ORDER.get(o, 9))
+    sections = ""
+    for op in order:
+        lst = sorted(groups[op], key=lambda s: s.get("marcap_eok") or 0, reverse=True)
+        rows = "".join(
+            f'<tr><td style="text-align:left"><a href="/s/{_esc(s["code"])}">{_esc(s["name"])}</a> '
+            f'<span class="muted">{_esc(s["code"])}</span></td>'
+            f'<td>{s["year"]}년</td>'
+            f'<td style="text-align:left">{_esc(s.get("auditor") or "-")}</td></tr>' for s in lst)
+        sections += (f'<h2 style="margin-bottom:6px">{_esc(op)} '
+                     f'<span class="muted" style="font-size:14px;font-weight:400">· {len(lst)}개 종목</span></h2>'
+                     f'<p class="muted" style="margin-top:0">{_AUDIT_EXPLAIN.get(op, "")}</p>'
+                     f'<div class="wrap"><table style="table-layout:fixed;width:100%">'
+                     f'<colgroup><col style="width:50%"><col style="width:14%"><col style="width:36%"></colgroup>'
+                     f'<thead><tr><th style="text-align:left">종목</th><th>회계연도</th>'
+                     f'<th style="text-align:left">감사인</th></tr></thead>'
+                     f'<tbody>{rows}</tbody></table></div>')
+    if not sections:
+        sections = '<p class="muted">현재 비적정 감사의견 종목이 없습니다.</p>'
+    total = len(items)
+    body = f"""
+<h1>{_ic('shield')} 감사의견 주의 종목 <span class="muted" style="font-size:14px">({_esc(asof)} 기준)</span></h1>
+<p class="muted">코스피·코스닥 상장사 중 <b>최신 감사보고서의 감사의견이 '적정'이 아닌</b> 종목 전체
+{total}곳입니다. 공시 원문을 일일이 찾지 않아도 한 곳에서 확인할 수 있습니다.</p>
+
+<p>회계감사의견은 감사인이 <b>“재무제표가 회계기준에 맞게 작성됐는가”</b>를 판단한 결과로,
+<b>적정 · 한정 · 부적정 · 의견거절</b> 네 가지가 있습니다. '적정의견'이 회사가 우량하다는 보증은
+아니지만, 반대로 <b>'적정'이 아니라는 건 분명한 주의 신호</b>입니다 — 특히 <b>의견거절</b>은
+상장폐지 실질심사로 이어질 수 있습니다.</p>
+
+<div style="border:1px solid var(--line);border-radius:10px;padding:14px 16px;margin:14px 0;background:var(--panel2)">
+<b>이 목록을 봤다면 무엇을 확인해야 하나</b>
+<ol style="margin:8px 0 0;padding-left:20px;line-height:1.9">
+<li>감사보고서의 <b>'강조사항'·'계속기업 관련 불확실성'</b> 문단을 끝까지 읽기 (왜 이런 의견인지 사유가 적혀 있습니다)</li>
+<li><b>유동비율</b>(유동자산÷유동부채)과 <b>자본잠식</b> 여부 — 재무상태표에서 바로 확인</li>
+<li><b>영업활동현금흐름</b>이 계속 마이너스인지 — 장부 이익과 실제 현금이 따로 노는지</li>
+<li>이 의견이 <b>몇 년째 반복</b>되는지, 회사의 자구계획(증자·자산매각 등)이 실제 이행됐는지</li>
+</ol>
+</div>
+
+{sections}
+
+<p class="muted footnote">데이터: DART 최신 사업보고서·감사보고서 기준. 규칙이 아니라 실제 공시된 감사의견을
+집계한 것이며, 회계부정 진단이나 매수·매도 추천이 아닙니다. 종목을 클릭하면 재무제표·감사의견
+연혁을 직접 확인할 수 있습니다. 관련 → <a href="/anomaly-report">이상신호 리포트</a></p>
+"""
+    desc = (f"{asof} 기준 감사의견이 '적정'이 아닌(한정·부적정·의견거절) 한국 상장기업 {total}곳 "
+            f"목록과 해설. 상장폐지 위험 신호 참고용.")
+    return layout("감사의견 주의 종목 — 한정·부적정·의견거절 상장사 목록",
+                  desc, canonical, body, show_subscribe=False)
+
+
 def render_halted_stocks(rows, asof, canonical):
     """현재 거래정지 종목 모음 — 매수·매도 자체가 안 되는 종목이라 일반 랭킹·비교·섹터
     분석에서는 전부 제외하고, 여기 따로 모아 최근 공시로 재개 여부를 살펴보게 한다."""

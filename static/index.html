@@ -330,6 +330,7 @@
       <div class="nav-item" data-v="monthly"><svg class="ic-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="4.2"/><circle cx="12" cy="12" r="0.8" fill="currentColor" stroke="none"/></svg> 월간 건강랭킹</div>
       <div class="nav-item" data-v="sectorreport"><svg class="ic-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M5 19V11"/><path d="M12 19V5"/><path d="M19 19v-7"/></svg> 업종 밸류리포트</div>
       <div class="nav-item" data-v="anomaly"><svg class="ic-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3.5 21 19.5H3z"/><path d="M12 10v3.6"/><circle cx="12" cy="16.7" r="0.9" fill="currentColor" stroke="none"/></svg> 이상신호 리포트</div>
+      <div class="nav-item" data-v="audit"><svg class="ic-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3.5 18.5 6v5.5c0 4.6-2.8 7.6-6.5 8.8-3.7-1.2-6.5-4.2-6.5-8.8V6z"/><path d="M9.3 12l1.9 1.9 3.5-3.8"/></svg> 감사의견 주의</div>
       <div class="nav-item" data-v="earnings"><svg class="ic-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="5.5" width="16" height="14.5" rx="1.8"/><path d="M4 10h16M8 3.5v3.5M16 3.5v3.5"/></svg> 실적발표 현황</div>
     </details>
     <details class="nav-group">
@@ -477,6 +478,7 @@
     <div id="view-sectorquarterly" class="wrap about-content" style="display:none"></div>
     <div id="view-halted" class="wrap about-content" style="display:none"></div>
     <div id="view-insights" class="wrap about-content" style="display:none"></div>
+    <div id="view-audit" class="wrap about-content" style="display:none"></div>
     <div id="comparePickerWrap" class="wrap about-content" style="display:none">
       <h1 style="margin-top:0"><svg class="ic-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M8 4v16M16 4v16"/><path d="M4 9h4M4 15h4M16 9h4M16 15h4"/></svg> 종목 비교</h1>
       <p class="sub">비교하고 싶은 두 종목을 검색해서 골라보세요.</p>
@@ -907,7 +909,7 @@ document.addEventListener('click',function(e){
 /* ── 사이드바 전환 ── */
 const ALL_PANELS=['view-home','view-screener','theme','sec','view-table',
   'view-weekly','view-anomaly','view-themesall','view-about','view-learn',
-  'view-monthly','view-sectorreport','view-earnings','view-insights',
+  'view-monthly','view-sectorreport','view-earnings','view-insights','view-audit',
   'comparePickerWrap','view-compare','view-backtest','view-sectorquarterly','view-halted'];
 function switchView(v){
   curView=v;
@@ -930,6 +932,7 @@ function switchView(v){
   if(v==='sectorquarterly'){document.getElementById('view-sectorquarterly').style.display='';loadSectorQuarterly();return;}
   if(v==='halted'){document.getElementById('view-halted').style.display='';loadHalted();return;}
   if(v==='insights'){document.getElementById('view-insights').style.display='';loadInsightsIndex();return;}
+  if(v==='audit'){document.getElementById('view-audit').style.display='';loadAuditWatch();return;}
   if(v==='compare'){
     document.getElementById('comparePickerWrap').style.display='';
     document.getElementById('view-compare').style.display='';
@@ -1245,6 +1248,19 @@ async function loadInsightsIndex(){
     catch(e){ el.innerHTML='<p class="mut">불러오지 못했습니다.</p>'; return; }
   }
   el.innerHTML=INSIGHTS_INDEX_HTML;
+  wireInlineLinks(el);
+  el.scrollTop=0;
+}
+
+let AUDIT_HTML=null;
+async function loadAuditWatch(){
+  const el=document.getElementById('view-audit');
+  if(!AUDIT_HTML){
+    el.innerHTML='<span class="mut">불러오는 중…</span>';
+    try{ AUDIT_HTML=(await fetch('/api/audit-watch').then(x=>x.json())).html; }
+    catch(e){ el.innerHTML='<p class="mut">불러오지 못했습니다.</p>'; return; }
+  }
+  el.innerHTML=AUDIT_HTML;
   wireInlineLinks(el);
   el.scrollTop=0;
 }

@@ -1028,6 +1028,33 @@ def anomaly_report():
     return render_anomaly_report(grouped, asof, f"{BASE_URL}/anomaly-report")
 
 
+def _audit_watch_items():
+    """감사의견이 '적정'이 아닌 종목 + 이름/시총(랭킹에서 보강)."""
+    conn = _conn()
+    non = db.get_non_clean_audit(conn)
+    conn.close()
+    rk_by_code = {r["code"]: r for r in get_ranking()}
+    out = []
+    for a in non:
+        r = rk_by_code.get(a["code"])
+        out.append({**a, "name": _name_of(a["code"]),
+                    "marcap_eok": (r or {}).get("marcap_eok")})
+    return out
+
+
+@app.get("/audit-watch", response_class=HTMLResponse)
+def audit_watch():
+    from content import render_audit_watch
+    return render_audit_watch(_audit_watch_items(), get_asof(), f"{BASE_URL}/audit-watch")
+
+
+@app.get("/api/audit-watch")
+def api_audit_watch():
+    from content import render_audit_watch
+    html = render_audit_watch(_audit_watch_items(), get_asof(), f"{BASE_URL}/audit-watch")
+    return {"html": _extract_body(html)}
+
+
 def _halted_stocks_data():
     """현재 거래정지 종목 상세 — 이름/시장/정지 전 마지막가·날짜/최근 공시.
     get_ranking()은 이 종목들을 이미 걸러내므로, 여기서는 get_halted_codes()로
@@ -2267,7 +2294,8 @@ def sitemap():
     from factor.sectors import SLUGS
     urls = [("/", "daily", "1.0"), ("/insights", "daily", "0.9"),
             ("/weekly", "weekly", "0.9"),
-            ("/anomaly-report", "weekly", "0.8"), ("/learn", "monthly", "0.8"),
+            ("/anomaly-report", "weekly", "0.8"), ("/audit-watch", "daily", "0.8"),
+            ("/learn", "monthly", "0.8"),
             ("/sector-report", "monthly", "0.8"), ("/monthly", "monthly", "0.8"),
             ("/earnings-report", "daily", "0.8"), ("/compare", "weekly", "0.7"),
             ("/themes-index", "weekly", "0.7"), ("/about", "monthly", "0.5"),

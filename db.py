@@ -317,6 +317,19 @@ def get_audit_opinion(conn, code: str, year: int = None):
     return {"year": r[0], "auditor": r[1], "opinion": r[2]}
 
 
+def get_non_clean_audit(conn):
+    """코드별 '최신 연도' 감사의견이 '적정의견'이 아닌 종목 — 감사의견 주의 목록용.
+    한정의견·부적정의견·의견거절 등. 특히 의견거절/부적정은 상장폐지 실질심사로 이어질 수
+    있는 강한 위험 신호(참고용, 매매 추천 아님)."""
+    rows = conn.execute(
+        "SELECT a.code, a.year, a.auditor, a.opinion FROM audit_opinions a "
+        "JOIN (SELECT code, MAX(year) my FROM audit_opinions GROUP BY code) m "
+        "ON a.code=m.code AND a.year=m.my "
+        "WHERE a.opinion IS NOT NULL AND a.opinion<>'' AND a.opinion<>'적정의견'"
+    ).fetchall()
+    return [{"code": r[0], "year": r[1], "auditor": r[2], "opinion": r[3]} for r in rows]
+
+
 def save_dividend(conn, code: str, year: int, dps) -> None:
     conn.execute("INSERT OR REPLACE INTO dividends VALUES (?,?,?)",
                  (code, int(year), _f(dps)))
