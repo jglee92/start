@@ -155,7 +155,7 @@ def _call_claude(context, label):
             "x-api-key": api_key, "anthropic-version": "2023-06-01",
             "content-type": "application/json",
         }, json={
-            "model": MODEL, "max_tokens": 1600, "system": _SYSTEM,
+            "model": MODEL, "max_tokens": 2200, "system": _SYSTEM,
             "messages": [{"role": "user",
                           "content": f"아래 데이터만 근거로 오늘의 {label}을 써주세요:\n\n{context}"}],
         }, timeout=120)

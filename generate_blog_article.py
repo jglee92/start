@@ -132,7 +132,10 @@ def _call_claude(category, topic, api_key):
     script = "generate_blog_article"
     body = {
         "model": MODEL,
-        "max_tokens": 3000,
+        # 본문 목표 분량을 2000~3000자로 올린 뒤 3000토큰 한도에 걸려 글이 마무리
+        # 직전에 잘리는 일이 실제로 발생(2026-08-02 going-concern 글). 한글은 음절당
+        # 1~2토큰이라 3000자 글 + 제목·태그·형식이 3000토큰을 넘을 수 있어 넉넉히 상향.
+        "max_tokens": 4500,
         "system": _SYSTEM.replace("{category}", category),
         "messages": [{
             "role": "user",
