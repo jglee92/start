@@ -405,9 +405,16 @@ def api_stock(code: str):
     name = row["name"] if row else _name_of(code)
     themes = _stock_theme_pairs(code)
     live = get_live_prices().get(code)
+    financials = [{
+        "year": f[0], "revenue": f[1], "op_profit": f[2], "net_income": f[3],
+        "equity": f[4], "liabilities": f[5], "debt_ratio": _r(f[6], 0),
+        "op_margin": _r(f[7]),
+    } for f in fins]
     return {
         "code": code, "name": name, "themes": themes, "period_returns": period_returns,
         "audit": audit, "quarterly": quarterly,
+        # 매출·영업이익 추이 미니 막대차트(서버 생성, 드로어가 주입).
+        "fin_trend_svg": __import__("content")._fin_trend_html(financials),
         "summary": None if row is None else {
             "rank": row["rank"], "score": row["score"], "market": row["market"],
             "price": live["price"] if live else row["price"],
@@ -422,12 +429,11 @@ def api_stock(code: str):
             "breakdown": row["breakdown"], "dims": row.get("dims"),
             "flags": row.get("flags") or [],
             "small_cap": row.get("small_cap", False),
+            # 건강검진 레이더 SVG를 서버에서 생성해 드로어가 그대로 주입(SSR과 동일 그림).
+            "radar_svg": (__import__("content")._radar_svg(
+                [(row.get("dims") or {}, "var(--accent)")]) if row.get("dims") else None),
         },
-        "financials": [{
-            "year": f[0], "revenue": f[1], "op_profit": f[2], "net_income": f[3],
-            "equity": f[4], "liabilities": f[5], "debt_ratio": _r(f[6], 0),
-            "op_margin": _r(f[7]),
-        } for f in fins],
+        "financials": financials,
         "prices": [{"date": p[0], "close": p[1]} for p in prices[::2]],  # 2일 간격 샘플
     }
 
@@ -912,10 +918,7 @@ def stock_page(code: str):
         "debt_ratio": _r(row["debt_ratio"], 0), "div_yield": _r(row.get("div_yield"), 2),
         "marcap_eok": round(row["marcap"] / 1e8),
         "dims": row.get("dims"), "flags": row.get("flags") or [],
-        "small_cap": row.get("small_cap", False),
-        # 건강검진 레이더 SVG를 서버에서 생성해 드로어가 그대로 주입(SSR 페이지와 동일한 그림).
-        "radar_svg": (__import__("content")._radar_svg([(row.get("dims") or {}, "var(--accent)")])
-                      if row.get("dims") else None)}
+        "small_cap": row.get("small_cap", False)}
     financials = [{"year": f[0], "revenue": f[1], "op_profit": f[2],
                    "net_income": f[3], "equity": f[4], "debt_ratio": _r(f[6], 0),
                    "op_margin": _r(f[7])} for f in fins]

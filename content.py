@@ -206,6 +206,10 @@ th:first-child,td:first-child{{text-align:left}}
 .dimwrap{{display:flex;gap:18px;align-items:center;flex-wrap:wrap;margin:8px 0}}
 .dimwrap .dimradar{{flex:0 0 auto;margin:0 auto}}
 .dimwrap .dimgrid{{flex:1;min-width:260px;margin:0}}
+.fintrend{{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin:10px 0}}
+@media(max-width:560px){{.fintrend{{grid-template-columns:1fr}}}}
+.ft-card{{border:1px solid #8883;border-radius:10px;padding:10px 12px}}
+.ft-t{{font-size:13px;font-weight:700;margin-bottom:4px}}
 .dimcard{{border:1px solid #8883;border-radius:10px;padding:12px 14px;background:#8880.06}}
 .dimhead{{font-weight:700;font-size:14.5px;display:flex;justify-content:space-between}}
 .dimstars{{color:#e0a500;letter-spacing:1px;font-size:13px}}
@@ -398,6 +402,61 @@ def _dims_html(dims):
             + (f'<p class="muted">{_esc(overall)}</p>' if overall else ""))
 
 
+def _bars_svg(pairs, div=1e8):
+    """(연도, 원시값) 리스트 → 미니 막대차트 인라인 SVG. 값은 div로 나눠(억) 표시.
+    적자(음수)는 0선 아래 붉은 막대로, 최근 연도는 진하게. JS 없이 SSR·드로어 공용."""
+    pts = [(y, (v / div) if v is not None else None) for y, v in pairs][-6:]
+    vals = [v for _, v in pts if v is not None]
+    if not vals:
+        return '<div class="muted" style="font-size:12px">데이터 없음</div>'
+    W, H, padT, padB = 260, 122, 18, 18
+    n = len(pts)
+    vmax, vmin = max(vals + [0]), min(vals + [0])
+    span = (vmax - vmin) or 1
+    plotH = H - padT - padB
+
+    def yfor(v):
+        return padT + (vmax - v) / span * plotH
+
+    zeroY = yfor(0)
+    bw = (W - 12) / n * 0.58
+    bars = labels = ""
+    for i, (yr, v) in enumerate(pts):
+        cxb = 6 + (W - 12) * (i + 0.5) / n
+        yl = str(yr)[2:] if len(str(yr)) >= 4 else str(yr)
+        labels += (f'<text x="{cxb:.1f}" y="{H-5}" text-anchor="middle" font-size="9.5" '
+                   f'fill="var(--dim)">{yl}</text>')
+        if v is None:
+            continue
+        top, bot = yfor(max(v, 0)), yfor(min(v, 0))
+        color = "var(--accent)" if v >= 0 else "var(--bad)"
+        op = "1" if i == n - 1 else "0.5"
+        bars += (f'<rect x="{cxb-bw/2:.1f}" y="{top:.1f}" width="{bw:.1f}" '
+                 f'height="{max(bot-top,1):.1f}" rx="1.5" fill="{color}" fill-opacity="{op}"/>')
+        ly = top - 3 if v >= 0 else bot + 10
+        labels += (f'<text x="{cxb:.1f}" y="{ly:.1f}" text-anchor="middle" font-size="9" '
+                   f'fill="var(--dim)">{round(v):,}</text>')
+    zline = (f'<line x1="6" y1="{zeroY:.1f}" x2="{W-6}" y2="{zeroY:.1f}" '
+             f'stroke="var(--line)" stroke-width="1"/>')
+    return (f'<svg viewBox="0 0 {W} {H}" width="{W}" height="{H}" '
+            f'style="max-width:100%;height:auto;display:block" role="img" '
+            f'aria-label="추이 막대차트">{zline}{bars}{labels}</svg>')
+
+
+def _fin_trend_html(financials):
+    """매출·영업이익 연도별 추이를 미니 막대차트 두 개로. 숫자 표를 읽지 않아도
+    '꾸준히 느는 회사인가'가 한눈에 보이게(건강검진 컨셉과 직결)."""
+    if not financials:
+        return ""
+    rev = [(f.get("year"), f.get("revenue")) for f in financials]
+    op = [(f.get("year"), f.get("op_profit")) for f in financials]
+    return (f'<div class="fintrend">'
+            f'<div class="ft-card"><div class="ft-t">매출 추이 <span class="muted">(억원)</span></div>'
+            f'{_bars_svg(rev)}</div>'
+            f'<div class="ft-card"><div class="ft-t">영업이익 추이 <span class="muted">(억원)</span></div>'
+            f'{_bars_svg(op)}</div></div>')
+
+
 def _sev_dot(emoji):
     color = "#e0453f" if emoji == "\U0001F534" else "#e0a500"
     return (f'<span style="display:inline-block;width:8px;height:8px;border-radius:50%;'
@@ -508,6 +567,7 @@ def render_stock_page(code, name, summary, financials, prices, news, themes,
 {flags_html}
 <h2>주가 (최근)</h2>{_spark(prices)}{_period_pills_html(period_returns)}
 <h2>재무 추이 (DART 사업보고서, 단위 억)</h2>
+{_fin_trend_html(financials)}
 <div class="wrap"><table><thead><tr><th>연도</th><th>매출</th><th>영업이익</th>
 <th>순이익</th><th>자본</th><th>영익률%</th><th>부채%</th></tr></thead>
 <tbody>{fin_rows or '<tr><td colspan=7 class="muted">재무 데이터 없음</td></tr>'}</tbody></table></div>

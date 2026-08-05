@@ -275,6 +275,10 @@
   .dimwrap{display:flex;flex-direction:column;align-items:center;gap:6px}
   .dimwrap .dimradar{flex:0 0 auto}
   .dimwrap .dimgrid{width:100%;margin:6px 0 0}
+  .fintrend{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:8px 0}
+  @media(max-width:520px){.fintrend{grid-template-columns:1fr}}
+  .ft-card{border:1px solid var(--line);border-radius:9px;padding:8px 10px;background:var(--panel2)}
+  .ft-t{font-size:12.5px;font-weight:700;margin-bottom:2px}
   .dimcard{border:1px solid var(--line);border-radius:9px;padding:10px 12px;background:var(--panel2)}
   .dimhead{font-weight:700;font-size:13px;display:flex;justify-content:space-between;align-items:center}
   .dimstars{color:#e0a500;letter-spacing:1px;font-size:12px}
@@ -1552,7 +1556,7 @@ async function openStock(code,fromBack){
     html+=`</details>`;
   }
   html+=`<h3>가격 (최근)</h3>`+spark(d.prices)+periodPillsHtml(d.period_returns);
-  html+=`<h3>재무 추이 (DART 연결/별도, 단위 억)</h3>`+finTable(d.financials);
+  html+=`<h3>재무 추이 (DART 연결/별도, 단위 억)</h3>`+(d.fin_trend_svg||'')+finTable(d.financials);
   html+=quarterlyTable(d.quarterly);
   html+=`<h3>${ic('document')} 공시자료 <span class="mut" style="font-weight:400">· DART 전자공시 원문</span></h3>
     <div id="disc"><span class="mut">불러오는 중…</span></div>`;
