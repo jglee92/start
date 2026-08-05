@@ -552,10 +552,12 @@ def render_stock_page(code, name, summary, financials, prices, news, themes,
             f'<span class="badge">{_esc(t["name"])}</span></a>' for t in themes[:12]
         ) + '</p>'
     fin_rows = "".join(
-        f'<tr><td>{f["year"]}</td><td>{eok(f.get("revenue"))}</td>'
+        f'<tr><td>{f["year"]}{"*" if f.get("_derived") else ""}</td>'
+        f'<td>{eok(f.get("revenue"))}</td>'
         f'<td>{eok(f.get("op_profit"))}</td><td>{eok(f.get("net_income"))}</td>'
         f'<td>{eok(f.get("equity"))}</td><td>{_fmt(f.get("op_margin"))}</td>'
         f'<td>{_fmt(f.get("debt_ratio"),0)}</td></tr>' for f in financials)
+    _has_derived = any(f.get("_derived") for f in financials)
     news_html = "".join(
         f'<p style="margin:8px 0"><a href="{_esc(n["link"])}" target="_blank" '
         f'rel="noopener">{_esc(n["title"])}</a><br>'
@@ -571,6 +573,7 @@ def render_stock_page(code, name, summary, financials, prices, news, themes,
 <div class="wrap"><table><thead><tr><th>연도</th><th>매출</th><th>영업이익</th>
 <th>순이익</th><th>자본</th><th>영익률%</th><th>부채%</th></tr></thead>
 <tbody>{fin_rows or '<tr><td colspan=7 class="muted">재무 데이터 없음</td></tr>'}</tbody></table></div>
+{'<p class="muted" style="font-size:12px;margin-top:4px">* 분기 실적을 합산해 복원한 연간치입니다(중소형주 연간 흐름 참고용). 자본은 분기 데이터에 없어 생략.</p>' if _has_derived else ''}
 {_quarterly_rows_html(quarterly)}
 {disc_html}
 <h2>관련 뉴스 <span class="muted" style="font-size:13px;font-weight:400">· 구글뉴스</span></h2>

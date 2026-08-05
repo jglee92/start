@@ -1657,11 +1657,13 @@ function finTable(f){
   if(!f||!f.length)return '<div class="mut">재무 데이터 없음</div>';
   const eok=v=>v==null?'–':Math.round(v/1e8).toLocaleString();
   let h='<div class="tblscroll"><table><thead><tr><th>FY</th><th>매출</th><th>영업이익</th><th>순이익</th><th>자본</th><th>영익률%</th><th>부채%</th></tr></thead><tbody>';
-  for(const r of f)h+=`<tr><td>${r.year}</td><td>${eok(r.revenue)}</td>
+  for(const r of f)h+=`<tr><td>${r.year}${r._derived?'*':''}</td><td>${eok(r.revenue)}</td>
     <td class="${sign(r.op_profit)}">${eok(r.op_profit)}</td>
     <td class="${sign(r.net_income)}">${eok(r.net_income)}</td>
     <td>${eok(r.equity)}</td><td>${fmt(r.op_margin)}</td><td>${fmt(r.debt_ratio,0)}</td></tr>`;
-  return h+'</tbody></table></div>';
+  h+='</tbody></table></div>';
+  if(f.some(r=>r._derived))h+='<p class="mut" style="font-size:11px;margin-top:3px">* 분기 실적을 합산해 복원한 연간치(중소형주 연간 흐름 참고용). 자본은 분기 데이터에 없어 생략.</p>';
+  return h;
 }
 function quarterlyTable(q){
   if(!q||!q.length)return '';

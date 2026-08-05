@@ -378,6 +378,35 @@ def _period_returns(conn, code):
     return out
 
 
+def _augment_annual_from_quarterly(annual, quarterly):
+    """연별 재무가 적은(대부분 최신 1개뿐인 중소형주) 종목을 위해, 이미 가진 분기
+    데이터를 합쳐 최근 회계연도 연별을 복원한다 — DART 추가 수집 없이 계산만 하므로
+    데이터가 무거워지지 않는다(중소형주의 '연간 흐름'을 보기 위한 참고용). 4개 분기가
+    모두 있고 실제 연별에 아직 없는 연도만 추가: 매출·영업이익·순이익=4분기 합(분기가
+    누적에서 파생돼 합이 연간과 일치), 영익률=합산 재계산, 부채율=연말(4Q). 자본(equity)은
+    분기 데이터에 없어 미표시. 추정 행은 _derived=True로 표시(화면에서 '*' 각주)."""
+    have = {a["year"] for a in annual}
+    byyear = {}
+    for q in quarterly:
+        byyear.setdefault(q["year"], {})[q["quarter"]] = q
+    derived = []
+    for yr, qs in byyear.items():
+        if yr in have or not all(k in qs for k in (1, 2, 3, 4)):
+            continue
+
+        def _s(field):
+            vals = [qs[k].get(field) for k in (1, 2, 3, 4)]
+            return sum(v for v in vals if v is not None) if any(v is not None for v in vals) else None
+
+        rev, op, ni = _s("revenue"), _s("op_profit"), _s("net_income")
+        derived.append({
+            "year": yr, "revenue": rev, "op_profit": op, "net_income": ni,
+            "equity": None, "debt_ratio": qs[4].get("debt_ratio"),
+            "op_margin": round(op / rev * 100, 1) if (op is not None and rev) else None,
+            "_derived": True})
+    return sorted(annual + derived, key=lambda a: a["year"])
+
+
 @app.get("/api/stock/{code}")
 def api_stock(code: str):
     from datetime import datetime, timedelta
@@ -410,6 +439,7 @@ def api_stock(code: str):
         "equity": f[4], "liabilities": f[5], "debt_ratio": _r(f[6], 0),
         "op_margin": _r(f[7]),
     } for f in fins]
+    financials = _augment_annual_from_quarterly(financials, quarterly)
     return {
         "code": code, "name": name, "themes": themes, "period_returns": period_returns,
         "audit": audit, "quarterly": quarterly,
@@ -922,6 +952,7 @@ def stock_page(code: str):
     financials = [{"year": f[0], "revenue": f[1], "op_profit": f[2],
                    "net_income": f[3], "equity": f[4], "debt_ratio": _r(f[6], 0),
                    "op_margin": _r(f[7])} for f in fins]
+    financials = _augment_annual_from_quarterly(financials, quarterly)
     prices_l = [{"date": p[0], "close": p[1]} for p in prices[::2]]
     themes = _stock_theme_pairs(code)
     news = _google_news(f"{name} 주식", stock_name=name)[:10]
