@@ -203,6 +203,9 @@ th:first-child,td:first-child{{text-align:left}}
 .cat-details>.cat-body{{padding:12px 14px 14px}}
 .dimgrid{{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin:10px 0}}
 @media(max-width:560px){{.dimgrid{{grid-template-columns:1fr}}}}
+.dimwrap{{display:flex;gap:18px;align-items:center;flex-wrap:wrap;margin:8px 0}}
+.dimwrap .dimradar{{flex:0 0 auto;margin:0 auto}}
+.dimwrap .dimgrid{{flex:1;min-width:260px;margin:0}}
 .dimcard{{border:1px solid #8883;border-radius:10px;padding:12px 14px;background:#8880.06}}
 .dimhead{{font-weight:700;font-size:14.5px;display:flex;justify-content:space-between}}
 .dimstars{{color:#e0a500;letter-spacing:1px;font-size:13px}}
@@ -329,6 +332,53 @@ def _smallcap_mark(r):
             'title="시총 300억 미만 · 백테스트 미검증 참고용">[참고]</span>')
 
 
+# 4차원 레이더: 상(밸류)·우(수익성)·하(안정성)·좌(성장성). (key, 라벨, dx, dy)
+_RADAR_AXES = [("value", "밸류", 0, -1), ("profit", "수익성", 1, 0),
+               ("safety", "안정성", 0, 1), ("growth", "성장성", -1, 0)]
+
+
+def _radar_svg(series, size=200, show_values=True):
+    """4차원 별점(0~5)을 레이더(다이아몬드) 인라인 SVG로 그린다. JS 없이 SSR·드로어·비교
+    공용이고, 색을 CSS 변수로 줘서 다크/라이트 자동 대응. '건강검진' 브랜드의 시각 상징.
+    series: [(dims_dict, color_css)] — 1개=단일 종목, 2개=비교(겹쳐 그림)."""
+    # 좌우 라벨("수익성"/"성장성")이 잘리지 않게 viewBox에 가로 여백을 넉넉히 준다.
+    padx, pady = 48, 16
+    vbW, vbH = size + padx * 2, size + pady * 2
+    cx, cy = vbW / 2.0, vbH / 2.0
+    R = size * 0.32
+
+    def ring(frac):
+        return " ".join(f"{cx+dx*R*frac:.1f},{cy+dy*R*frac:.1f}" for _, _, dx, dy in _RADAR_AXES)
+
+    rings = "".join(f'<polygon points="{ring(f)}" fill="none" stroke="var(--line)" '
+                    f'stroke-width="1"/>' for f in (0.34, 0.67, 1.0))
+    spokes = "".join(f'<line x1="{cx:.1f}" y1="{cy:.1f}" x2="{cx+dx*R:.1f}" y2="{cy+dy*R:.1f}" '
+                     f'stroke="var(--line)" stroke-width="1"/>' for _, _, dx, dy in _RADAR_AXES)
+    polys = ""
+    for dims, color in series:
+        vals = {k: ((dims.get(k) or {}).get("stars") or 0) for k, _, _, _ in _RADAR_AXES}
+        pts = " ".join(f"{cx+dx*R*(vals[k]/5):.1f},{cy+dy*R*(vals[k]/5):.1f}"
+                       for k, _, dx, dy in _RADAR_AXES)
+        polys += (f'<polygon points="{pts}" fill="{color}" fill-opacity="0.18" '
+                  f'stroke="{color}" stroke-width="2"/>')
+        for k, _, dx, dy in _RADAR_AXES:
+            polys += (f'<circle cx="{cx+dx*R*(vals[k]/5):.1f}" cy="{cy+dy*R*(vals[k]/5):.1f}" '
+                      f'r="2.4" fill="{color}"/>')
+    labels = ""
+    for k, name, dx, dy in _RADAR_AXES:
+        lx, ly = cx + dx * (R + 14), cy + dy * (R + 14)
+        anchor = "middle" if dx == 0 else ("start" if dx > 0 else "end")
+        dyoff = "1em" if dy > 0 else ("-0.4em" if dy < 0 else "0.32em")
+        txt = name
+        if show_values and len(series) == 1:
+            txt = f"{name} {(series[0][0].get(k) or {}).get('stars') or 0}"
+        labels += (f'<text x="{lx:.1f}" y="{ly:.1f}" text-anchor="{anchor}" dy="{dyoff}" '
+                   f'font-size="10.5" fill="var(--dim)">{_esc(txt)}</text>')
+    return (f'<svg viewBox="0 0 {vbW:.0f} {vbH:.0f}" width="{vbW:.0f}" height="{vbH:.0f}" '
+            f'style="max-width:100%;height:auto;display:block" role="img" '
+            f'aria-label="기업 건강검진 4차원 레이더 차트">{rings}{spokes}{polys}{labels}</svg>')
+
+
 def _dims_html(dims):
     if not dims:
         return ""
@@ -340,9 +390,11 @@ def _dims_html(dims):
                   f'<div class="dimlabel">{_esc(d.get("label"))}</div>'
                   f'<p class="dimtext">{_esc(d.get("text"))}</p></div>')
     overall = dims.get("overall_text") or ""
+    radar = _radar_svg([(dims, "var(--accent)")])
     return (f'<h2>기업 건강검진 <span class="muted" style="font-size:13px;font-weight:400">'
             f'· 같은 업종·시총 내 상대 평가, 최근 연간 재무제표 기준</span></h2>'
-            f'<div class="dimgrid">{cards}</div>'
+            f'<div class="dimwrap"><div class="dimradar">{radar}</div>'
+            f'<div class="dimgrid">{cards}</div></div>'
             + (f'<p class="muted">{_esc(overall)}</p>' if overall else ""))
 
 
@@ -1212,6 +1264,11 @@ def render_compare_page(a, b, canonical):
 <p class="muted">같은 업종({_esc(sector)}) 내 시가총액 상위 종목끼리 자동으로 비교한 페이지입니다.
 최근 연간 재무제표·최신 시세 기준.</p>
 <p>{verdict_html} (같은 유니버스·업종 내 상대 비교이며, 매수·매도 추천이 아닙니다.)</p>
+<h2>건강검진 한눈에 비교</h2>
+<div style="text-align:center;margin:6px 0 2px">{_radar_svg([(dims_a, "var(--accent)"), (dims_b, "#e0894a")], size=240, show_values=False)}</div>
+<div style="text-align:center;font-size:13px;margin-bottom:10px">
+<span style="color:var(--accent);font-weight:700">■</span> {_esc(a['name'])}
+&nbsp;&nbsp;<span style="color:#e0894a;font-weight:700">■</span> {_esc(b['name'])}</div>
 <h2>건강검진 별점 비교</h2>
 <div class="wrap"><table>
 <thead><tr><th style="text-align:left">항목</th>

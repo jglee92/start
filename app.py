@@ -912,7 +912,10 @@ def stock_page(code: str):
         "debt_ratio": _r(row["debt_ratio"], 0), "div_yield": _r(row.get("div_yield"), 2),
         "marcap_eok": round(row["marcap"] / 1e8),
         "dims": row.get("dims"), "flags": row.get("flags") or [],
-        "small_cap": row.get("small_cap", False)}
+        "small_cap": row.get("small_cap", False),
+        # 건강검진 레이더 SVG를 서버에서 생성해 드로어가 그대로 주입(SSR 페이지와 동일한 그림).
+        "radar_svg": (__import__("content")._radar_svg([(row.get("dims") or {}, "var(--accent)")])
+                      if row.get("dims") else None)}
     financials = [{"year": f[0], "revenue": f[1], "op_profit": f[2],
                    "net_income": f[3], "equity": f[4], "debt_ratio": _r(f[6], 0),
                    "op_margin": _r(f[7])} for f in fins]

@@ -271,6 +271,10 @@
   h3{font-size:14px;color:var(--txt);margin:18px 0 6px;text-transform:none;font-weight:700}
   .dimgrid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:8px 0}
   @media(max-width:560px){.dimgrid{grid-template-columns:1fr}}
+  /* 드로어는 좁아서 레이더를 위에 가운데, 카드 그리드는 아래 전체폭으로 세로 배치 */
+  .dimwrap{display:flex;flex-direction:column;align-items:center;gap:6px}
+  .dimwrap .dimradar{flex:0 0 auto}
+  .dimwrap .dimgrid{width:100%;margin:6px 0 0}
   .dimcard{border:1px solid var(--line);border-radius:9px;padding:10px 12px;background:var(--panel2)}
   .dimhead{font-weight:700;font-size:13px;display:flex;justify-content:space-between;align-items:center}
   .dimstars{color:#e0a500;letter-spacing:1px;font-size:12px}
@@ -1483,14 +1487,15 @@ function auditHtml(a){
   const auditor=a.auditor?` (${a.auditor})`:'';
   return `<div class="sub">회계감사인 감사의견 <span class="${cls}" style="font-weight:700">${yr}${a.opinion}${auditor}</span>${warn}</div>`;
 }
-function dimsHtml(dims){
+function dimsHtml(dims, radarSvg){
   if(!dims)return '';
-  let h=`<h3>${ic('pulse')} 기업 건강검진 <span class="mut" style="font-weight:400;font-size:11px">업종·시총 내 상대평가, 최근 연간 재무제표 기준</span></h3><div class="dimgrid">`;
+  let h=`<h3>${ic('pulse')} 기업 건강검진 <span class="mut" style="font-weight:400;font-size:11px">업종·시총 내 상대평가, 최근 연간 재무제표 기준</span></h3>`;
+  h+='<div class="dimwrap">'+(radarSvg?`<div class="dimradar">${radarSvg}</div>`:'')+'<div class="dimgrid">';
   for(const k in DIM_META){const [iconName,label]=DIM_META[k];const d=dims[k]||{};
     h+=`<div class="dimcard"><div class="dimhead">${ic(iconName)} ${label}
       <span class="dimstars">${starsHtml(d.stars)}</span></div>
       <div class="dimlabel">${d.label||''}</div><p class="dimtext">${d.text||''}</p></div>`;}
-  h+='</div>';
+  h+='</div></div>';
   if(dims.overall_text)h+=`<p class="mut" style="font-size:12px">${dims.overall_text}</p>`;
   return h;
 }
@@ -1537,7 +1542,7 @@ async function openStock(code,fromBack){
       <div class="kpi"><div class="l">부채비율</div><div class="v">${fmt(s.debt_ratio,0)}%</div></div>
       <div class="kpi"><div class="l">배당수익률</div><div class="v">${fmt(s.div_yield,2)}%</div></div>
     </div>`;
-    html+=dimsHtml(s.dims);
+    html+=dimsHtml(s.dims, s.radar_svg);
     html+=flagsHtml(s.flags);
     html+=`<details style="margin-top:10px"><summary class="mut" style="cursor:pointer;font-size:12px">
       심화: 팩터 백분위 보기 (0~1, 높을수록 우위)</summary>`;
