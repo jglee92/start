@@ -261,6 +261,29 @@ TEMPLATES = [
     ("dont_miss", [], _t_dont_miss),
 ]
 
+# 커버 '주제 계열' — NO_REPEAT_DAYS 쿨다운을 template_id가 아니라 계열 단위로 건다.
+# earnings_extreme·earnings_split은 둘 다 사용자 눈엔 "어닝 서프라이즈"라, id로만 막으면
+# 한 계열이 이틀 연속·주 여러 번 나오는 문제가 있었음(실제 피드백). 계열로 묶어 한 번
+# 쓰면 그 계열 전체가 NO_REPEAT_DAYS 쉰다. kospi/반등/조정은 모두 '지수' 계열.
+FAMILY = {
+    "gainer_pct": "gainer",
+    "earnings_extreme": "earnings",
+    "earnings_split": "earnings",
+    "anomaly_count": "anomaly",
+    "theme_hot": "theme",
+    "us_market": "us",
+    "kospi_move": "index",
+    "rebound": "index",
+    "correction": "index",
+    "fx_move": "fx",
+    "five_things": "generic",
+    "dont_miss": "generic",
+}
+
+
+def _family(tid):
+    return FAMILY.get(tid, tid)
+
 
 def _load_history():
     if os.path.exists(HISTORY_PATH):
@@ -319,19 +342,32 @@ def pick_cover_headline(data, name_of, today_str):
     data["_trend"] = _detect_trend(data)
 
     hist = _load_history()
-    recent_ids = {h["template_id"] for h in hist if h["date"] >= _days_ago(today_str, NO_REPEAT_DAYS)}
+    cutoff = _days_ago(today_str, NO_REPEAT_DAYS)
+    # 계열 단위 쿨다운: 최근 NO_REPEAT_DAYS일 안에 쓴 template_id들의 '계열'을 모아
+    # 그 계열 전체를 후보에서 뺀다(earnings_extreme/split 형제 우회 방지).
+    recent_fams = {_family(h["template_id"]) for h in hist
+                   if h["date"] >= cutoff and h["date"] < today_str}
 
     candidates = [(tid, fill) for tid, requires, fill in TEMPLATES if _eligible(tid, requires, data)]
     if not candidates:
         candidates = [("five_things", _t_five_things)]
 
-    fresh = [(tid, fill) for tid, fill in candidates if tid not in recent_ids]
-    pool = fresh or candidates  # 전부 최근에 썼으면 그냥 후보 전체에서(순환)
+    fresh = [(tid, fill) for tid, fill in candidates if _family(tid) not in recent_fams]
+    if fresh:
+        pool = fresh
+    else:
+        # 전 계열을 최근 NO_REPEAT_DAYS일에 다 썼으면 순환하되, 최소한 '바로 직전 날'
+        # 계열만은 피해 연속 중복(어제와 같은 커버)은 막는다.
+        past = [h for h in hist if h["date"] < today_str]
+        last_fam = _family(max(past, key=lambda h: h["date"])["template_id"]) if past else None
+        pool = [(tid, fill) for tid, fill in candidates if _family(tid) != last_fam] or candidates
 
     filled = [(tid, *fill(data, f"{today_str}|{tid}")) for tid, fill in pool]  # (tid, lines, subtitle, impact)
     filled.sort(key=lambda x: x[3], reverse=True)
     tid, lines, subtitle, _impact = filled[0]
 
+    # 같은 날짜 기존 기록은 지우고(백필·재생성 시 중복 방지) 한 날 = 한 커버로 갱신.
+    hist = [h for h in hist if h["date"] != today_str]
     hist.append({"date": today_str, "template_id": tid})
     _save_history(hist)
     return lines, subtitle, tid

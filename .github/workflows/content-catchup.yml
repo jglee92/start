@@ -45,7 +45,7 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add content_out/ data/claude_api_status.json
+          git add content_out/ data/claude_api_status.json data/cover_history.json
           DATE_KST=$(TZ='Asia/Seoul' date +%Y-%m-%d)
           if git diff --staged --quiet; then
             echo "변경 없음 — 오늘치 이미 존재(정상)."
