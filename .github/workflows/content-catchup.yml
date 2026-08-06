@@ -1,0 +1,56 @@
+name: 콘텐츠 자가복구 (스케줄 누락 대비)
+
+on:
+  schedule:
+    # daily-content.yml(정규 05:45 KST 목표)이 GitHub 스케줄러 누락/지연으로 아예
+    # 안 도는 사고가 실제로 있었음(2026-08-07: 08/06 20:45 UTC 슬롯이 통째로 드롭돼
+    # 8/7 글 미생성). GitHub의 스케줄 이벤트는 부하 시 몇 시간 지연되거나 통째로
+    # 누락될 수 있는 알려진 한계라, "단일 슬롯"에 의존하면 언젠가 또 빠진다.
+    # → 정규 슬롯 이후로 하루 여러 번 재시도하는 백스톱. daily_content.py는 멱등이라
+    #   (이미 있으면/일요일/휴장일이면 즉시 스킵) 대부분의 실행은 몇 초 만에 no-op이고,
+    #   진짜 빠진 날에만 생성·커밋한다. 여러 슬롯 중 하나만 실제로 떠도 그날은 복구됨.
+    # UTC 22,01,04,07 = KST 07:00, 10:00, 13:00, 16:00 (정규 05:45 이후 4개 백스톱).
+    - cron: '0 22,1,4,7 * * *'
+  workflow_dispatch: {}
+
+# 정규 daily-content 실행이나 다른 자가복구 슬롯과 겹쳐 push 충돌 나는 걸 막는다.
+concurrency:
+  group: content-generate
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+
+jobs:
+  catchup:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: 의존성 설치
+        run: pip install -r requirements.txt
+
+      - name: 오늘치 콘텐츠 보장 (없으면 생성, 있으면 멱등 스킵)
+        env:
+          KR_DB_PATH: data/screener_deploy.db
+          SITE_BASE_URL: https://getmoneycheckup.com
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        run: python daily_content.py
+
+      - name: 변경 있으면 커밋 + 푸시 (충돌 시 rebase 후 재시도)
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add content_out/ data/claude_api_status.json
+          DATE_KST=$(TZ='Asia/Seoul' date +%Y-%m-%d)
+          if git diff --staged --quiet; then
+            echo "변경 없음 — 오늘치 이미 존재(정상)."
+          else
+            git commit -m "chore: 콘텐츠 자가복구 $DATE_KST"
+            # 다른 워크플로우가 그 사이 push했으면 non-fast-forward로 거부되므로 rebase 후 재시도
+            git push || (git pull --rebase && git push)
+          fi

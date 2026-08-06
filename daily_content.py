@@ -161,12 +161,31 @@ def _backfill_missing(today, lookback_days=6):
 
 
 def main():
+    import sys
     from datetime import datetime, timezone, timedelta
     KST = timezone(timedelta(hours=9))
     today = datetime.now(KST)
+    force = "--force" in sys.argv
+    # 과거 빠진 날 먼저 채움(자주 실행돼도 이미 있는 날은 _has_content로 건너뜀)
     _backfill_missing(today)
-    is_saturday = today.weekday() == 5  # 0=월요일 ... 5=토요일
-    if is_saturday:
+
+    # ── 오늘치: 멱등·스케줄 인지 ────────────────────────────────────────────
+    # content-catchup.yml이 하루 여러 번 이 스크립트를 돌려 '스케줄 누락'을 복구한다.
+    # 그래서 여기서 (a)콘텐츠 없는 날(일요일·평일휴장일)과 (b)이미 만든 오늘을
+    # 명시적으로 걸러, 반복 실행돼도 Claude 재호출·커밋 churn이 생기지 않게 한다.
+    wd = today.weekday()  # 0=월 … 5=토 6=일
+    if wd == 6:
+        print("[스킵] 일요일 — 데일리 콘텐츠 없는 날(정상).")
+        return
+    if wd < 5 and A._is_market_holiday(today):
+        print(f"[스킵] 휴장일({today.strftime('%Y-%m-%d')}) — 데일리 콘텐츠 없는 날(정상).")
+        return
+    if not force and _has_content(today):
+        print(f"[스킵] 오늘({today.strftime('%Y-%m-%d')}) 콘텐츠 이미 존재 — "
+              f"멱등 스킵(재생성하려면 --force).")
+        return
+
+    if wd == 5:  # 토요일 — 주간 마무리
         _main_weekly()
     else:
         _main_daily()
