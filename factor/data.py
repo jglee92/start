@@ -39,13 +39,19 @@ def ensure_prices(conn, codes, start: str, end: str, min_rows: int = 30,
     """codes 각 종목 일봉을 daily_prices 에 적재. 스레드풀+하드타임아웃(hang 방지).
     단순 row수만 보면 '최근 데이터만 있는' 종목(예: 최근 전종목 확장으로 새로 들어와
     최근 시세만 쌓인 소형주)을 이미 커버된 걸로 오판해 과거(start) 데이터를 영영
-    못 채우는 문제가 실제로 있었음 — MIN(date)가 start를 못 따라잡으면 대상에 포함."""
+    못 채우는 문제가 실제로 있었음 — MIN(date)가 start를 못 따라잡으면 대상에 포함.
+    단, start(달력일)가 휴장일이면 첫 거래일이 며칠 뒤이므로, GRACE_DAYS 만큼
+    여유를 둬 '이미 완전한' 캐시를 매 실행마다 재수집하는 오판을 막는다."""
     from concurrent.futures import ThreadPoolExecutor
+    from datetime import datetime, timedelta
+    GRACE_DAYS = 14   # start가 신정 연휴 등 휴장이면 첫 거래일이 뒤로 밀림
+    cutoff = (datetime.fromisoformat(start) +
+              timedelta(days=GRACE_DAYS)).strftime("%Y-%m-%d")
     todo = []
     for c in codes:
         n, min_date = conn.execute(
             "SELECT COUNT(*), MIN(date) FROM daily_prices WHERE code=?", (c,)).fetchone()
-        if n < min_rows or min_date is None or min_date > start:
+        if n < min_rows or min_date is None or min_date > cutoff:
             todo.append(c)
     print(f"가격 수집: 대상 {len(todo)}/{len(codes)}종목 (workers={workers})",
           flush=True)
