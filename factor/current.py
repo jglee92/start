@@ -157,14 +157,18 @@ def compute_ranking(conn, master=None, asof=None, ref_date=None):
     for i, r in enumerate(rows, 1):
         r["rank"] = i
     from factor.interpret import (dimension_grades, sector_averages, anomaly_flags,
-                                   quarterly_anomaly_flags)
+                                   quarterly_anomaly_flags, stock_narrative)
     sec_avg = sector_averages(rows)
+    total = len(rows)
     for r in rows:
         r["dims"] = dimension_grades(r, sec_avg)
         flags = anomaly_flags(r, r.pop("_pf", None))
         qseries = db.get_quarterly_series(conn, r["code"])
         flags += quarterly_anomaly_flags(qseries)
         r["flags"] = flags
+        # 종합 해설(강·약점+리스크까지) — dims·flags가 다 붙은 뒤 생성해 overall_text 교체.
+        # SSR 상세·드로어가 이미 overall_text를 렌더하므로 양쪽에 자동 반영된다.
+        r["dims"]["overall_text"] = stock_narrative(r, total)
     return rows
 
 

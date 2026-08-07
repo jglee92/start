@@ -238,3 +238,75 @@ def _overall_text(r, dims):
     if worst[0] and worst[0] != best[0]:
         parts.append(f"{name[worst[0]]}은 상대적으로 약점")
     return " · ".join(parts) + " (같은 유니버스 내 상대 비교)." if parts else ""
+
+
+_DIM_KO = {"value": "밸류에이션", "profit": "수익성", "safety": "안정성", "growth": "성장성"}
+
+
+def _dim_hook(dim, r):
+    """차원별 대표 수치 한 조각(강·약점 문장에 곁들임)."""
+    if dim == "value" and r.get("per") is not None:
+        return f"PER {r['per']:.1f}배"
+    if dim == "profit" and r.get("roe") is not None:
+        return f"ROE {r['roe']:.1f}%"
+    if dim == "safety" and r.get("debt_ratio") is not None:
+        return f"부채비율 {r['debt_ratio']:.0f}%"
+    if dim == "growth" and r.get("rev_growth") is not None:
+        return f"매출 {r['rev_growth']:+.0f}%"
+    return ""
+
+
+def stock_narrative(r, total=None):
+    """종목 종합 해설(템플릿·무료·근거 기반) — 건강점수·순위, 강·약점(실수치), 성장추이,
+    그리고 가장 중요한 리스크 신호를 사람이 읽는 2~4문장으로 종합한다. dims·flags가 r에
+    붙은 뒤 호출한다. 예측·매매 추천이 아니라 '지금 데이터로 이 회사가 어떤 상태인가'의 요약."""
+    dims = r.get("dims") or {}
+    sents = []
+
+    # 1) 전체 위치 — 건강점수 + 순위(상위/하위)
+    score, rank = r.get("score"), r.get("rank")
+    if score is not None:
+        s = f"건강점수 {score:.0f}점"
+        if rank and total:
+            pct = rank / total * 100
+            band = (f"상위 {max(1, round(pct))}%" if pct <= 50
+                    else f"하위 {max(1, round(100 - pct))}%")
+            s += f"으로 유니버스 {total}개 중 {rank}위({band})"
+        sents.append(s + "입니다.")
+
+    # 2) 강점·약점 — '진짜' 강(★4↑)·약(★2↓)만 라벨. 상대 최대/최소를 억지로 붙이면
+    # 극단 종목에서 'PER 5054배가 강점'처럼 모순된 수치가 나옴. 별점으로 게이트하면
+    # 붙는 수치도 자동으로 말이 된다(강점=진짜 좋은 수치, 약점=진짜 나쁜 수치).
+    graded = {k: v for k, v in dims.items()
+              if isinstance(v, dict) and v.get("stars")}
+    strong = sorted((k for k, v in graded.items() if v["stars"] >= 4),
+                    key=lambda k: -graded[k]["stars"])
+    weak = sorted((k for k, v in graded.items() if v["stars"] <= 2),
+                  key=lambda k: graded[k]["stars"])
+    if strong:
+        hook = _dim_hook(strong[0], r)
+        sents.append(f"{_DIM_KO[strong[0]]}이 강점" + (f"({hook})" if hook else "") + "입니다.")
+    if weak:
+        lead = "반면 " if strong else ""
+        sents.append(f"{lead}{_DIM_KO[weak[0]]}은 약한 편입니다.")
+    if not strong and not weak and score is not None:
+        sents.append("특별히 튀는 강·약점 없이 지표가 고른 편입니다.")
+
+    # 3) 성장 추이(한 조각) — 강·약점에서 이미 성장을 다뤘으면 생략
+    g = r.get("rev_growth")
+    if g is not None and not any("성장" in s for s in sents):
+        sents.append(f"최근 매출은 전년 대비 {g:+.0f}%입니다.")
+
+    # 4) 리스크 — 가장 심각한 신호 하나를 앞세운다(사용자가 꼭 확인해야 할 것)
+    flags = r.get("flags") or []
+    reds = [f for f in flags if f.get("emoji") == "🔴"]
+    yellows = [f for f in flags if f.get("emoji") == "🟡"]
+    if reds:
+        labels = ", ".join(dict.fromkeys(f["label"] for f in reds))
+        sents.append(f"다만 ‘{labels}’ 같은 심각한 신호가 있어 반드시 원인을 확인해야 합니다.")
+    elif yellows:
+        sents.append(f"참고로 ‘{yellows[0]['label']}’ 신호가 있습니다.")
+
+    if not sents:
+        return ""
+    return " ".join(sents) + " (같은 유니버스·업종 내 상대 비교 기준입니다.)"

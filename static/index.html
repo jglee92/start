@@ -227,6 +227,9 @@
   .score{font-weight:700;color:var(--accent)}
   .pos{color:var(--up)} .neg{color:var(--down)}
   .mut{color:var(--dim)}
+  .summary-box{border:1px solid var(--line);border-left:3px solid var(--accent);border-radius:8px;padding:10px 13px;margin:8px 0 10px;line-height:1.6}
+  .summary-box .summary-t{font-weight:700;font-size:12.5px;margin-bottom:4px;color:var(--accent)}
+  .summary-box p{margin:0;font-size:13.5px}
   .footnote{font-size:12px}
   /* SSR 조각(테마·월간·업종리포트 등)에 포함된 footer 면책문구 - SPA에 삽입될 때도 작게 */
   footer{margin-top:24px;padding-top:14px;border-top:1px solid var(--line);font-size:11.5px;color:var(--dim)}
@@ -1494,13 +1497,13 @@ function auditHtml(a){
 function dimsHtml(dims, radarSvg){
   if(!dims)return '';
   let h=`<h3>${ic('pulse')} 기업 건강검진 <span class="mut" style="font-weight:400;font-size:11px">업종·시총 내 상대평가, 최근 연간 재무제표 기준</span></h3>`;
+  if(dims.overall_text)h+=`<div class="summary-box"><div class="summary-t">${ic('document')} 종합 해설</div><p>${dims.overall_text}</p></div>`;
   h+='<div class="dimwrap">'+(radarSvg?`<div class="dimradar">${radarSvg}</div>`:'')+'<div class="dimgrid">';
   for(const k in DIM_META){const [iconName,label]=DIM_META[k];const d=dims[k]||{};
     h+=`<div class="dimcard"><div class="dimhead">${ic(iconName)} ${label}
       <span class="dimstars">${starsHtml(d.stars)}</span></div>
       <div class="dimlabel">${d.label||''}</div><p class="dimtext">${d.text||''}</p></div>`;}
   h+='</div></div>';
-  if(dims.overall_text)h+=`<p class="mut" style="font-size:12px">${dims.overall_text}</p>`;
   return h;
 }
 let drawerHistory=[], drawerCurrent=null;

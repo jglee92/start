@@ -215,6 +215,9 @@ th:first-child,td:first-child{{text-align:left}}
 .dimstars{{color:#e0a500;letter-spacing:1px;font-size:13px}}
 .dimlabel{{font-size:12.5px;color:#4a5563;margin:2px 0 4px}}
 .dimtext{{font-size:13.5px;margin:0;line-height:1.6}}
+.summary-box{{border:1px solid #8883;border-left:3px solid var(--accent);border-radius:8px;padding:11px 14px;margin:10px 0 8px;line-height:1.65}}
+.summary-box .summary-t{{font-weight:700;font-size:13px;margin-bottom:4px;color:var(--accent)}}
+.summary-box p{{margin:0;font-size:14px}}
 footer{{margin-top:32px;padding-top:16px;border-top:1px solid #8883;font-size:11.5px;color:#5a6472}}
 </style></head><body>
 <div class="top"><a href="/">← 대시보드로</a></div>
@@ -395,11 +398,13 @@ def _dims_html(dims):
                   f'<p class="dimtext">{_esc(d.get("text"))}</p></div>')
     overall = dims.get("overall_text") or ""
     radar = _radar_svg([(dims, "var(--accent)")])
+    overall_html = (f'<div class="summary-box"><div class="summary-t">{_ic("document")} 종합 해설</div>'
+                    f'<p>{_esc(overall)}</p></div>') if overall else ""
     return (f'<h2>기업 건강검진 <span class="muted" style="font-size:13px;font-weight:400">'
             f'· 같은 업종·시총 내 상대 평가, 최근 연간 재무제표 기준</span></h2>'
-            f'<div class="dimwrap"><div class="dimradar">{radar}</div>'
-            f'<div class="dimgrid">{cards}</div></div>'
-            + (f'<p class="muted">{_esc(overall)}</p>' if overall else ""))
+            + overall_html
+            + f'<div class="dimwrap"><div class="dimradar">{radar}</div>'
+            f'<div class="dimgrid">{cards}</div></div>')
 
 
 def _bars_svg(pairs, div=1e8):
