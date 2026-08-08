@@ -271,7 +271,9 @@ def stock_narrative(r, total=None):
             pct = rank / total * 100
             band = (f"상위 {max(1, round(pct))}%" if pct <= 50
                     else f"하위 {max(1, round(100 - pct))}%")
-            s += f"으로 유니버스 {total}개 중 {rank}위({band})"
+            # 절대 순위(N위)는 거래정지 제외 후 재부여되므로 표시 순위와 어긋날 수 있어
+            # 백분위 밴드만 쓴다(밴드는 정지 1~2개 제외로 거의 변하지 않음).
+            s += f"으로 유니버스 {total}개 중 {band} 수준"
         sents.append(s + "입니다.")
 
     # 2) 강점·약점 — '진짜' 강(★4↑)·약(★2↓)만 라벨. 상대 최대/최소를 억지로 붙이면

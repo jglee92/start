@@ -148,7 +148,13 @@ def get_ranking():
     halted = get_halted_codes()
     if not halted:
         return _cache["ranking"]
-    return [r for r in _cache["ranking"] if r["code"] not in halted]
+    # 거래정지 종목 제외 후 순위를 1..N으로 다시 매긴다 — 안 그러면 상위 종목이 정지일 때
+    # 표시 순위에 구멍이 생김(예: 1위가 정지면 화면이 2위부터 시작해 '1등이 사라진' 것처럼
+    # 보임). 캐시 원본(_cache["ranking"])은 훼손하지 않도록 순위가 바뀌는 행만 얕게 복사.
+    out = []
+    for i, r in enumerate((x for x in _cache["ranking"] if x["code"] not in halted), 1):
+        out.append(r if r["rank"] == i else {**r, "rank": i})
+    return out
 
 
 def get_halted_codes():
