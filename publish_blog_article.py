@@ -54,6 +54,44 @@ def save_state(st):
         json.dump(st, f, ensure_ascii=False, indent=1)
 
 
+def _write_text(path, text):
+    with open(path, "w", encoding="utf-8") as f:
+        f.write(text)
+
+
+def _naverize(text):
+    """네이버 블로그 붙여넣기용으로 내부 스캐폴딩을 정리한다(원본 파일은 안 건드림):
+    - '[카테고리: ...]' 내부 메타 줄 제거
+    - '제목:' 라벨 제거 → 제목 텍스트만 첫 줄로(네이버 제목칸에 바로 복사)
+    - 제목 아래 가로 구분선(─/=/- 반복) 제거
+    본문·꼬리(CTA·면책·해시태그)는 그대로 둔다."""
+    out = []
+    for ln in text.split("\n"):
+        s = ln.strip()
+        if s.startswith("[카테고리:"):
+            continue
+        if s.startswith("제목:"):
+            out.append(s[len("제목:"):].strip())
+            continue
+        if s.startswith("추천 태그"):                  # 스캐폴딩 라벨 제거(해시태그 줄은 유지)
+            continue
+        if len(s) >= 5 and set(s) <= set("─—-=_ "):   # 가로 구분선 줄
+            continue
+        out.append(ln)
+    # 연속 빈 줄은 1개로 축소(구분선·라벨 제거로 생긴 빈 줄 덩어리 정리)
+    collapsed, blank = [], False
+    for ln in out:
+        if ln.strip():
+            collapsed.append(ln)
+            blank = False
+        elif not blank:
+            collapsed.append("")
+            blank = True
+    while collapsed and not collapsed[0].strip():      # 앞쪽 빈 줄 정리
+        collapsed.pop(0)
+    return "\n".join(collapsed).strip() + "\n"
+
+
 def main():
     today = datetime.now(KST).date()
     st = load_state()
@@ -92,7 +130,10 @@ def main():
     day_dir = os.path.join(BASE, "content_out", today.strftime("%Y-%m-%d"))
     os.makedirs(day_dir, exist_ok=True)
     dst = os.path.join(day_dir, f"교육글_{os.path.basename(nxt)}")
-    shutil.copyfile(src, dst)
+    # 네이버 붙여넣기용으로 내부 스캐폴딩 정리 후 복사(원본 blog_articles/*.txt는
+    # 그대로 둬서 사이트 /guides 파서엔 영향 없음).
+    with open(src, encoding="utf-8") as f:
+        _write_text(dst, _naverize(f.read()))
 
     st["last_published"] = today.strftime("%Y-%m-%d")
     st.setdefault("published", []).append(nxt)
