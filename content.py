@@ -438,8 +438,9 @@ def _bars_svg(pairs, div=1e8):
         op = "1" if i == n - 1 else "0.5"
         bars += (f'<rect x="{cxb-bw/2:.1f}" y="{top:.1f}" width="{bw:.1f}" '
                  f'height="{max(bot-top,1):.1f}" rx="1.5" fill="{color}" fill-opacity="{op}"/>')
-        ly = top - 3 if v >= 0 else bot + 10
-        labels += (f'<text x="{cxb:.1f}" y="{ly:.1f}" text-anchor="middle" font-size="9" '
+        # 값 라벨은 막대 위쪽 끝(top) 기준으로 통일 — 음수도 0선 바로 위에 놓여, 예전처럼
+        # 적자 막대가 길 때 라벨이 바닥의 연도 라벨과 겹쳐 깨지던 문제를 없앰(부호로 구분).
+        labels += (f'<text x="{cxb:.1f}" y="{top-3:.1f}" text-anchor="middle" font-size="9" '
                    f'fill="var(--dim)">{round(v):,}</text>')
     zline = (f'<line x1="6" y1="{zeroY:.1f}" x2="{W-6}" y2="{zeroY:.1f}" '
              f'stroke="var(--line)" stroke-width="1"/>')
