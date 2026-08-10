@@ -1358,7 +1358,8 @@ def render_compare_page(a, b, canonical):
 """
     title = f"{a['name']} vs {b['name']} 비교 — PER·PBR·ROE·건강점수"
     desc = f"{a['name']}과 {b['name']}의 PER·PBR·ROE·부채비율·배당수익률·건강점수를 비교합니다."
-    return layout(f"{title} | 한국주식", desc, canonical, body, show_subscribe=False)
+    return layout(f"{title} | 한국주식", desc, canonical, body, show_subscribe=False,
+                  noindex=True)
 
 
 def render_compare_index(pairs, canonical):
@@ -1385,7 +1386,8 @@ def render_compare_index(pairs, canonical):
 {cards_html}
 """
     desc = "같은 업종 라이벌 종목끼리 PER·PBR·ROE·부채비율·건강점수를 비교하는 페이지 모음."
-    return layout("종목 비교 — 라이벌 종목 재무·밸류에이션 비교", desc, canonical, body)
+    return layout("종목 비교 — 라이벌 종목 재무·밸류에이션 비교", desc, canonical, body,
+                  noindex=True)
 
 
 # ── 백테스트 방법론 딥다이브 ────────────────────────────────────────────────

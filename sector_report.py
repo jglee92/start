@@ -102,7 +102,7 @@ def render_sector_report(sector_name, stats, market_avg, canonical):
 """
     desc = f"{sector_name} 업종의 평균 PER·PBR·ROE·부채비율과 저평가·우량 종목 TOP10 밸류에이션 분석."
     return layout(f"{sector_name} 업종 밸류에이션 리포트 — 저평가·우량 종목 분석",
-                  desc, canonical, body, show_subscribe=False)
+                  desc, canonical, body, show_subscribe=False, noindex=True)
 
 
 def render_sector_index(rk, canonical):
@@ -126,4 +126,4 @@ def render_sector_index(rk, canonical):
             f'<p class="muted footnote">데이터: 코스피·코스닥 전 종목 유니버스 기준(시총 300억 미만은 참고용).</p>')
     return layout("업종별 밸류에이션 리포트 전체 — 저평가·우량 종목 분석",
                   "반도체·2차전지·바이오 등 16개 업종의 평균 밸류에이션과 저평가·우량 종목을 "
-                  "정리한 업종별 리포트 목록.", canonical, body, show_subscribe=False)
+                  "정리한 업종별 리포트 목록.", canonical, body, show_subscribe=False, noindex=True)

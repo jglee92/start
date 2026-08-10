@@ -2453,23 +2453,20 @@ def sitemap():
     from datetime import datetime
     today = datetime.now().strftime("%Y-%m-%d")
     from glossary import TERMS
-    from factor.sectors import SLUGS
+    # /sector-report·/compare 는 2026-08 애드센스 재신청 대비로 noindex 처리 —
+    # 업종평균·종목비교는 사실상 같은 템플릿에 숫자만 바뀌는 자동 페이지라 "low value
+    # content" 신호가 될 수 있어, 검색 색인(sitemap 포함)에서 빼고 사이트 내 이용만 유지.
     urls = [("/", "daily", "1.0"), ("/insights", "daily", "0.9"),
             ("/weekly", "weekly", "0.9"),
             ("/anomaly-report", "weekly", "0.8"), ("/audit-watch", "daily", "0.8"),
             ("/learn", "monthly", "0.8"), ("/guides", "weekly", "0.8"),
-            ("/sector-report", "monthly", "0.8"), ("/monthly", "monthly", "0.8"),
-            ("/earnings-report", "daily", "0.8"), ("/compare", "weekly", "0.7"),
+            ("/monthly", "monthly", "0.8"),
+            ("/earnings-report", "daily", "0.8"),
             ("/themes-index", "weekly", "0.7"), ("/about", "monthly", "0.5"),
             ("/backtest", "monthly", "0.8"), ("/sector-rotation-review", "weekly", "0.8")]
     urls += [(f"/insights/{d}", "monthly", "0.8") for d in _insight_dates()]
     urls += [(f"/guides/{urllib.parse.quote(e['slug'])}", "monthly", "0.7") for e in _guides_entries()]
     urls += [(f"/learn/{slug}", "monthly", "0.7") for slug in TERMS]
-    urls += [(f"/sector-report/{slug}", "monthly", "0.7") for slug in SLUGS.values()]
-    # /compare/{code1}/{code2}는 어떤 조합이든 렌더링되는 범용 라우트지만(검색으로 고른
-    # 조합도 항상 동작), sitemap엔 업종+시총 기반 자동 큐레이션 쌍만 노출한다(전체 조합은
-    # 수십만 개라 sitemap에 다 넣는 게 오히려 스팸성으로 보일 수 있음).
-    urls += [(f"/compare/{a['code']}/{b['code']}", "monthly", "0.7") for a, b in _compare_pairs()]
     parts = [f"<url><loc>{BASE_URL}{p}</loc><lastmod>{today}</lastmod>"
              f"<changefreq>{cf}</changefreq><priority>{pr}</priority></url>"
              for p, cf, pr in urls]
