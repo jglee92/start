@@ -26,5 +26,9 @@
  {
   "date": "2026-07-28",
   "template_id": "earnings_extreme"
+ },
+ {
+  "date": "2026-08-13",
+  "template_id": "kospi_move"
  }
 ]

@@ -1,13 +1,20 @@
 {
- "total_calls": 35,
- "total_success": 34,
- "total_fallbacks": 1,
+ "total_calls": 37,
+ "total_success": 35,
+ "total_fallbacks": 2,
  "by_reason": {
-  "no_api_key": 1
+  "no_api_key": 1,
+  "other": 1
  },
- "last_success": "2026-08-11T21:30:26.266105+00:00",
- "last_fallback": "2026-07-27T23:09:28.108828+00:00",
+ "last_success": "2026-08-12T21:29:54.379515+00:00",
+ "last_fallback": "2026-08-12T21:29:58.202865+00:00",
  "recent_failures": [
+  {
+   "time": "2026-08-12T21:29:58.202865+00:00",
+   "script": "generate_kr_card_copy",
+   "reason": "other",
+   "status_code": null
+  },
   {
    "time": "2026-07-27T23:09:28.108828+00:00",
    "script": "generate_kr_card_copy",
