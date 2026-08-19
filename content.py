@@ -1189,6 +1189,10 @@ _GUIDE_RELATED = {
     "재무제표실전": [("/anomaly-report", "재무 이상신호 리포트"),
                      ("/audit-watch", "감사의견 주의 종목")],
     "투자기초기": [("/", "종목 랭킹·건강점수 보기")],
+    "분기실적읽기": [("/earnings-report", "분기 실적 발표 리포트"),
+                     ("/anomaly-report", "재무 이상신호 리포트")],
+    "업종테마비교": [("/sector-rotation-review", "섹터 로테이션 리뷰"),
+                     ("/themes-index", "테마별 현황")],
 }
 
 
