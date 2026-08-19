@@ -110,14 +110,52 @@ def _slug(topic):
     return s[:80]
 
 
+def _folders_in_order(lines):
+    """topics.txt에 등장하는 폴더(카테고리)를 최초 등장 순서로, 중복 없이."""
+    seen, order = set(), []
+    for line in lines:
+        if "|" not in line:
+            continue
+        folder = line.split("|", 1)[0].strip()
+        if folder not in seen:
+            seen.add(folder)
+            order.append(folder)
+    return order
+
+
 def _next_topic(st):
+    """topics.txt에서 다음 주제를 고른다. topics.txt는 보통 카테고리별로 통째로
+    블록을 써 내려가는 방식이라(자연스러운 저작 흐름), 예전의 단순 top-to-bottom
+    선택은 한 카테고리 블록을 다 쓸 때까지(몇 주씩) 그 카테고리만 계속 나오는
+    문제가 있었다(실제로 2026-08에 '리스크신호'가 7편 연속 발행됨 — 사용자 피드백).
+    folder_rotation_idx로 카테고리를 순환시켜 매번 다른 카테고리를 우선한다. 새
+    카테고리를 topics.txt에 블록으로 추가만 해도 코드 변경 없이 자동으로 순환에
+    들어온다(확장성) — 특정 카테고리가 소진되면 자동으로 건너뛰고 다음 순번으로."""
+    lines = _load_lines(TOPICS_PATH)
     used = set(st.get("generated_topics", []))
-    for line in _load_lines(TOPICS_PATH):
+
+    by_folder = {}
+    for line in lines:
         if "|" not in line:
             continue
         folder, topic = (x.strip() for x in line.split("|", 1))
         key = f"{folder}|{topic}"
-        if key not in used:
+        if key in used:
+            continue
+        by_folder.setdefault(folder, []).append((topic, key))
+
+    all_folders = _folders_in_order(lines)
+    if not all_folders or not by_folder:
+        return None
+
+    n = len(all_folders)
+    start = st.get("folder_rotation_idx", 0) % n
+    for step in range(n):
+        idx = (start + step) % n
+        folder = all_folders[idx]
+        if folder in by_folder:
+            topic, key = by_folder[folder][0]
+            st["folder_rotation_idx"] = (idx + 1) % n
             return folder, topic, key
     return None
 
