@@ -2,11 +2,12 @@ name: 에버그린 블로그 글 발행 (3일 1편)
 
 on:
   schedule:
-    # 매일 UTC 20:30 = KST 05:30. 매일 돌지만 publish_blog_article.py가 3일 간격을
-    # 스스로 게이트하므로 실제 발행은 3일에 1편. daily-content.yml(05:45 KST 목표)보다
-    # 조금 먼저 돌려서, 아침 sync_content.bat(07:00/07:20 KST)가 받아가기 전에 커밋되게
-    # 한다. 교육글은 시의성이 없어 휴장일·주말에도 발행 OK라 요일 제한 없이 매일(*).
-    - cron: '30 20 * * *'
+    # 매일 UTC 19:30 = KST 04:30. 매일 돌지만 publish_blog_article.py가 3일 간격을
+    # 스스로 게이트하므로 실제 발행은 3일에 1편. daily-content.yml(04:45 KST 목표)보다
+    # 조금 먼저 돌려서, 아침 sync_content.bat(2026-08부터 06:00/06:20 KST로 당김)가
+    # 받아가기 전에 커밋되게 한다. 교육글은 시의성이 없어 휴장일·주말에도 발행 OK라
+    # 요일 제한 없이 매일(*).
+    - cron: '30 19 * * *'
   workflow_dispatch: {}
 
 permissions:
