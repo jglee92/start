@@ -582,10 +582,32 @@ def _name_of(code):
 # 페이지(/t/{no})에 했던 것과 같은 패턴(noindex,follow + sitemap 제외, 사용자 열람은
 # 그대로)을 적용한다. 3개년 이상 재무 연혁 = 진짜 트렌드를 보여줄 만한 종목으로 간주.
 MIN_FIN_YEARS_FOR_INDEX = 3
+# 2026-08 애드센스 재반려("가치가 별로 없는 콘텐츠") — 위 3년 기준만으론 167개가
+# 남아 여전히 sitemap의 60%를 차지, 오리지널 콘텐츠(가이드·인사이트·용어 합쳐 112개)
+# 보다 많았다. 재무연혁 기준(품질 게이트)은 유지하되, 그중에서도 실제 검색수요가
+# 있는 상위 종목(시가총액 기준 — "삼성전자 PER"처럼 검색되는 건 대형주지 소형주가
+# 아님)만 색인하도록 한 번 더 좁힌다. 나머지는 noindex,follow로 열람은 그대로 두고
+# 색인만 제외해, 사이트 색인 구성을 오리지널 콘텐츠 중심으로 확실히 뒤집는다.
+MAX_INDEXED_STOCKS = 40
 
 
-def _stock_index_worthy(fin_year_count):
-    return fin_year_count >= MIN_FIN_YEARS_FOR_INDEX
+def _indexed_stock_codes():
+    """색인 대상 종목 코드 집합(캐시) — 재무연혁 MIN_FIN_YEARS_FOR_INDEX년 이상 중
+    시가총액 상위 MAX_INDEXED_STOCKS개만. api_refresh()에서 함께 무효화된다."""
+    if _cache.get("indexed_codes") is None:
+        conn = _conn()
+        fin_year_counts = dict(conn.execute(
+            "SELECT code, COUNT(*) FROM financials GROUP BY code").fetchall())
+        conn.close()
+        eligible = [r for r in get_ranking()
+                    if fin_year_counts.get(r["code"], 0) >= MIN_FIN_YEARS_FOR_INDEX]
+        eligible.sort(key=lambda r: r["marcap"], reverse=True)
+        _cache["indexed_codes"] = {r["code"] for r in eligible[:MAX_INDEXED_STOCKS]}
+    return _cache["indexed_codes"]
+
+
+def _stock_index_worthy(code):
+    return code in _indexed_stock_codes()
 
 
 @app.get("/api/sectors")
@@ -627,6 +649,7 @@ def api_refresh():
     _cache["sectors"] = None
     _cache["theme_perf"] = None
     _cache["theme_groups"] = None
+    _cache["indexed_codes"] = None
     _cache["asof"] = None
     _cache["halted_page"] = None   # 거래정지 페이지 조립 캐시도 무효화(데이터 갱신 반영)
     _cache["halted_page_ts"] = None
@@ -965,7 +988,7 @@ def stock_page(code: str):
     disclosures = api_disclosures(code).get("items", [])
     return render_stock_page(code, name, summary, financials, prices_l, news,
                              themes, disclosures, period_returns, f"{BASE_URL}/s/{code}",
-                             audit, quarterly, noindex=not _stock_index_worthy(len(fins)))
+                             audit, quarterly, noindex=not _stock_index_worthy(code))
 
 
 def _weekly_ctx():
@@ -2475,15 +2498,12 @@ def sitemap():
     # "부가가치 없는 자동생성 콘텐츠" 지적과 맞물림), content.py::render_theme_page에서도
     # noindex,follow를 짝지어 붙였다. 페이지 자체는 그대로 열람 가능(사용자 기능 무손실).
     # 개별 종목 페이지(/s/{code}) — 실제 검색어("삼성전자 PER" 등)에 대응하는 SSR
-    # 랜딩페이지라 색인 가치가 큼. 다만 재무 연혁이 MIN_FIN_YEARS_FOR_INDEX 미만인
-    # 신규 소형주(전종목 확장으로 늘어난 1개년치 종목들)는 얇은 페이지라 제외한다
-    # (stock_page() 라우트의 noindex 처리와 동일 기준 — 위 테마페이지와 같은 패턴).
-    conn = _conn()
-    fin_year_counts = dict(conn.execute(
-        "SELECT code, COUNT(*) FROM financials GROUP BY code").fetchall())
-    conn.close()
+    # 랜딩페이지라 색인 가치가 있지만, 재무연혁 게이트만으론 여전히 다수(167개)가
+    # 남아 sitemap을 지배한다(MAX_INDEXED_STOCKS 주석 참고). 시가총액 상위만 색인
+    # (stock_page() 라우트의 noindex 처리와 동일 기준).
+    indexed = _indexed_stock_codes()
     for r in get_ranking():
-        if not _stock_index_worthy(fin_year_counts.get(r["code"], 0)):
+        if r["code"] not in indexed:
             continue
         parts.append(f"<url><loc>{BASE_URL}/s/{r['code']}</loc><lastmod>{today}</lastmod>"
                      f"<changefreq>daily</changefreq><priority>0.7</priority></url>")
