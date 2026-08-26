@@ -13,7 +13,7 @@
 # https://adfit.kakao.com 에서 사이트 등록 → 광고단위 발급 후 ID만 넣으면 활성화.
 # 정확한 임베드 스니펫은 대시보드에서 발급받은 원본으로 content.py::_kakao_adfit_html()의
 # 것과 대조해 확인할 것(광고 네트워크 임베드 포맷은 공지 없이 바뀔 수 있음).
-KAKAO_ADFIT_UNIT_ID = None   # 예: "DAN-xxxxxxxxxxxxxxxx"
+KAKAO_ADFIT_UNIT_ID = "DAN-QNL9qL7KbvJGtKmm"   # 2026-08-26 발급, 승인됨(매체: 머니체크업)
 KAKAO_ADFIT_WIDTH = 300
 KAKAO_ADFIT_HEIGHT = 250
 

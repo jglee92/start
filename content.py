@@ -92,8 +92,8 @@ def _fmt(v, nd=1):
 
 def _kakao_adfit_html():
     """카카오애드핏 배너 — monetization_config.KAKAO_ADFIT_UNIT_ID가 비어있으면
-    빈 문자열(승인 전 죽은 광고영역 노출 방지). 스니펫 포맷은 애드핏 대시보드
-    발급 코드 기준(공지 없이 바뀔 수 있어 실제 적용 전 대조 확인 권장)."""
+    빈 문자열(승인 전 죽은 광고영역 노출 방지). 스니펫은 2026-08-26 실제 발급 코드로
+    대조 확인함(CDN이 t1.daumcdn.net→t1.kakaocdn.net으로 바뀌어 있었음)."""
     uid = MON.KAKAO_ADFIT_UNIT_ID
     if not uid:
         return ""
@@ -103,7 +103,7 @@ def _kakao_adfit_html():
             f'data-ad-width="{MON.KAKAO_ADFIT_WIDTH}" '
             f'data-ad-height="{MON.KAKAO_ADFIT_HEIGHT}"></ins>'
             f'<script type="text/javascript" '
-            f'src="//t1.daumcdn.net/kas/static/ba.min.js" async></script></div>')
+            f'src="//t1.kakaocdn.net/kas/static/ba.min.js" async></script></div>')
 
 
 def _affiliate_cta_html():
