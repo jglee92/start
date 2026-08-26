@@ -10,6 +10,8 @@ import html
 import json
 from urllib.parse import urlsplit
 
+import monetization_config as MON
+
 
 def _esc(s):
     return html.escape(str(s if s is not None else ""))
@@ -86,6 +88,42 @@ def _fmt(v, nd=1):
         return f"{float(v):.{nd}f}"
     except (TypeError, ValueError):
         return "–"
+
+
+def _kakao_adfit_html():
+    """카카오애드핏 배너 — monetization_config.KAKAO_ADFIT_UNIT_ID가 비어있으면
+    빈 문자열(승인 전 죽은 광고영역 노출 방지). 스니펫 포맷은 애드핏 대시보드
+    발급 코드 기준(공지 없이 바뀔 수 있어 실제 적용 전 대조 확인 권장)."""
+    uid = MON.KAKAO_ADFIT_UNIT_ID
+    if not uid:
+        return ""
+    return (f'<div style="text-align:center;margin:18px 0">'
+            f'<ins class="kakao_ad_area" style="display:none;" '
+            f'data-ad-unit="{_esc(uid)}" '
+            f'data-ad-width="{MON.KAKAO_ADFIT_WIDTH}" '
+            f'data-ad-height="{MON.KAKAO_ADFIT_HEIGHT}"></ins>'
+            f'<script type="text/javascript" '
+            f'src="//t1.daumcdn.net/kas/static/ba.min.js" async></script></div>')
+
+
+def _affiliate_cta_html():
+    """증권사 제휴(CPA) 링크 CTA — monetization_config.BROKERAGE_AFFILIATE_LINKS가
+    비어있으면 빈 문자열. 승인된 링크가 채워지는 즉시 가이드·종목상세에 자동 노출."""
+    links = MON.BROKERAGE_AFFILIATE_LINKS
+    if not links:
+        return ""
+    btns = "".join(
+        f'<a href="{_esc(v["url"])}" target="_blank" rel="noopener sponsored" '
+        f'style="display:inline-block;padding:8px 14px;margin:4px 6px 0 0;'
+        f'border-radius:7px;background:var(--accent);color:#fff;font-size:13px;'
+        f'font-weight:600;text-decoration:none">{_esc(v["label"])} →</a>'
+        for v in links.values())
+    return (f'<div style="border:1px solid var(--line);border-radius:10px;'
+            f'padding:12px 15px;margin:18px 0 0">'
+            f'<div style="font-size:13px;color:var(--dim);margin-bottom:2px">'
+            f'이 정보로 투자를 시작하신다면</div>{btns}'
+            f'<div style="font-size:11px;color:var(--dim);margin-top:8px">'
+            f'제휴 링크로, 계좌 개설 시 머니체크업에 소정의 수수료가 지급될 수 있습니다.</div></div>')
 
 
 def layout(title, desc, canonical, body, show_subscribe=True, noindex=False, extra_head=""):
@@ -222,6 +260,7 @@ footer{{margin-top:32px;padding-top:16px;border-top:1px solid #8883;font-size:11
 </style></head><body>
 <div class="top"><a href="/">← 대시보드로</a></div>
 {body}
+{_kakao_adfit_html()}
 {subscribe_html}
 </body></html>"""
 
@@ -584,6 +623,7 @@ def render_stock_page(code, name, summary, financials, prices, news, themes,
 {disc_html}
 <h2>관련 뉴스 <span class="muted" style="font-size:13px;font-weight:400">· 구글뉴스</span></h2>
 {news_html}
+{_affiliate_cta_html()}
 <p class="muted" style="margin-top:16px"><a href="/">← 대시보드에서 전체 종목 보기</a></p>"""
     desc = f"{name}({code}) 재무제표(매출·영업이익·ROE·부채비율), 밸류에이션, 관련 뉴스."
     return layout(f"{name} ({code}) 재무·밸류에이션·뉴스 | 한국주식", desc, canonical, body,
@@ -1224,6 +1264,7 @@ def render_guide(title, category, body, slug, canonical, date_str=None):
 {body_html}
 </article>
 {_guide_related_html(category)}
+{_affiliate_cta_html()}
 <div class="muted" style="margin-top:22px;font-size:13px"><a href="/guides">← 투자 가이드 목록으로</a></div>
 """
     snippet = ""
