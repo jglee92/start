@@ -14,6 +14,10 @@
 # 정확한 임베드 스니펫은 대시보드에서 발급받은 원본으로 content.py::_kakao_adfit_html()의
 # 것과 대조해 확인할 것(광고 네트워크 임베드 포맷은 공지 없이 바뀔 수 있음).
 KAKAO_ADFIT_UNIT_ID = "DAN-QNL9qL7KbvJGtKmm"   # 2026-08-26 발급, 승인됨(매체: 머니체크업)
+# 주의: 홈('/')·about('/about')은 static/index.html·static/about.html을 그대로
+# 서빙(app.py::_page(), 템플릿 엔진 없음)해서 이 값을 Python에서 읽지 못한다 —
+# 그 두 파일에 위 ID·스니펫이 하드코딩으로 중복돼 있음(2026-08-26). 광고단위 ID가
+# 바뀌면 이 파일뿐 아니라 그 두 static html 파일도 같이 고쳐야 함.
 KAKAO_ADFIT_WIDTH = 300
 KAKAO_ADFIT_HEIGHT = 250
 
