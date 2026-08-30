@@ -139,15 +139,16 @@ def _compose(bg, headline_lines, subtitle, date_str):
     d.text((M, 46), "머니체크업", font=CR.font("bold", 34), fill=(255, 255, 255))
     d.text((W - M, 52), date_str, font=CR.font("regular", 28), fill=(210, 210, 210),
            anchor="ra")
-    # 헤드라인(하단, 디스플레이 폰트, 자동 줄바꿈)
-    text = " ".join(headline_lines) if isinstance(headline_lines, (list, tuple)) else str(headline_lines)
-    size = 84
+    # 헤드라인 — pick_cover_headline이 이미 2줄로 설계해 주므로 그 줄바꿈을 그대로 쓰고,
+    # 폭에 맞을 때까지 폰트만 줄인다(재줄바꿈하면 '+294%' 같은 숫자가 중간에서 쪼개짐).
+    lines = [ln for ln in (headline_lines if isinstance(headline_lines, (list, tuple))
+                           else [headline_lines]) if ln]
+    text = " ".join(lines)
+    size = 88
     fnt = CR._display_font(text, size)
-    lines = CR._wrap(d, text, fnt, W - 2 * M)
-    while len(lines) > 3 and size > 52:      # 너무 길면 축소
-        size -= 6
+    while size > 44 and any(d.textlength(ln, font=fnt) > W - 2 * M for ln in lines):
+        size -= 4
         fnt = CR._display_font(text, size)
-        lines = CR._wrap(d, text, fnt, W - 2 * M)
     lh = int(size * 1.22)
     sub_fnt = CR.font("bold", 40)
     sub_lines = CR._wrap(d, subtitle or "", sub_fnt, W - 2 * M) if subtitle else []
