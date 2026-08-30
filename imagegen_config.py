@@ -13,7 +13,7 @@ import os
 IMAGE_PROVIDER = "openai"
 # 환경변수에서 읽음(코드/깃에 키를 박지 않는다). GitHub Actions면 시크릿으로 주입.
 IMAGE_API_KEY = os.getenv("IMAGE_API_KEY") or os.getenv("OPENAI_API_KEY")
-IMAGE_MODEL = "gpt-image-1"
+IMAGE_MODEL = "gpt-image-2"   # 2026-04 출시, gpt-image-1 대체(한글 텍스트 렌더링·화질 개선)
 # 하루에 만들 후보 장수(사용자가 이 중 골라 게시). 비용 = 장수 × 모델 단가.
 CANDIDATES_PER_DAY = 3
 

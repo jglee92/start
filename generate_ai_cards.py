@@ -70,27 +70,26 @@ def _gen_backgrounds(prompt, n):
     if not IMG.enabled():
         return None
     if IMG.IMAGE_PROVIDER == "openai":
-        try:
-            import requests
-            r = requests.post(
-                "https://api.openai.com/v1/images/generations",
-                headers={"Authorization": f"Bearer {IMG.IMAGE_API_KEY}",
-                         "Content-Type": "application/json"},
-                json={"model": IMG.IMAGE_MODEL, "prompt": prompt,
-                      "size": "1024x1024", "n": n},
-                timeout=180)
-            if r.status_code != 200:
-                print(f"::warning::이미지 API {r.status_code}: {r.text[:200]}")
-                return None
-            out = []
-            for d in r.json().get("data", []):
-                b64 = d.get("b64_json")
+        import requests
+        out = []
+        # 1장씩 n번 호출 — n>1 미지원 모델·부분 실패에도 견고(가능한 만큼 확보).
+        for k in range(n):
+            try:
+                r = requests.post(
+                    "https://api.openai.com/v1/images/generations",
+                    headers={"Authorization": f"Bearer {IMG.IMAGE_API_KEY}",
+                             "Content-Type": "application/json"},
+                    json={"model": IMG.IMAGE_MODEL, "prompt": prompt, "size": "1024x1024"},
+                    timeout=180)
+                if r.status_code != 200:
+                    print(f"::warning::이미지 API {r.status_code}: {r.text[:200]}")
+                    continue
+                b64 = (r.json().get("data") or [{}])[0].get("b64_json")
                 if b64:
                     out.append(Image.open(BytesIO(base64.b64decode(b64))).convert("RGB"))
-            return out or None
-        except Exception as e:
-            print(f"::warning::이미지 생성 실패: {e}")
-            return None
+            except Exception as e:
+                print(f"::warning::이미지 생성 실패({k+1}/{n}): {e}")
+        return out or None
     print(f"::warning::알 수 없는 IMAGE_PROVIDER={IMG.IMAGE_PROVIDER}")
     return None
 
@@ -166,9 +165,10 @@ def _compose(bg, headline_lines, subtitle, date_str):
 
 
 def main():
+    force = "--force" in sys.argv   # 휴장일에도 생성(테스트용)
     data = A._blog_draft_data()
-    if data.get("is_holiday"):
-        print("휴장일 — AI 카드 생성 안 함.")
+    if data.get("is_holiday") and not force:
+        print("휴장일 — AI 카드 생성 안 함(--force로 강제 가능).")
         return
     date_str = data["date"].strftime("%Y-%m-%d")
     headline_lines, subtitle, tid = card_templates.pick_cover_headline(

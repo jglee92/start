@@ -1,0 +1,50 @@
+name: AI 배경 카드 후보 생성 (반자동)
+
+on:
+  schedule:
+    # 매 평일+토요일 아침. 콘텐츠 생성(daily-content) 이후에 배경 후보를 만들어
+    # content_out/<날짜>/ai_card_candidates/ 에 쌓아둔다(사용자가 골라 게시). UTC 20:10
+    # = KST 05:10(다음날). 이미지 API 키(IMAGE_API_KEY) 없으면 폴백 배경만 나온다.
+    - cron: '10 20 * * 0-5'
+  workflow_dispatch:
+    inputs:
+      force:
+        description: '휴장일에도 강제 생성(테스트용)'
+        type: boolean
+        default: false
+
+permissions:
+  contents: write
+
+jobs:
+  generate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: 의존성 설치
+        run: pip install -r requirements.txt
+
+      - name: AI 배경 카드 후보 생성
+        env:
+          KR_DB_PATH: data/screener_deploy.db
+          SITE_BASE_URL: https://getmoneycheckup.com
+          IMAGE_API_KEY: ${{ secrets.IMAGE_API_KEY }}
+        run: python generate_ai_cards.py ${{ (github.event_name == 'workflow_dispatch' && inputs.force) && '--force' || '' }}
+
+      - name: 변경 있으면 커밋 + 푸시
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add content_out/
+          if git diff --staged --quiet; then
+            echo "변경 없음(휴장일이거나 후보 없음)."
+          else
+            DATE_KST=$(TZ='Asia/Seoul' date +%Y-%m-%d)
+            git commit -m "chore: AI 배경 카드 후보 생성 $DATE_KST"
+            git push || (git pull --rebase && git push)
+          fi
