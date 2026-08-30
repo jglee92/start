@@ -1195,17 +1195,32 @@ def _halted_stocks_data():
         market = hit.iloc[0]["market"] if len(hit) else None
         # 거래정지 중엔 시세제공사가 마지막 체결가를 그대로 매일 반복해서 내려주는
         # 경우가 있어(거래량 0), 단순 "최신 row"는 정지 시작일이 아니라 오늘 날짜처럼
-        # 보여 오해를 부른다 — 실제 거래(volume>0)가 있었던 마지막 날을 정지 시작일로 본다.
+        # 보여 오해를 부른다. 실제 거래(volume>0)가 있었던 마지막 날을 정지 시작일로
+        # 본다. 단, 장기 정지 종목은 보존창(730일) 안이 전부 volume=0이라 그 쿼리가
+        # None이 되는데, 예전엔 여기서 '최신 carry-forward 행'으로 폴백해 정지일이
+        # DB 최신일(예: 8/28)처럼 잘못 떴다(실제 버그). 이제 그 경우 마지막으로 가격이
+        # '움직인' 날로 근사하고, 구간 내내 같은 값이면 '시작일 미상'으로 정직하게 둔다.
+        last_price = last_date = None
+        date_kind = "unknown"
         row = conn.execute(
             "SELECT close,date FROM daily_prices WHERE code=? AND close IS NOT NULL "
             "AND volume>0 ORDER BY date DESC LIMIT 1", (code,)).fetchone()
-        if not row:
-            row = conn.execute(
-                "SELECT close,date FROM daily_prices WHERE code=? AND close IS NOT NULL "
+        if row:
+            last_price, last_date, date_kind = row[0], row[1], "trade"
+        else:
+            px = conn.execute(
+                "SELECT close FROM daily_prices WHERE code=? AND close IS NOT NULL "
                 "ORDER BY date DESC LIMIT 1", (code,)).fetchone()
-        last_price, last_date = (row[0], row[1]) if row else (None, None)
+            if px:
+                last_price = px[0]
+                chg = conn.execute(
+                    "SELECT MAX(date) FROM daily_prices WHERE code=? AND close IS NOT NULL "
+                    "AND close<>?", (code, last_price)).fetchone()
+                if chg and chg[0]:
+                    last_date, date_kind = chg[0], "approx"   # 그 날 이후 정지 추정
         base.append({"code": code, "name": name, "market": market,
-                     "last_price": last_price, "last_date": last_date})
+                     "last_price": last_price, "last_date": last_date,
+                     "date_kind": date_kind})
     conn.close()
 
     # 2) 느린 DART 공시 호출만 병렬로(6시간 캐시라 웜이면 즉시 반환됨).

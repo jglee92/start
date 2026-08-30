@@ -834,7 +834,16 @@ def render_halted_stocks(rows, asof, canonical):
     def price_cell(r):
         if r.get("last_price") is None:
             return '<span class="muted">–</span>'
-        return f'{r["last_price"]:,.0f}원 <span class="muted" style="font-size:12px">({_esc(r.get("last_date") or "")})</span>'
+        kind = r.get("date_kind") or ("trade" if r.get("last_date") else "unknown")
+        d = _esc(r.get("last_date") or "")
+        if kind == "trade":
+            note = f"({d})"
+        elif kind == "approx":
+            note = f"({d} 이후 정지 추정)"
+        else:
+            note = "(장기 정지 · 시작일 미상)"
+        return (f'{r["last_price"]:,.0f}원 '
+                f'<span class="muted" style="font-size:12px">{note}</span>')
 
     trs = "".join(
         f'<tr><td style="text-align:left"><a href="/s/{_esc(r["code"])}">{_esc(r["name"])}</a> '
@@ -860,8 +869,10 @@ def render_halted_stocks(rows, asof, canonical):
 <th style="text-align:left">최근 공시</th></tr></thead>
 <tbody>{trs}</tbody>
 </table></div>
-<p class="muted footnote">괄호 안 날짜는 실제 마지막 거래(거래량 0 초과)가 있었던 날로, 정지
-시작 시점을 뜻합니다. 실시간 재개 여부와는 별개입니다. 공시: DART 공식 공시목록 API.
+<p class="muted footnote">괄호 안 날짜는 실제 마지막 거래(거래량 0 초과)가 있었던 날로 정지 시작
+시점을 뜻합니다. 오래 정지돼 데이터 보존기간(약 2년) 안이 전부 거래량 0인 종목은 정확한
+시작일을 알 수 없어 "이후 정지 추정"(가격이 마지막으로 움직인 날 기준) 또는 "장기 정지 ·
+시작일 미상"으로 표기합니다. 실시간 재개 여부와는 별개입니다. 공시: DART 공식 공시목록 API.
 매수·매도 추천이 아닙니다.</p>
 """
     desc = f"{asof} 기준 거래정지 중인 한국 상장기업 {len(rows)}개와 최근 공시 모음. 정지 사유 확인용."
