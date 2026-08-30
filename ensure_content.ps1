@@ -58,4 +58,20 @@ else {
     if ($?) { New-Item -ItemType File -Path $marker -Force | Out-Null; Log 'ensure_content: trigger OK, marker created' }
     else { Log 'ensure_content: trigger FAILED (gh) - will retry next slot' }
 }
+
+# AI 배경 카드(ai-cards.yml)도 스케줄 드롭 대비 로컬에서 보장 — 오늘 후보 폴더가
+# 없으면 워크플로우를 강제 트리거(하루 1회). content와 별개 마커 사용.
+$cards = Join-Path $proj "content_out\$today\ai_card_candidates\cover.png"
+$cmark = Join-Path $env:LOCALAPPDATA "moneycheckup_cards_triggered_$today.flag"
+if ((Get-Date).DayOfWeek -eq 'Sunday') {
+    # 일요일은 카드도 스킵
+}
+elseif (Test-Path $cards) {
+    Log "ensure_content: today ($today) AI cards present - OK"
+}
+elseif (-not (Test-Path $cmark)) {
+    Log "ensure_content: today ($today) AI cards missing - force-triggering ai-cards.yml"
+    & 'C:\Program Files\GitHub CLI\gh.exe' workflow run ai-cards.yml *>> $log
+    if ($?) { New-Item -ItemType File -Path $cmark -Force | Out-Null }
+}
 Log 'ensure_content: done'

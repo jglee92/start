@@ -213,6 +213,14 @@ def _specs(data, date_str):
         r = _safe(CT._t_theme_hot, data, seed + "|t")
         if r:
             out.append(("theme", r[0], r[1], _SECTION_SCENE["theme"]))
+    # 5) 오늘의 기업 종합검진(featured) — 데이터 덱의 마지막 장과 동일 컨셉
+    f = data.get("featured")
+    if f and f.get("name"):
+        score = f.get("score")
+        hl = ["오늘의 기업 검진", str(f["name"])]
+        sub = (f"건강점수 {score:.0f}점 · 가치+퀄리티로 살펴본 현주소"
+               if score is not None else "가치+퀄리티 팩터로 살펴본 현주소")
+        out.append(("company", hl, sub, _SECTION_SCENE["company"]))
     return out
 
 

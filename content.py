@@ -1280,9 +1280,10 @@ def _interleave_guide_images(body_html, imgs):
         return body_html
 
     def fig(src):
-        return (f'<figure style="margin:20px 0;text-align:center">'
+        # 본문 가독성 위해 작게(중앙). 모바일에선 화면폭에 맞춰 축소(min).
+        return (f'<figure style="margin:18px 0;text-align:center">'
                 f'<img src="/static/{_esc(src)}" alt="" loading="lazy" '
-                f'style="max-width:100%;border-radius:12px"></figure>')
+                f'style="width:min(320px,70%);height:auto;border-radius:12px"></figure>')
 
     segs = body_html.split("</h2>")
     if len(segs) <= 1:
