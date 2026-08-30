@@ -123,8 +123,11 @@ def main():
     if not text:
         print("::warning::빈 응답 — 생략.")
         return
-    # '제목:' 라벨은 네이버 제목칸에 바로 쓰게 떼어 첫 줄로.
-    text = text.replace("제목:", "", 1).lstrip()
+    # 첫 줄 제목의 스캐폴딩 제거(네이버 제목칸에 바로 복사) — '제목:' 라벨과 마크다운 '#'.
+    text = text.lstrip()
+    for pref in ("제목:", "#", "＃"):
+        while text.startswith(pref):
+            text = text[len(pref):].lstrip()
 
     day_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)),
                            "content_out", today)
