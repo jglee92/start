@@ -462,7 +462,7 @@ def api_stock(code: str):
             "psr": _r(row["psr"], 2), "roe": _r(row["roe"]),
             "op_margin": _r(row["op_margin"]), "debt_ratio": _r(row["debt_ratio"], 0),
             "div_yield": _r(row.get("div_yield"), 2), "rev_growth": _r(row.get("rev_growth")),
-            "breakdown": row["breakdown"], "dims": row.get("dims"),
+            "breakdown": row["breakdown"], "dims": _dims_with_ai(row, code),
             "flags": row.get("flags") or [],
             "small_cap": row.get("small_cap", False),
             # 건강검진 레이더 SVG를 서버에서 생성해 드로어가 그대로 주입(SSR과 동일 그림).
@@ -610,6 +610,38 @@ def _stock_index_worthy(code):
     return code in _indexed_stock_codes()
 
 
+# 종목별 AI 종합해설 캐시(data/stock_ai_narratives.json, generate_stock_ai.py가 주 1회
+# 생성). 있으면 종목상세·드로어의 '종합 해설'을 템플릿 대신 이걸로 쓰고, 없으면 템플릿
+# (factor.interpret.stock_narrative)으로 자동 폴백 → API 미설정/실패여도 안전.
+_AI_NARR_PATH = os.path.join(os.path.dirname(__file__), "data",
+                             "stock_ai_narratives.json")
+
+
+def _ai_narratives():
+    if _cache.get("ai_narr") is None:
+        import json
+        data = {}
+        try:
+            with open(_AI_NARR_PATH, encoding="utf-8") as f:
+                data = json.load(f)
+        except (FileNotFoundError, ValueError):
+            data = {}
+        _cache["ai_narr"] = data
+    return _cache["ai_narr"]
+
+
+def _dims_with_ai(row, code):
+    """row['dims']에 AI 해설이 있으면 overall_text만 갈아끼운 사본을 반환(캐시 원본
+    비훼손). 없으면 원본 그대로(템플릿 해설 유지)."""
+    dims = row.get("dims")
+    entry = _ai_narratives().get(code)
+    if dims and entry and entry.get("text"):
+        d = dict(dims)
+        d["overall_text"] = entry["text"]
+        return d
+    return dims
+
+
 @app.get("/api/sectors")
 def api_sectors():
     """섹터 로테이션(연도별 섹터 수익률) + 현재 유니버스 섹터 요약."""
@@ -650,6 +682,7 @@ def api_refresh():
     _cache["theme_perf"] = None
     _cache["theme_groups"] = None
     _cache["indexed_codes"] = None
+    _cache["ai_narr"] = None
     _cache["asof"] = None
     _cache["halted_page"] = None   # 거래정지 페이지 조립 캐시도 무효화(데이터 갱신 반영)
     _cache["halted_page_ts"] = None
@@ -976,7 +1009,7 @@ def stock_page(code: str):
         "psr": _r(row["psr"], 2), "roe": _r(row["roe"]), "op_margin": _r(row["op_margin"]),
         "debt_ratio": _r(row["debt_ratio"], 0), "div_yield": _r(row.get("div_yield"), 2),
         "marcap_eok": round(row["marcap"] / 1e8),
-        "dims": row.get("dims"), "flags": row.get("flags") or [],
+        "dims": _dims_with_ai(row, code), "flags": row.get("flags") or [],
         "small_cap": row.get("small_cap", False)}
     financials = [{"year": f[0], "revenue": f[1], "op_profit": f[2],
                    "net_income": f[3], "equity": f[4], "debt_ratio": _r(f[6], 0),

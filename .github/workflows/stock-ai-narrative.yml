@@ -1,0 +1,43 @@
+name: 종목별 AI 해설 생성 (주 1회)
+
+on:
+  schedule:
+    # 주 1회. 재무는 분기 단위로만 바뀌고 generate_stock_ai.py가 데이터 해시로
+    # 변동 없는 종목은 건너뛰므로(과금 0), 주 1회면 충분하다. UTC 일 18:00 = 월 03:00 KST.
+    - cron: '0 18 * * 0'
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+
+jobs:
+  generate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: 의존성 설치
+        run: pip install -r requirements.txt
+
+      - name: 색인 상위 종목 AI 종합해설 생성(변동분만)
+        env:
+          KR_DB_PATH: data/screener_deploy.db
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        run: python generate_stock_ai.py
+
+      - name: 변경 있으면 커밋 + 푸시 (충돌 시 rebase 후 재시도)
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add data/stock_ai_narratives.json data/claude_api_status.json
+          if git diff --staged --quiet; then
+            echo "변경 없음 - 모든 상위 종목 데이터 그대로(정상)."
+          else
+            DATE_KST=$(TZ='Asia/Seoul' date +%Y-%m-%d)
+            git commit -m "chore: 종목별 AI 해설 갱신 $DATE_KST"
+            git push || (git pull --rebase && git push)
+          fi
