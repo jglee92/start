@@ -1258,6 +1258,45 @@ def _guide_related_html(category):
             f'line-height:1.9">{links}</div></div>')
 
 
+_GUIDE_IMG_CACHE = {"data": None}
+
+
+def _guide_images(slug):
+    """slug -> 삽화 상대경로 리스트(generate_guide_images.py가 만든 매니페스트). 없으면 []."""
+    if _GUIDE_IMG_CACHE["data"] is None:
+        import os
+        p = os.path.join(os.path.dirname(__file__), "data", "guide_images.json")
+        try:
+            with open(p, encoding="utf-8") as f:
+                _GUIDE_IMG_CACHE["data"] = json.load(f)
+        except (FileNotFoundError, ValueError):
+            _GUIDE_IMG_CACHE["data"] = {}
+    return (_GUIDE_IMG_CACHE["data"].get(slug) or {}).get("imgs") or []
+
+
+def _interleave_guide_images(body_html, imgs):
+    """본문 소제목(<h2>) 사이에 삽화를 끼운다. h2가 없으면 맨 위에 한 장."""
+    if not imgs:
+        return body_html
+
+    def fig(src):
+        return (f'<figure style="margin:20px 0;text-align:center">'
+                f'<img src="/static/{_esc(src)}" alt="" loading="lazy" '
+                f'style="max-width:100%;border-radius:12px"></figure>')
+
+    segs = body_html.split("</h2>")
+    if len(segs) <= 1:
+        return fig(imgs[0]) + body_html
+    # 첫 소제목 뒤, (2장이면) 중간 소제목 뒤에 삽입
+    positions = [1]
+    if len(imgs) > 1 and len(segs) > 3:
+        positions.append(len(segs) // 2)
+    for k, pos in enumerate(positions):
+        if k < len(imgs) and 0 < pos < len(segs):
+            segs[pos] = fig(imgs[k]) + segs[pos]
+    return "</h2>".join(segs)
+
+
 def render_guide(title, category, body, slug, canonical, date_str=None):
     """개별 교육 가이드 글 페이지(에버그린). body는 파일에서 [카테고리]·제목·구분선을 뗀
     본문. 웹에선 _strip_web_tail로 CTA·면책·해시태그 꼬리를 잘라 애드센스 키워드스터핑
@@ -1265,6 +1304,7 @@ def render_guide(title, category, body, slug, canonical, date_str=None):
     from urllib.parse import quote  # noqa: F401 (slug 인코딩은 목록에서 사용)
     body_web = _strip_web_tail(body)
     body_html = _insight_body_html(body_web)
+    body_html = _interleave_guide_images(body_html, _guide_images(slug))  # AI 개념 삽화(있으면)
     cat = _esc(category or "가이드")
     eyebrow = f'{_ic("news")} <b>{cat}</b>' + (f' · {_insight_date_kr(date_str)}' if date_str else "")
     article = f"""

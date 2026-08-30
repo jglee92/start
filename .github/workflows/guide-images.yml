@@ -1,0 +1,43 @@
+name: 교육 가이드 삽화 생성 (주 1회)
+
+on:
+  schedule:
+    # 주 1회. 새로 발행된 가이드에만 삽화를 생성(내용 해시로 기존분은 스킵 → 과금 0).
+    # UTC 월 18:30 = KST 화 03:30.
+    - cron: '30 18 * * 1'
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+
+jobs:
+  generate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: 의존성 설치
+        run: pip install -r requirements.txt
+
+      - name: 가이드 개념 삽화 생성(신규분만)
+        env:
+          KR_DB_PATH: data/screener_deploy.db
+          IMAGE_API_KEY: ${{ secrets.IMAGE_API_KEY }}
+        run: python generate_guide_images.py
+
+      - name: 변경 있으면 커밋 + 푸시
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add static/guide_img data/guide_images.json
+          if git diff --staged --quiet; then
+            echo "변경 없음(신규 가이드 없음)."
+          else
+            DATE_KST=$(TZ='Asia/Seoul' date +%Y-%m-%d)
+            git commit -m "chore: 교육 가이드 삽화 생성 $DATE_KST"
+            git push || (git pull --rebase && git push)
+          fi
