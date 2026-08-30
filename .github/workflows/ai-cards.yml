@@ -2,10 +2,12 @@ name: AI 배경 카드 후보 생성 (반자동)
 
 on:
   schedule:
-    # 매 평일+토요일 아침. 콘텐츠 생성(daily-content) 이후에 배경 후보를 만들어
-    # content_out/<날짜>/ai_card_candidates/ 에 쌓아둔다(사용자가 골라 게시). UTC 20:10
-    # = KST 05:10(다음날). 이미지 API 키(IMAGE_API_KEY) 없으면 폴백 배경만 나온다.
-    - cron: '10 20 * * 0-5'
+    # 자정 직후 생성(전일 종가는 전날 19:00 KST에 이미 갱신돼 있어 데이터 준비됨).
+    # 아침이 아니라 00시에 만들어두면 GitHub 스케줄 지연이 몇 시간 나도 아침 훨씬
+    # 전에 끝나 있다(로컬 자가복구 05:30~ 는 백업으로 유지). content_out/<날짜>/
+    # ai_card_candidates/ 에 쌓임(사용자가 골라 게시). UTC 15:20 = KST 00:20(다음날).
+    # 요일: UTC 0-5(일~금) → KST 월~토 자정. 이미지 API 키 없으면 폴백 배경만.
+    - cron: '20 15 * * 0-5'
   workflow_dispatch:
     inputs:
       force:
