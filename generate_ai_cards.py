@@ -55,8 +55,18 @@ def _scene_for(data):
             "with subtle out-of-focus charts in the background")
 
 
-def _prompt(data):
-    scene = _scene_for(data)
+# 섹션별 배경 '무드' 장면(글자·예측 없음). 각 카드 주제에 맞춘 분위기만.
+_SECTION_SCENE = {
+    "signals": "a dark wooden desk with a financial newspaper and a magnifying glass, "
+               "investigative and cautious mood, dramatic side lighting",
+    "theme": "an abstract cinematic montage of modern industry and technology, sleek "
+             "surfaces, soft studio lighting, sense of momentum",
+    "company": "a modern corporate headquarters glass building seen from below at blue "
+               "hour, calm professional mood",
+}
+
+
+def _prompt(scene):
     # 글자·숫자·워터마크 금지를 강하게 명시(이미지 안 글자는 AI가 못 그려서 반드시 배제).
     return (f"Editorial cinematic photograph, {scene}. High detail, professional "
             f"finance-magazine cover aesthetic, vertical 1:1 composition with calm "
@@ -165,35 +175,78 @@ def _compose(bg, headline_lines, subtitle, date_str):
     return img
 
 
+def _safe(fn, data, seed):
+    """card_templates의 _t_* 헤드라인 함수를 안전하게 호출 → (lines, subtitle) 또는 None."""
+    try:
+        lines, sub, _ = fn(data, seed)
+        return (lines, sub) if lines else None
+    except Exception:
+        return None
+
+
+def _specs(data, date_str):
+    """섹션별 (라벨, 헤드라인, 부제, 배경장면) 목록. 데이터 있는 섹션만. 헤드라인은
+    card_templates의 사실 기반 문구 재사용(예측·과장 없음 = 정직 톤 유지)."""
+    CT = card_templates
+    data["_trend"] = CT._detect_trend(data)
+    seed = date_str
+    out = []
+    # 1) 표지 — 그날 임팩트 큰 사실 헤드라인(로테이션). 배경은 지수 방향 무드.
+    hl, sub, _tid = CT.pick_cover_headline(data, A._name_of, date_str)
+    out.append(("cover", hl, sub, _scene_for(data)))
+    # 2) 급등주(시장)
+    if data.get("gainers"):
+        r = _safe(CT._t_gainer_pct, data, seed + "|g")
+        if r:
+            out.append(("gainers", r[0], r[1], _scene_for(data)))
+    # 3) 시그널(실적/이상신호)
+    if data.get("earnings"):
+        r = _safe(CT._t_earnings_split, data, seed + "|e")
+        if r:
+            out.append(("signals", r[0], r[1], _SECTION_SCENE["signals"]))
+    elif data.get("anomalies"):
+        r = _safe(CT._t_anomaly_count, data, seed + "|a")
+        if r:
+            out.append(("signals", r[0], r[1], _SECTION_SCENE["signals"]))
+    # 4) 테마
+    if data.get("themes"):
+        r = _safe(CT._t_theme_hot, data, seed + "|t")
+        if r:
+            out.append(("theme", r[0], r[1], _SECTION_SCENE["theme"]))
+    return out
+
+
 def main():
     force = "--force" in sys.argv   # 휴장일에도 생성(테스트용)
     data = A._blog_draft_data()
     if data.get("is_holiday") and not force:
         print("휴장일 — AI 카드 생성 안 함(--force로 강제 가능).")
         return
+    data["_name_of"] = A._name_of
     date_str = data["date"].strftime("%Y-%m-%d")
-    headline_lines, subtitle, tid = card_templates.pick_cover_headline(
-        data, A._name_of, date_str)
-    print(f"헤드라인({tid}): {headline_lines} / {subtitle}")
-
-    n = IMG.CANDIDATES_PER_DAY
-    prompt = _prompt(data)
-    bgs = _gen_backgrounds(prompt, n)
-    if bgs:
-        print(f"AI 배경 {len(bgs)}장 생성")
-    else:
-        print("이미지 API 미설정/실패 — 폴백 그라디언트 배경으로 후보 생성(레이아웃 확인용).")
-        bgs = [_fallback_bg(i) for i in range(n)]
+    specs = _specs(data, date_str)
+    print(f"섹션 {len(specs)}장: {[s[0] for s in specs]}")
 
     out_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)),
                            "content_out", date_str, "ai_card_candidates")
     os.makedirs(out_dir, exist_ok=True)
-    for i, bg in enumerate(bgs, 1):
-        card = _compose(bg, headline_lines, subtitle, date_str.replace("-", "."))
-        p = os.path.join(out_dir, f"cand_{i}.png")
+    for f in os.listdir(out_dir):   # 이전 실행 잔여물(옛 cand_*.png 등) 정리
+        if f.endswith(".png"):
+            os.remove(os.path.join(out_dir, f))
+    made = 0
+    for label, hl, sub, scene in specs:
+        bg = _gen_backgrounds(_prompt(scene), 1)
+        if bg:
+            bg = bg[0]
+        else:
+            print(f"  [{label}] 이미지 API 미설정/실패 — 폴백 배경 사용.")
+            bg = _fallback_bg(made)
+        card = _compose(bg, hl, sub, date_str.replace("-", "."))
+        p = os.path.join(out_dir, f"{label}.png")
         card.save(p)
-        print(f"  저장: {p}")
-    print(f"\n후보 {len(bgs)}장 저장 완료 → 골라서 인스타에 사용하세요.")
+        made += 1
+        print(f"  저장: {p}  | {' '.join(hl) if isinstance(hl,(list,tuple)) else hl}")
+    print(f"\n섹션 카드 {made}장 저장 완료 → 골라서 인스타에 사용하세요.")
 
 
 if __name__ == "__main__":
