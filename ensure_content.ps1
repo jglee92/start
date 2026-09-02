@@ -82,4 +82,43 @@ elseif (-not (Test-Path $cmark)) {
     & 'C:\Program Files\GitHub CLI\gh.exe' workflow run ai-cards.yml *>> $log
     if ($?) { New-Item -ItemType File -Path $cmark -Force | Out-Null }
 }
+
+# ============ us_screener (US market) morning pipeline force-trigger ============
+# GitHub schedule events run 2-8h late on us_screener too (prices "06:00" often
+# actually starts 08-14h; fundamentals takes ~33min). workflow_dispatch is not
+# dropped, so we force the chain locally to land the US briefing before 07:30 KST:
+#   1) prices + fundamentals first,
+#   2) after >=40min (fundamentals ~33min) the KR-format briefing, so its
+#      going-concern list uses same-day audit data.
+# Only KST Tue-Sat (mornings after a US regular session; Sun/Mon = US closed).
+# Gated to >=06:00 KST (=21:00 UTC) so prices run after the US close under both
+# EST and EDT. The top-of-script 'git -C $us pull' then downloads the result on a
+# later slot. Two independent once-per-day markers stage the two steps.
+$usDow = (Get-Date).DayOfWeek
+if ($usDow -ne 'Sunday' -and $usDow -ne 'Monday' -and (Get-Date).Hour -ge 6) {
+    $ghExe = 'C:\Program Files\GitHub CLI\gh.exe'
+    $usToday = (Get-Date).ToString('yyyy-MM-dd')
+    $usDataMark = Join-Path $env:LOCALAPPDATA "mn_scan_data_triggered_$usToday.flag"
+    $usInsMark = Join-Path $env:LOCALAPPDATA "mn_scan_insight_triggered_$usToday.flag"
+    if (-not (Test-Path $usDataMark)) {
+        Log 'ensure_content: US prices+fundamentals force-trigger'
+        & $ghExe workflow run daily-prices.yml -R jglee92/MN_SCAN *>> $log
+        & $ghExe workflow run daily-fundamentals.yml -R jglee92/MN_SCAN *>> $log
+        New-Item -ItemType File -Path $usDataMark -Force | Out-Null
+    }
+    elseif (-not (Test-Path $usInsMark)) {
+        $usAge = (New-TimeSpan -Start (Get-Item $usDataMark).LastWriteTime -End (Get-Date)).TotalMinutes
+        if ($usAge -ge 40) {
+            Log ('ensure_content: US briefing force-trigger (data +{0}min)' -f [int]$usAge)
+            & $ghExe workflow run daily-insight.yml -R jglee92/MN_SCAN *>> $log
+            New-Item -ItemType File -Path $usInsMark -Force | Out-Null
+        }
+        else {
+            Log ('ensure_content: US briefing waiting (data +{0}min, need 40)' -f [int]$usAge)
+        }
+    }
+    else {
+        Log 'ensure_content: US pipeline already triggered today - OK'
+    }
+}
 Log 'ensure_content: done'
