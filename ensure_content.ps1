@@ -29,6 +29,14 @@ function Log($m) { Add-Content -Path $log -Value ("[{0}] {1}" -f (Get-Date).ToSt
 Log 'ensure_content: pull start'
 git pull *>> $log
 
+# us_screener(미국) 레포도 아침에 로컬로 당겨온다 — 한국어 미국 브리핑(kr_briefing.txt)·
+# 카드가 그 레포 content_out에 쌓이므로, 네이버에 붙일 수 있게 로컬로 내려받는다.
+$us = Join-Path $env:USERPROFILE 'Desktop\STOCK_PROJECT\us_screener'
+if (Test-Path $us) {
+    Log 'ensure_content: us_screener pull'
+    git -C $us pull *>> $log
+}
+
 # Integrity: a clean pull once left tracked files locally missing
 # (2026-07-27, antivirus/indexer lock suspected). If content_out shows
 # deletions (' D '), restore them.
