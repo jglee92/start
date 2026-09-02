@@ -1,0 +1,44 @@
+name: 오늘의 경제 뉴스 정리 생성 (일)
+
+on:
+  schedule:
+    # 아침 정리용. UTC 21:00 = KST 06:00(다음날). 평일+토(월~토 KST) 대상.
+    # 요일 UTC 0-5(일~금) → KST 월~토.
+    - cron: '0 21 * * 0-5'
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+
+jobs:
+  generate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: 의존성 설치
+        run: pip install requests python-dotenv
+
+      - name: 경제 뉴스 정리 생성
+        env:
+          NAVER_CLIENT_ID: ${{ secrets.NAVER_CLIENT_ID }}
+          NAVER_CLIENT_SECRET: ${{ secrets.NAVER_CLIENT_SECRET }}
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        run: python generate_econ_briefing.py
+
+      - name: 변경 있으면 커밋 + 푸시
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add content_out/ data/claude_api_status.json
+          if git diff --staged --quiet; then
+            echo "변경 없음(키 미설정 또는 뉴스 부족)."
+          else
+            DATE_KST=$(TZ='Asia/Seoul' date +%Y-%m-%d)
+            git commit -m "chore: 오늘의 경제 뉴스 정리 생성 $DATE_KST"
+            git push || (git pull --rebase && git push)
+          fi
