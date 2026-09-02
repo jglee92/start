@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="Money Checkup">
+  <defs>
+    <linearGradient id="mc-g" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#3fd89b"/>
+      <stop offset="1" stop-color="#2aa877"/>
+    </linearGradient>
+  </defs>
+  <rect x="4" y="4" width="56" height="56" rx="15" fill="url(#mc-g)"/>
+  <g fill="none" stroke="#ffffff" stroke-width="4.5" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M11 41 H22 L26 47 L31 29 L36 41 H41 L50 21"/>
+    <path d="M50 21 H43 M50 21 V28"/>
+  </g>
+</svg>
