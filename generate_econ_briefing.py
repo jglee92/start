@@ -1,10 +1,13 @@
 # -*- coding: utf-8 -*-
-"""'오늘의 경제 뉴스 정리' 일일 드래프트 — 네이버 뉴스 검색 API로 경제 뉴스를 모아
-Claude(haiku)가 사실 위주로 하루치 정리글을 쓴다. 네이버 블로그 등에 매일 쌓는 용도.
+"""'오늘의 경제 뉴스 정리' 일일 드래프트 — 구글뉴스(키 불필요)로 한국 경제 뉴스를
+모아 Claude(haiku)가 사실 위주로 하루치 정리글을 쓴다. 네이버 블로그 등에 매일 쌓는 용도.
 
-근거는 '네이버 뉴스 헤드라인+요약 스니펫'만. 예측·매수매도·낚시 금지(정직 브랜드).
+(네이버 뉴스 검색 API는 2026년 현재 개발자센터 애플리케이션 등록 메뉴에서 발급이
+빠져 사용 불가 → 이미 쓰던 app._google_news(구글뉴스 RSS, 무키)로 대체. 목표는 동일.)
+
+근거는 '뉴스 헤드라인'만. 예측·매수매도·낚시 금지(정직 브랜드).
 출력: content_out/<date>/econ_briefing.txt (제목 첫 줄 + 본문, 붙여넣기용).
-필요: NAVER_CLIENT_ID/SECRET(naver_news) + ANTHROPIC_API_KEY. 둘 중 하나라도 없으면 스킵.
+필요: ANTHROPIC_API_KEY.
 """
 from __future__ import annotations
 import os
@@ -19,20 +22,19 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from dotenv import load_dotenv
 load_dotenv(os.path.join(os.path.dirname(os.path.abspath(__file__)), ".env"))
 
-import naver_news
+import app as A
 
 API_URL = "https://api.anthropic.com/v1/messages"
 MODEL = "claude-haiku-4-5-20251001"
 KST = timezone(timedelta(hours=9))
 
-# 경제 뉴스 검색 주제(중복 제거해 상위 헤드라인만 요약 근거로 사용)
 QUERIES = ["한국 경제", "금리 환율", "코스피 증시", "부동산 물가"]
 
 _SYSTEM = """당신은 한국 개인투자자를 위한 '머니체크업'의 경제 뉴스 정리 필자입니다.
-주어진 '네이버 뉴스 헤드라인·요약'만 근거로 오늘의 경제 뉴스 정리글을 씁니다.
+주어진 '뉴스 헤드라인'만 근거로 오늘의 경제 뉴스 정리글을 씁니다.
 
 엄격한 규칙:
-- 주어진 뉴스에 있는 사실만 쓰세요. 없는 수치·전망·해석을 지어내지 마세요.
+- 주어진 헤드라인에 있는 사실만 쓰세요. 없는 수치·전망·해석을 지어내지 마세요.
 - 예측·매수/매도 추천 금지. 낚시·과장·단정 금지. 뉴스는 사실만 담백하게 요약.
 - 서로 관련된 뉴스는 주제별로 묶어 정리하세요.
 - 한국어. 아래 구조를 지키세요:
@@ -57,14 +59,15 @@ _SYSTEM = """당신은 한국 개인투자자를 위한 '머니체크업'의 경
 def _gather():
     seen, items = set(), []
     for q in QUERIES:
-        for n in naver_news.search(q, display=6, sort="date"):
-            t = n["title"]
-            if t and t not in seen:
-                seen.add(t)
-                line = f"- {t}"
-                if n["desc"]:
-                    line += f" | {n['desc'][:120]}"
-                items.append(line)
+        try:
+            for n in A._google_news(q)[:5]:
+                t = (n.get("title") or "").strip()
+                if t and t not in seen:
+                    seen.add(t)
+                    src = n.get("source") or ""
+                    items.append(f"- {t}" + (f" ({src})" if src else ""))
+        except Exception:
+            pass
         if len(items) >= 14:
             break
     return items[:14]
@@ -92,17 +95,13 @@ def main():
     if not api_key:
         print("::warning::ANTHROPIC_API_KEY 미설정 — 경제 정리글 건너뜀.")
         return
-    if not naver_news.enabled():
-        print("::warning::NAVER_CLIENT_ID/SECRET 미설정 — 경제 정리글 건너뜀"
-              "(developers.naver.com에서 뉴스 검색 API 등록 필요).")
-        return
     items = _gather()
     if len(items) < 3:
         print("::warning::수집된 뉴스가 너무 적음 — 생략.")
         return
     today = datetime.now(KST).strftime("%Y-%m-%d")
-    payload = ("[네이버 경제 뉴스 헤드라인·요약]\n" + "\n".join(items)
-               + f"\n\n위 뉴스만 근거로 오늘({today}) 경제 뉴스 정리글을 써주세요.")
+    payload = ("[경제 뉴스 헤드라인]\n" + "\n".join(items)
+               + f"\n\n위 헤드라인만 근거로 오늘({today}) 경제 뉴스 정리글을 써주세요.")
     text = _call_claude(payload, api_key)
     if not text:
         print("::warning::빈 응답 — 생략.")

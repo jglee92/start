@@ -21,12 +21,12 @@ jobs:
           python-version: '3.12'
 
       - name: 의존성 설치
-        run: pip install requests python-dotenv
+        run: pip install -r requirements.txt
 
       - name: 경제 뉴스 정리 생성
         env:
-          NAVER_CLIENT_ID: ${{ secrets.NAVER_CLIENT_ID }}
-          NAVER_CLIENT_SECRET: ${{ secrets.NAVER_CLIENT_SECRET }}
+          KR_DB_PATH: data/screener_deploy.db
+          SITE_BASE_URL: https://getmoneycheckup.com
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
         run: python generate_econ_briefing.py
 
