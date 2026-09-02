@@ -132,7 +132,7 @@
   .home-search input::placeholder{color:var(--dim)}
   .home-search-results{display:none;position:absolute;top:calc(100% + 4px);left:0;width:100%;
     background:var(--panel);border:1px solid var(--line);border-radius:9px;
-    box-shadow:0 8px 24px rgba(0,0,0,.18);z-index:6;max-height:280px;overflow-y:auto;
+    box-shadow:0 8px 24px rgba(0,0,0,.18);z-index:6;max-height:min(62vh,460px);overflow-y:auto;
     overscroll-behavior:contain}
   .hsr-item{display:flex;justify-content:space-between;gap:10px;padding:9px 14px;cursor:pointer;font-size:14px}
   .hsr-item:hover{background:var(--panel2)}
@@ -140,6 +140,10 @@
   .hsr-empty{padding:10px 14px;color:var(--dim);font-size:13px}
   .compare-picker{display:flex;flex-direction:column;gap:10px;margin:16px 0 6px;max-width:420px}
   .compare-picker .cmp-slot{max-width:none;width:100%}
+  /* .wrap 의 overflow-x:auto 는 명세상 overflow-y 도 auto 로 계산돼(한 축만 non-visible),
+     짧은 이 박스가 아래로 뻗는 검색 드롭다운을 세로로 잘라버린다. 비교 피커엔 넓은 표가
+     없어 가로 스크롤이 필요 없으므로 overflow 를 visible 로 돌려 드롭다운이 다 보이게 함. */
+  #comparePickerWrap{overflow:visible}
   .cmp-vs{font-weight:800;color:var(--dim);text-align:center}
   .cmp-go{padding:10px 20px;border-radius:9px;border:none;background:var(--accent);
     color:#fff;font-weight:700;cursor:pointer;width:100%}
@@ -1370,7 +1374,7 @@ function cmpWireInput(inputId, resultsId, onPick, clearRef){
     const q=this.value.trim().toLowerCase();
     const box=document.getElementById(resultsId);
     if(!q){ box.style.display='none'; box.innerHTML=''; clearRef(); cmpUpdateBtn(); return; }
-    const matches=RANK.filter(r=>r.name.toLowerCase().includes(q)||r.code.includes(q)).slice(0,8);
+    const matches=RANK.filter(r=>r.name.toLowerCase().includes(q)||r.code.includes(q)).slice(0,30);
     box.innerHTML=matches.length
       ? matches.map(r=>`<div class="hsr-item" onclick="${onPick}('${r.code}')">
           <span class="nm">${r.name}</span><span class="code">${r.code}</span></div>`).join('')
