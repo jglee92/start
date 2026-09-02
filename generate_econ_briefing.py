@@ -119,7 +119,8 @@ def main():
         return
     # 네이버 평문화: 마크다운 헤딩(#)·강조(*, **) 제거(모델이 종종 섞어 씀).
     text = text.replace("**", "")
-    text = re.sub(r"(?m)^\s*#+\s*", "", text)   # 줄머리 # 헤딩 마커
+    # 마크다운 헤딩(# 뒤 공백)만 제거. '#경제뉴스' 같은 해시태그(# 뒤 글자)는 보존.
+    text = re.sub(r"(?m)^\s*#{1,6}[ \t]+", "", text)
     text = text.replace("*", "")                # 남은 이탤릭 마커
     text = text.lstrip()
     for pref in ("제목:", "＃"):
