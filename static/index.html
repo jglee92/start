@@ -360,7 +360,9 @@
 
   <main class="content">
     <!-- 홈 -->
-    <div id="view-home">
+    <!-- 기본 숨김: 해시 라우트(#compare 등)로 새로고침 시 홈 화면 번쩍임 방지.
+         아래 초기화에서 switchView(해시 또는 'home')가 올바른 화면을 즉시 표시. -->
+    <div id="view-home" style="display:none">
       <section class="hero">
         <p class="lead">한국주식(KOSPI·KOSDAQ) 종목의 <b>실시간 시세·재무제표·회계감사의견</b>을
           공시 원문 없이 한 곳에서 바로 확인하는 리서치 도구입니다.</p>
@@ -1792,6 +1794,7 @@ wireHomeSsr();
 load().then(()=>{
   const h=location.hash.slice(1);
   if(h&&document.querySelector(`.nav-item[data-v="${h}"]`))switchView(h);
+  else switchView('home');   // 홈(해시 없음)도 명시적으로 표시(view-home 기본 숨김이라 필수)
 });
 </script>
 </body>
