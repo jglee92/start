@@ -14,6 +14,8 @@ import os
 import sys
 from datetime import datetime, timezone, timedelta
 
+import re
+
 import requests
 
 sys.stdout.reconfigure(encoding="utf-8")
@@ -42,6 +44,7 @@ _SYSTEM = """당신은 '머니체크업'의 경제 뉴스 해설 필자입니다
   괄호로 짧게 풀어 설명해 초보자도 읽히게 하세요.
 - 관련 뉴스는 주제별로 묶고, 각 묶음 끝에 "쉽게 말하면" 한 줄로 배경·의미를 사실에
   근거해 덧붙이세요(예측이 아니라 '왜 이런 뉴스가 나오는지/무엇을 뜻하는지' 설명).
+- 마크다운 문법(#, *, ** 등)을 절대 쓰지 마세요 — 네이버 블로그용 평문입니다.
 - 한국어. 아래 구조를 정확히 지키세요:
 
 제목: (오늘 경제 흐름을 담은 담백한 한 줄. 낚시 금지)
@@ -114,8 +117,12 @@ def main():
     if not text:
         print("::warning::빈 응답 — 생략.")
         return
+    # 네이버 평문화: 마크다운 헤딩(#)·강조(*, **) 제거(모델이 종종 섞어 씀).
+    text = text.replace("**", "")
+    text = re.sub(r"(?m)^\s*#+\s*", "", text)   # 줄머리 # 헤딩 마커
+    text = text.replace("*", "")                # 남은 이탤릭 마커
     text = text.lstrip()
-    for pref in ("제목:", "#", "＃"):
+    for pref in ("제목:", "＃"):
         while text.startswith(pref):
             text = text[len(pref):].lstrip()
 
