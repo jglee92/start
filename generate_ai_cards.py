@@ -27,6 +27,7 @@ load_dotenv(os.path.join(os.path.dirname(os.path.abspath(__file__)), ".env"))
 
 from PIL import Image, ImageDraw
 import app as A
+import caption_generator
 import card_render as CR
 import card_templates
 import imagegen_config as IMG
@@ -254,6 +255,21 @@ def main():
         card.save(p)
         made += 1
         print(f"  저장: {p}  | {' '.join(hl) if isinstance(hl,(list,tuple)) else hl}")
+
+    # 인스타 캡션 — 옛 daily_content의 cards/caption.txt를 대체(2026-09-02). 카드와 같은
+    # 폴더(ai_card_candidates)에 넣어, 카드를 고른 뒤 캡션을 바로 복사해 쓸 수 있게 한다.
+    # 표지 헤드라인/부제를 캡션 첫 줄로 재사용(카드 톤과 캡션 톤 일치).
+    if specs:
+        cover_hl, cover_sub = specs[0][1], specs[0][2]
+        try:
+            caption = caption_generator.build_caption(
+                data, cover_hl, cover_sub, date_str)
+            with open(os.path.join(out_dir, "caption.txt"), "w", encoding="utf-8") as cf:
+                cf.write(caption)
+            print("  저장: caption.txt")
+        except Exception as e:
+            print(f"::warning::캡션 생성 실패(카드는 정상): {e}")
+
     print(f"\n섹션 카드 {made}장 저장 완료 → 골라서 인스타에 사용하세요.")
 
 

@@ -28,6 +28,8 @@ jobs:
           KR_DB_PATH: data/screener_deploy.db
           SITE_BASE_URL: https://getmoneycheckup.com
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          # 정리글에 곁들일 AI 배경 카드용(없으면 폴백 배경으로라도 1장 생성).
+          IMAGE_API_KEY: ${{ secrets.IMAGE_API_KEY }}
         run: python generate_econ_briefing.py
 
       - name: 변경 있으면 커밋 + 푸시

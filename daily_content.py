@@ -10,11 +10,7 @@ from __future__ import annotations
 import os
 
 import app as A
-import caption_generator
-import card_render
-import card_templates
 import generate_kr_briefing
-import generate_kr_card_copy
 
 OUT_DIR = "content_out"
 
@@ -62,30 +58,9 @@ def _main_daily(target_date=None):
     # 1-b) 사이트 데일리 브리핑(/insights) 전용 Claude 버전 — 같은 제목, 같은 data로.
     _write_insight(day_dir, title, data, weekly=False)
 
-    # 2) 인스타 카드뉴스 + 캡션 (같은 구조화 데이터 재사용, 텍스트 재파싱 없음)
-    # 헤드라인은 카드 이미지에 고정폰트로 렌더링되는 텍스트라 길이 위반 시 카드가
-    # 깨질 수 있음 — Claude 결과가 길이 제약을 못 지키면 조용히 템플릿으로 폴백.
-    data["_name_of"] = A._name_of
-    card_copy = generate_kr_card_copy.generate_card_copy(data, is_weekly=False)
-    if card_copy:
-        headline_lines, subtitle, caption_lines = card_copy
-        tid = "claude"
-        caption = "\n".join([" ".join(headline_lines), subtitle, ""] + caption_lines
-                             + caption_generator._closing_lines(date_str, "daily"))
-        print("카드 카피 (Claude 생성)")
-    else:
-        headline_lines, subtitle, tid = card_templates.pick_cover_headline(data, A._name_of, date_str)
-        caption = caption_generator.build_caption(data, headline_lines, subtitle, date_str)
-        print(f"카드 카피 (템플릿 폴백: {tid})")
-
-    cards_dir = os.path.join(day_dir, "cards")
-    paths = card_render.generate_cards(data, A._name_of, headline_lines, subtitle,
-                                        date_str.replace("-", "."), out_dir=cards_dir)
-    print(f"카드뉴스 {len(paths)}장 저장 완료 (표지 템플릿: {tid})")
-
-    with open(os.path.join(cards_dir, "caption.txt"), "w", encoding="utf-8") as f:
-        f.write(caption)
-    print("캡션 저장 완료")
+    # 인스타 카드뉴스/캡션은 이제 generate_ai_cards.py(AI 배경 카드)가 전담한다 —
+    # 옛 룰베이스 cards/ 데크는 폐기(사용자 요청 2026-09-02). 캡션도 ai_card_candidates/
+    # 폴더에 함께 생성되므로 여기서는 블로그 초안 + /insights 브리핑만 만든다.
     print(f"\n저장 위치: {day_dir}")
 
 
@@ -109,27 +84,7 @@ def _main_weekly(target_date=None):
     # 1-b) 사이트 데일리 브리핑(/insights) 전용 Claude 주간 버전.
     _write_insight(day_dir, title, data, weekly=True)
 
-    # 2) 인스타 카드뉴스 + 캡션
-    card_copy = generate_kr_card_copy.generate_card_copy(data, is_weekly=True)
-    if card_copy:
-        headline_lines, subtitle, caption_lines = card_copy
-        tid = "claude"
-        caption = "\n".join([" ".join(headline_lines), subtitle, ""] + caption_lines
-                             + caption_generator._closing_lines(date_str, "weekly"))
-        print("카드 카피 (Claude 생성)")
-    else:
-        headline_lines, subtitle, tid = card_templates.pick_weekly_cover_headline(data, date_str)
-        caption = caption_generator.build_weekly_caption(data, headline_lines, subtitle, date_str)
-        print(f"카드 카피 (템플릿 폴백: {tid})")
-
-    cards_dir = os.path.join(day_dir, "cards")
-    paths = card_render.generate_weekly_cards(data, headline_lines, subtitle,
-                                               date_str.replace("-", "."), out_dir=cards_dir)
-    print(f"주간 카드뉴스 {len(paths)}장 저장 완료 (표지 템플릿: {tid})")
-
-    with open(os.path.join(cards_dir, "caption.txt"), "w", encoding="utf-8") as f:
-        f.write(caption)
-    print("캡션 저장 완료")
+    # 카드/캡션은 generate_ai_cards.py가 전담(옛 cards/ 데크 폐기, 2026-09-02).
     print(f"\n저장 위치: {day_dir}")
 
 

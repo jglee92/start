@@ -101,6 +101,33 @@ def _call_claude(payload, api_key):
     return text
 
 
+# 경제 정리글에 곁들일 AI 배경 카드(글자 없는 배경 + 한국어 제목 합성). 카드/합성
+# 로직은 generate_ai_cards의 것을 재사용해 브랜드 톤을 통일한다. 키 없으면 폴백 배경.
+_ECON_SCENE = ("an early-morning economic briefing desk by a window overlooking a calm "
+               "modern city skyline at sunrise, a folded newspaper and a cup of coffee, "
+               "warm soft editorial light, sense of a quiet start to the day")
+
+
+def _make_card(title, today):
+    try:
+        import generate_ai_cards as GC
+    except Exception as e:
+        print(f"::warning::카드 모듈 로드 실패 — 카드 생략: {e}")
+        return
+    out_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                           "content_out", today, "ai_card_candidates")
+    os.makedirs(out_dir, exist_ok=True)
+    bgs = GC._gen_backgrounds(GC._prompt(_ECON_SCENE), 1)
+    bg = bgs[0] if bgs else GC._fallback_bg(0)
+    if not bgs:
+        print("  [econ] 이미지 API 미설정/실패 — 폴백 배경 사용.")
+    # 헤드라인은 브랜드 고정 문구(정리글 제목은 길이가 들쭉날쭉해 부제로 배치).
+    card = GC._compose(bg, ["오늘의 경제", "뉴스 정리"], title, today.replace("-", "."))
+    p = os.path.join(out_dir, "econ.png")
+    card.save(p)
+    print(f"  저장: {p}")
+
+
 def main():
     api_key = os.getenv("ANTHROPIC_API_KEY")
     if not api_key:
@@ -134,6 +161,14 @@ def main():
     with open(dst, "w", encoding="utf-8") as f:
         f.write(text.rstrip() + "\n")
     print(f"저장: {dst}\n---\n{text[:400]}")
+
+    # 블로그에 곁들일 AI 배경 카드 1장(제목을 부제로). 실패해도 정리글엔 영향 없음.
+    title = next((ln.strip() for ln in text.splitlines() if ln.strip()),
+                 "오늘의 경제 뉴스 정리")
+    try:
+        _make_card(title, today)
+    except Exception as e:
+        print(f"::warning::경제 카드 생성 실패(정리글은 정상): {e}")
 
 
 if __name__ == "__main__":
