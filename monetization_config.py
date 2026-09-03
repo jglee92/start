@@ -21,6 +21,14 @@ KAKAO_ADFIT_UNIT_ID = "DAN-QNL9qL7KbvJGtKmm"   # 2026-08-26 발급, 승인됨(�
 KAKAO_ADFIT_WIDTH = 300
 KAKAO_ADFIT_HEIGHT = 250
 
+# 두 번째 광고단위(728x90 리더보드, 헤더 바로 아래 배치용) — 2026-09-04 발급.
+# 728px는 좁은 화면에서 깨지므로 content.py::_kakao_adfit_leaderboard_html()이
+# CSS(.ad-leaderboard, 폭 800px 미만 숨김)로 데스크톱에서만 노출한다. 위 300x250과
+# 마찬가지로 홈·about은 static html에 하드코딩 중복(ID 바뀌면 같이 고칠 것).
+KAKAO_ADFIT_LEADERBOARD_UNIT_ID = "DAN-oPdYITfT4jAgB877"
+KAKAO_ADFIT_LEADERBOARD_WIDTH = 728
+KAKAO_ADFIT_LEADERBOARD_HEIGHT = 90
+
 # ── 증권사 제휴(CPA) 링크 ──────────────────────────────────────────────────
 # 승인된 것만 채운다. key는 내부 식별용(임의), label은 CTA 버튼 문구,
 # url은 제휴사가 발급한 추적 링크(제휴 신청 없이 공식 홈페이지 URL을 임의로 넣지

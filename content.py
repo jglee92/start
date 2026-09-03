@@ -106,6 +106,22 @@ def _kakao_adfit_html():
             f'src="//t1.kakaocdn.net/kas/static/ba.min.js" async></script></div>')
 
 
+def _kakao_adfit_leaderboard_html():
+    """카카오애드핏 두 번째 광고단위(728x90 리더보드, 헤더 바로 아래용, 2026-09-04
+    추가). 728px는 좁은 화면에서 깨지므로 .ad-leaderboard 클래스(layout()의 <style>에
+    정의, 800px 미만 뷰포트 display:none)로 데스크톱에서만 노출한다."""
+    uid = MON.KAKAO_ADFIT_LEADERBOARD_UNIT_ID
+    if not uid:
+        return ""
+    return (f'<div class="ad-leaderboard" style="text-align:center;margin:0 0 14px">'
+            f'<ins class="kakao_ad_area" style="display:none;" '
+            f'data-ad-unit="{_esc(uid)}" '
+            f'data-ad-width="{MON.KAKAO_ADFIT_LEADERBOARD_WIDTH}" '
+            f'data-ad-height="{MON.KAKAO_ADFIT_LEADERBOARD_HEIGHT}"></ins>'
+            f'<script type="text/javascript" '
+            f'src="//t1.kakaocdn.net/kas/static/ba.min.js" async></script></div>')
+
+
 def _affiliate_cta_html():
     """증권사 제휴(CPA) 링크 CTA — monetization_config.BROKERAGE_AFFILIATE_LINKS가
     비어있으면 빈 문자열. 승인된 링크가 채워지는 즉시 가이드·종목상세에 자동 노출."""
@@ -257,8 +273,10 @@ th:first-child,td:first-child{{text-align:left}}
 .summary-box .summary-t{{font-weight:700;font-size:13px;margin-bottom:4px;color:var(--accent)}}
 .summary-box p{{margin:0;font-size:14px}}
 footer{{margin-top:32px;padding-top:16px;border-top:1px solid #8883;font-size:11.5px;color:#5a6472}}
+@media(max-width:800px){{.ad-leaderboard{{display:none}}}}
 </style></head><body>
 <div class="top"><a href="/">← 대시보드로</a></div>
+{_kakao_adfit_leaderboard_html()}
 {body}
 {_kakao_adfit_html()}
 {subscribe_html}

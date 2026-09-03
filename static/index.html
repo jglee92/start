@@ -66,6 +66,8 @@
     display:flex;align-items:center;gap:12px;flex-wrap:wrap}
   header h1{font-size:18px;margin:0;font-weight:700}
   .sub{color:var(--dim);font-size:13px}
+  /* 카카오애드핏 리더보드(728x90)는 좁은 화면에서 깨지므로 데스크톱에서만 노출 */
+  @media(max-width:800px){.ad-leaderboard{display:none}}
   .segtoggle{display:inline-flex;border:1px solid var(--line);border-radius:8px;overflow:hidden;margin-bottom:4px}
   .segbtn{padding:6px 14px;cursor:pointer;font-size:13px;color:var(--dim);background:var(--panel2)}
   .segbtn:hover{color:var(--txt)}
@@ -322,6 +324,14 @@
     <span style="font-weight:400;color:var(--dim);font-size:13px">Money Checkup</span></h1>
   <span class="sub" id="asof">로딩…</span>
 </header>
+
+<div class="ad-leaderboard" style="text-align:center;margin:10px 0 0">
+  <ins class="kakao_ad_area" style="display:none;"
+    data-ad-unit="DAN-oPdYITfT4jAgB877"
+    data-ad-width="728"
+    data-ad-height="90"></ins>
+  <script type="text/javascript" src="//t1.kakaocdn.net/kas/static/ba.min.js" async></script>
+</div>
 
 <div class="backdrop" id="navBd" onclick="closeMobileNav()"></div>
 <div class="applayout">
