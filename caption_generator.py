@@ -67,8 +67,7 @@ def build_caption(data, headline_lines, subtitle, today_str):
         f = data["featured"]
         lines.append(f"\U0001F3E5 오늘의 기업리뷰: {f['name']} 건강점수 {f['score']:.1f}점")
 
-    lines += _closing_lines(today_str, "daily")
-    lines.append(HASHTAGS)
+    lines += _closing_lines(today_str, "daily")   # 해시태그 포함이라 별도 append 불필요
     return "\n".join(lines)
 
 
@@ -92,6 +91,5 @@ def build_weekly_caption(data, headline_lines, subtitle, today_str):
         top = data["strong_themes"][0]
         lines.append(f"\U0001F525 이번주 강세 테마: {top['name']} {top['ret_1m']:+.1f}%")
 
-    lines += _closing_lines(today_str, "weekly")
-    lines.append(WEEKLY_HASHTAGS)
+    lines += _closing_lines(today_str, "weekly")   # 해시태그 포함이라 별도 append 불필요
     return "\n".join(lines)

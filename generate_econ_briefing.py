@@ -35,8 +35,20 @@ QUERIES = ["한국 경제", "금리 환율", "코스피 증시", "부동산 물�
 _SYSTEM = """당신은 '머니체크업'의 경제 뉴스 해설 필자입니다. 주어진 '뉴스 헤드라인'만
 근거로, 경제를 잘 모르는 개인투자자도 이해하기 쉬운 '교육형 경제 정리글'을 씁니다.
 
-엄격한 규칙(절대 어기지 마세요):
-- 주어진 헤드라인에 있는 사실만 쓰세요. 없는 수치·전망·해석을 지어내지 마세요.
+엄격한 규칙(절대 어기지 마세요 — 헤드라인은 제목 한 줄뿐이라 근거가 매우 얇습니다.
+빈 곳을 상상으로 채우고 싶어질 텐데, 그 유혹을 참는 게 이 작업에서 가장 중요합니다):
+- 모든 문장은 아래 번호 매긴 헤드라인 중 최소 하나에 직접 대응돼야 합니다. 헤드라인에
+  없는 원인·결론·전망·배경 설명을 지어내지 마세요.
+- "~것으로 보인다", "~것으로 판단됩니다", "~것으로 추정됩니다" 같은 추측성 표현 금지 —
+  헤드라인이 명시하지 않은 이유·의도를 짐작해서 쓰지 마세요. 확실치 않으면 아예 쓰지 마세요.
+- 서로 다른 사안을 하나의 인과관계처럼 엮지 마세요. 같은 묶음(주제)에는 실제로 같은
+  사안을 다루는 헤드라인만 넣고, 우연히 같은 검색어로 걸린 무관한 헤드라인을 억지로
+  같이 묶지 마세요.
+- 수치(%, 원, 억, 조 등 단위 포함)는 헤드라인에 적힌 그대로만 옮기세요. 단위를 임의로
+  바꾸거나(예: 억↔조), 어림잡아 다른 숫자로 바꾸지 마세요. 헤드라인에 숫자가 없으면
+  숫자를 만들어내지 마세요.
+- 특정인·기관의 발언이나 전망은 사실처럼 단정하지 말고 "~라는 분석이 나옵니다",
+  "~라고 밝혔습니다"처럼 누가 한 말인지 드러나게 쓰세요.
 - 예측·매수/매도 추천 금지. 낚시·과장·단정 금지.
 
 문체·구성:
@@ -67,6 +79,24 @@ _SYSTEM = """당신은 '머니체크업'의 경제 뉴스 해설 필자입니다
 #경제뉴스 #금리 #환율 #코스피 #경제공부 #머니체크업 (주제에 맞게 6~8개)"""
 
 
+_VERIFY_SYSTEM = """당신은 '머니체크업' 경제 정리글의 팩트체커입니다. [원본 헤드라인]과
+[초안]을 비교해, 초안에서 헤드라인으로 뒷받침 안 되는 부분만 최소한으로 고칩니다.
+
+반드시 고칠 것:
+- 헤드라인 어디에도 없는 원인·결론·전망을 지어낸 문장(예: "~것으로 보인다", "~것으로
+  판단됩니다" 같은 추측)은 삭제하거나, 헤드라인이 실제로 뒷받침하는 문장으로 바꾸세요.
+- 서로 무관한 사안을 하나의 인과관계처럼 엮은 문장은 분리하거나 삭제하세요.
+- 수치(%, 원, 억, 조 등)가 해당 헤드라인과 다르면 헤드라인 값으로 정정하세요.
+- 특정인·기관의 발언·전망이 사실처럼 단정돼 있으면 "~라고 밝혔습니다"처럼 출처가
+  드러나게 고치세요.
+
+하지 말 것:
+- 문제 없는 문장까지 다시 쓰거나 표현을 바꾸지 마세요(최소 수정 원칙).
+- 형식(제목 줄, ■ 오늘 한눈에, ■ 주제별 정리, ■ 오늘의 한 문장, 추천 태그, 마크다운
+  금지 등)은 그대로 유지하세요.
+- 설명·주석·"수정했습니다" 같은 메타 코멘트 없이, 완성된 전체 글만 그대로 출력하세요."""
+
+
 def _gather():
     seen, items = set(), []
     for q in QUERIES:
@@ -76,7 +106,7 @@ def _gather():
                 if t and t not in seen:
                     seen.add(t)
                     src = n.get("source") or ""
-                    items.append(f"- {t}" + (f" ({src})" if src else ""))
+                    items.append(f"{t}" + (f" ({src})" if src else ""))
         except Exception:
             pass
         if len(items) >= 14:
@@ -84,21 +114,41 @@ def _gather():
     return items[:14]
 
 
-def _call_claude(payload, api_key):
+def _numbered(items):
+    return "\n".join(f"{i+1}. {t}" for i, t in enumerate(items))
+
+
+def _call_claude(payload, api_key, system=_SYSTEM, label="generate_econ_briefing"):
     import claude_status
-    body = {"model": MODEL, "max_tokens": 2800, "system": _SYSTEM,
+    body = {"model": MODEL, "max_tokens": 2800, "system": system,
             "messages": [{"role": "user", "content": payload}]}
     r = requests.post(API_URL, headers={
         "x-api-key": api_key, "anthropic-version": "2023-06-01",
         "content-type": "application/json"}, json=body, timeout=120)
     if r.status_code != 200:
-        claude_status.record_result("generate_econ_briefing", False,
+        claude_status.record_result(label, False,
                                     status_code=r.status_code, response_text=r.text)
         raise RuntimeError(f"Claude API 오류 {r.status_code}: {r.text[:200]}")
     text = "".join(b.get("text", "") for b in r.json().get("content", [])
                    if b.get("type") == "text").strip()
-    claude_status.record_result("generate_econ_briefing", bool(text))
+    claude_status.record_result(label, bool(text))
     return text
+
+
+def _verify(draft, items, api_key):
+    """생성된 초안을 같은 헤드라인 목록과 대조해 사실 아닌 문장을 최소 수정으로 정리하는
+    2차 패스. 헤드라인이 제목 한 줄뿐이라 근거가 얇아 1차 생성만으로는 추측성 문장이
+    섞이기 쉬움(사용자가 실제로 틀린 부분을 지적해 도입, 2026-09-04). 실패해도 원본
+    초안으로 계속 진행(교정 실패가 게시 자체를 막지 않게)."""
+    payload = (f"[원본 헤드라인]\n{_numbered(items)}\n\n[초안]\n{draft}\n\n"
+               "위 규칙대로 최소 수정만 적용한 완성본을 출력해주세요.")
+    try:
+        fixed = _call_claude(payload, api_key, system=_VERIFY_SYSTEM,
+                             label="generate_econ_briefing_verify")
+        return fixed or draft
+    except Exception as e:
+        print(f"::warning::검증 패스 실패 — 1차 초안 그대로 사용: {e}")
+        return draft
 
 
 # 경제 정리글에 곁들일 AI 배경 카드(글자 없는 배경 + 한국어 제목 합성). 카드/합성
@@ -138,12 +188,14 @@ def main():
         print("::warning::수집된 뉴스가 너무 적음 — 생략.")
         return
     today = datetime.now(KST).strftime("%Y-%m-%d")
-    payload = ("[경제 뉴스 헤드라인]\n" + "\n".join(items)
+    payload = ("[경제 뉴스 헤드라인]\n" + _numbered(items)
                + f"\n\n위 헤드라인만 근거로 오늘({today}) 경제 뉴스 정리글을 써주세요.")
     text = _call_claude(payload, api_key)
     if not text:
         print("::warning::빈 응답 — 생략.")
         return
+    # 2차 검증 패스 — 같은 헤드라인과 대조해 추측성 문장·인과 왜곡·수치 오류를 정리.
+    text = _verify(text, items, api_key)
     # 네이버 평문화: 마크다운 헤딩(#)·강조(*, **) 제거(모델이 종종 섞어 씀).
     text = text.replace("**", "")
     # 마크다운 헤딩(# 뒤 공백)만 제거. '#경제뉴스' 같은 해시태그(# 뒤 글자)는 보존.
@@ -154,10 +206,11 @@ def main():
         while text.startswith(pref):
             text = text[len(pref):].lstrip()
 
-    day_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)),
-                           "content_out", today)
-    os.makedirs(day_dir, exist_ok=True)
-    dst = os.path.join(day_dir, "econ_briefing.txt")
+    # 카드(econ.png)와 같은 폴더에 넣어 함께 게시하기 쉽게 한다(사용자 요청 2026-09-04).
+    out_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                           "content_out", today, "ai_card_candidates")
+    os.makedirs(out_dir, exist_ok=True)
+    dst = os.path.join(out_dir, "econ_briefing.txt")
     with open(dst, "w", encoding="utf-8") as f:
         f.write(text.rstrip() + "\n")
     print(f"저장: {dst}\n---\n{text[:400]}")
