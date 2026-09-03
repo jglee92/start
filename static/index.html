@@ -120,11 +120,25 @@
     .sidenav.mobopen{display:block}
   }
 
-  .hero{padding:0 0 10px}
-  .hero .lead{font-size:16px;margin:0 0 6px}
-  .hero .why{color:var(--dim);font-size:14.5px;max-width:820px;margin:0;line-height:1.7}
-  .hero .why a{color:var(--accent);text-decoration:none;white-space:nowrap}
-  .home-toprow{display:flex;gap:18px;align-items:center;flex-wrap:wrap;margin:8px 0 8px}
+  /* 홈 히어로 v2(라이브 대시보드형) — 왼쪽 카피+검색, 오른쪽 실데이터 글래스 패널.
+     기존 .home-search/.statbar/.chart-card 클래스·JS 훅(#statbar 등)은 그대로 재사용,
+     배치만 재구성한다. 브랜드 마크와 통일해 초록(--good)을 히어로 강조색으로 씀. */
+  .hero3{display:grid;grid-template-columns:1fr 1.05fr;gap:30px;align-items:start;padding:6px 0 4px}
+  .hero3-h1{font-size:clamp(24px,3.2vw,32px);font-weight:800;letter-spacing:-.02em;line-height:1.24;margin:4px 0 12px}
+  .hero3-sub{color:var(--dim);font-size:14.5px;line-height:1.65;max-width:440px;margin:0 0 10px}
+  .hero3-sub a{color:var(--good);font-weight:700;text-decoration:none;white-space:nowrap}
+  .hero3-sub a:hover{text-decoration:underline}
+  .hero3-proof{font-size:12.5px;color:var(--good);font-weight:700;margin:0 0 18px}
+  .hero3-search{margin-bottom:14px}
+  .hero3-cta{display:flex;gap:16px;flex-wrap:wrap;font-size:12.5px}
+  .hero3-cta a{color:var(--good);font-weight:700;cursor:pointer;text-decoration:none}
+  .hero3-cta a:hover{text-decoration:underline}
+  .hero3-panel{position:relative;background:linear-gradient(165deg,var(--panel),var(--panel2));
+    border:1px solid var(--line);border-radius:16px;padding:16px 16px 6px;overflow:hidden}
+  .hero3-panel .statbar{margin-top:0}
+  .hero3-panel .chart-card{border:none;background:transparent;margin-top:10px}
+  .hero3-mark{position:absolute;right:-22px;bottom:-22px;width:160px;height:160px;opacity:.05;pointer-events:none}
+  @media(max-width:820px){.hero3{grid-template-columns:1fr}.hero3-panel{margin-top:4px}}
   .home-search{position:relative;flex:1;min-width:200px;max-width:360px}
   .home-search-label{display:flex;align-items:center;gap:4px;font-size:12px;font-weight:600;
     color:var(--dim);margin-bottom:4px}
@@ -149,9 +163,6 @@
   .cmp-go{padding:10px 20px;border-radius:9px;border:none;background:var(--accent);
     color:#fff;font-weight:700;cursor:pointer;width:100%}
   .cmp-go:disabled{background:var(--panel2);color:var(--dim);cursor:not-allowed}
-  .start-guide{display:flex;gap:12px;flex-wrap:wrap;align-items:center;font-size:12.5px;color:var(--dim)}
-  .start-guide a{color:var(--accent);cursor:pointer;font-weight:600;text-decoration:none}
-  .start-guide a:hover{text-decoration:underline}
   .warn{background:rgba(242,85,90,.1);border:1px solid rgba(242,85,90,.3);color:var(--dim);
     padding:5px 12px;margin:0 0 10px;border-radius:7px;font-size:11px;line-height:1.5}
   .statbar{display:flex;gap:10px;flex-wrap:wrap;margin-top:14px}
@@ -363,60 +374,57 @@
     <!-- 기본 숨김: 해시 라우트(#compare 등)로 새로고침 시 홈 화면 번쩍임 방지.
          아래 초기화에서 switchView(해시 또는 'home')가 올바른 화면을 즉시 표시. -->
     <div id="view-home" style="display:none">
-      <section class="hero">
-        <p class="lead">한국주식(KOSPI·KOSDAQ) 종목의 <b>실시간 시세·재무제표·회계감사의견</b>을
-          공시 원문 없이 한 곳에서 바로 확인하는 리서치 도구입니다.</p>
-        <p class="why">매출·영업이익·부채비율은 물론, 잘 안 알려주는 <b>회계감사의견(적정/한정/부적정 등)</b>까지
-          종목 페이지에서 바로 보여드립니다(코스피·코스닥 전 종목 대상). 여기에 더해 <b>종합건강점수</b>
-          (가치+퀄리티 팩터 기반 참고용 별점)도 제공하며, 해당 점수는 시점정합·상장폐지 포함·비용반영으로
-          정직하게 검증해 유니버스 대비 <b>연 약 +5%p 초과</b> 성과를 확인했습니다(2018~2024년
-          시뮬레이션 기준). 어디까지나 과거 검증 결과이며, 매매 추천이나 향후 수익을 보장하지 않습니다.
-          <a href="/about" onclick="return spaNav(event,'about')">→ 왜 이렇게 만들었나 · 방법론 · 검증결과</a></p>
-      </section>
-
-      <div class="home-toprow">
-        <form class="home-search" id="homeSearchWrap" onsubmit="return false">
-          <label for="homeSearch" class="home-search-label"><svg class="ic-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="10.5" cy="10.5" r="6.5"/><path d="M20 20l-5-5"/></svg> 빠른 종목 검색</label>
-          <input type="search" id="homeSearch" placeholder="종목명 또는 코드로 검색" autocomplete="off">
-          <div class="home-search-results" id="homeSearchResults"></div>
-        </form>
-        <div class="start-guide">
-          <span>처음이신가요?</span>
-          <a onclick="switchView('screener')">조건검색 →</a>
-          <a onclick="switchView('learn')">용어해설 →</a>
-          <a href="/about" onclick="return spaNav(event,'about')">방법론 →</a>
+      <section class="hero3">
+        <div class="hero3-left">
+          <h1 class="hero3-h1">국내주식 건강검진,<br>숫자로 3초 만에.</h1>
+          <p class="hero3-sub">코스피·코스닥 전 종목의 재무제표와 <b>회계감사의견</b>을 종목 페이지
+            하나에서 확인하세요. 가치+퀄리티 건강점수는 시점정합·상장폐지 포함·비용반영으로
+            정직하게 검증했습니다.
+            <a href="/about" onclick="return spaNav(event,'about')">방법론 보기 →</a></p>
+          <p class="hero3-proof">유니버스 대비 연 약 +5%p 초과 성과 (2018~2024년 시뮬레이션 검증)</p>
+          <form class="home-search hero3-search" id="homeSearchWrap" onsubmit="return false">
+            <label for="homeSearch" class="home-search-label"><svg class="ic-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="10.5" cy="10.5" r="6.5"/><path d="M20 20l-5-5"/></svg> 빠른 종목 검색</label>
+            <input type="search" id="homeSearch" placeholder="종목명 또는 코드로 검색" autocomplete="off">
+            <div class="home-search-results" id="homeSearchResults"></div>
+          </form>
+          <div class="hero3-cta">
+            <a onclick="switchView('screener')">조건검색 →</a>
+            <a onclick="switchView('learn')">용어해설 →</a>
+          </div>
         </div>
-      </div>
-
-      <div class="warn">리서치 지원용이며 매수·매도 추천이 아닙니다. 점수·별점은 유니버스(코스피·코스닥 전 종목, 시총 300억 미만은 참고용) 내 상대 비교이며 과거 성과가 미래를 보장하지 않습니다.</div>
-
-      <div class="statbar" id="statbar"></div>
-      <div class="chart-card">
-        <div class="idx-tabs" id="indicesTicker"></div>
-        <div class="chart-body">
-          <div class="chart-head">
-            <span class="cn" id="chartName"></span>
-            <span class="cp mut" id="chartPrice"></span>
-            <span class="cc" id="chartChg"></span>
-            <div class="chart-range" id="chartRange">
-              <button class="range-btn" data-r="1mo">1개월</button>
-              <button class="range-btn active" data-r="6mo">6개월</button>
-              <button class="range-btn" data-r="1y">1년</button>
+        <div class="hero3-panel">
+          <img class="hero3-mark" src="/static/favicon.svg" alt="" width="160" height="160">
+          <div class="statbar" id="statbar"></div>
+          <div class="chart-card">
+            <div class="idx-tabs" id="indicesTicker"></div>
+            <div class="chart-body">
+              <div class="chart-head">
+                <span class="cn" id="chartName"></span>
+                <span class="cp mut" id="chartPrice"></span>
+                <span class="cc" id="chartChg"></span>
+                <div class="chart-range" id="chartRange">
+                  <button class="range-btn" data-r="1mo">1개월</button>
+                  <button class="range-btn active" data-r="6mo">6개월</button>
+                  <button class="range-btn" data-r="1y">1년</button>
+                </div>
+              </div>
+              <div id="chartWrap">
+                <svg class="chart-svg" id="chartSvg" viewBox="0 0 560 96">
+                  <defs>
+                    <linearGradient id="areaFill" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="0%" stop-color="var(--accent)" stop-opacity="0.22"/>
+                      <stop offset="100%" stop-color="var(--accent)" stop-opacity="0"/>
+                    </linearGradient>
+                  </defs>
+                  <g id="chartContent"></g>
+                </svg>
+              </div>
             </div>
           </div>
-          <div id="chartWrap">
-            <svg class="chart-svg" id="chartSvg" viewBox="0 0 560 96">
-              <defs>
-                <linearGradient id="areaFill" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stop-color="var(--accent)" stop-opacity="0.22"/>
-                  <stop offset="100%" stop-color="var(--accent)" stop-opacity="0"/>
-                </linearGradient>
-              </defs>
-              <g id="chartContent"></g>
-            </svg>
-          </div>
         </div>
-      </div>
+      </section>
+
+      <div class="warn">리서치 지원용이며 매수·매도 추천이 아닙니다. 점수·별점은 유니버스(코스피·코스닥 전 종목, 시총 300억 미만은 참고용) 내 상대 비교이며 과거 성과가 미래를 보장하지 않습니다.</div>
 
       <h3 style="margin-top:22px">오늘의 하이라이트</h3>
       <div class="cards-row" id="cards"></div>
