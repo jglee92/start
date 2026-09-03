@@ -83,6 +83,24 @@ elseif (-not (Test-Path $cmark)) {
     if ($?) { New-Item -ItemType File -Path $cmark -Force | Out-Null }
 }
 
+# 경제뉴스 정리(econ-briefing.yml)도 같은 이유로 로컬 보장 - 2026-09-04 06:00 KST
+# 정규 슬롯이 통째로 드롭되고 07:30 GitHub 백스톱마저 25분 밀려 07:55에야 만들어진
+# 사고 이후 추가. workflow_dispatch는 클라우드 cron 큐잉 지연이 없어 백스톱보다
+# 빠르게 복구된다. generate_econ_briefing.py가 멱등이라 반복 트리거해도 안전.
+$econ = Join-Path $proj "content_out\$today\econ\econ_briefing.txt"
+$emark = Join-Path $env:LOCALAPPDATA "moneycheckup_econ_triggered_$today.flag"
+if ((Get-Date).DayOfWeek -eq 'Sunday') {
+    # 일요일은 econ도 스킵
+}
+elseif (Test-Path $econ) {
+    Log "ensure_content: today ($today) econ briefing present - OK"
+}
+elseif (-not (Test-Path $emark)) {
+    Log "ensure_content: today ($today) econ briefing missing - force-triggering econ-briefing.yml"
+    & 'C:\Program Files\GitHub CLI\gh.exe' workflow run econ-briefing.yml *>> $log
+    if ($?) { New-Item -ItemType File -Path $emark -Force | Out-Null }
+}
+
 # ============ us_screener (US market) morning pipeline force-trigger ============
 # GitHub schedule events run 2-8h late on us_screener too (prices "06:00" often
 # actually starts 08-14h; fundamentals takes ~33min). workflow_dispatch is not

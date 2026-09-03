@@ -165,7 +165,7 @@ def _make_card(title, today):
         print(f"::warning::카드 모듈 로드 실패 — 카드 생략: {e}")
         return
     out_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)),
-                           "content_out", today, "ai_card_candidates")
+                           "content_out", today, "econ")
     os.makedirs(out_dir, exist_ok=True)
     bgs = GC._gen_backgrounds(GC._prompt(_ECON_SCENE), 1)
     bg = bgs[0] if bgs else GC._fallback_bg(0)
@@ -188,7 +188,7 @@ def main():
     # 돌려도, 이미 성공한 날은 Claude를 두 번(생성+검증) 다시 호출하지 않게 한다.
     # kr_screener/daily_content.py의 _has_content 패턴과 동일(2026-09-04 도입).
     _dst_check = os.path.join(os.path.dirname(os.path.abspath(__file__)),
-                              "content_out", today, "ai_card_candidates", "econ_briefing.txt")
+                              "content_out", today, "econ", "econ_briefing.txt")
     if "--force" not in sys.argv and os.path.isfile(_dst_check):
         print(f"[스킵] 오늘({today}) 경제 정리글 이미 존재 — 멱등 스킵(재생성하려면 --force).")
         return
@@ -214,9 +214,10 @@ def main():
         while text.startswith(pref):
             text = text[len(pref):].lstrip()
 
-    # 카드(econ.png)와 같은 폴더에 넣어 함께 게시하기 쉽게 한다(사용자 요청 2026-09-04).
+    # econ 전용 폴더에 카드(econ.png)와 함께 저장 — 다른 일일 카드(ai_card_candidates)와
+    # 섞이지 않는 별도 폴더를 원한다는 사용자 정정 반영(2026-09-04).
     out_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)),
-                           "content_out", today, "ai_card_candidates")
+                           "content_out", today, "econ")
     os.makedirs(out_dir, exist_ok=True)
     dst = os.path.join(out_dir, "econ_briefing.txt")
     with open(dst, "w", encoding="utf-8") as f:
