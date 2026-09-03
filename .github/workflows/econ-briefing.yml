@@ -5,10 +5,21 @@ on:
     # 아침 정리용. UTC 21:00 = KST 06:00(다음날). 평일+토(월~토 KST) 대상.
     # 요일 UTC 0-5(일~금) → KST 월~토.
     - cron: '0 21 * * 0-5'
+    # 백스톱 — GitHub Actions 스케줄 이벤트가 부하 시 통째로 드롭될 수 있는 알려진
+    # 한계(daily-content.yml에서 2026-08-07 실제 발생, content-catchup.yml로 대응한
+    # 전례와 동일)라, 정규 슬롯 이후로도 오전 중 재시도한다. generate_econ_briefing.py가
+    # 멱등(오늘 것이 이미 있으면 즉시 스킵, 2026-09-04)이라 정상적인 날엔 몇 초짜리
+    # no-op이고, 진짜 빠진 날에만 생성·커밋한다.
+    # UTC 22:30,01:30,04:30 = KST 07:30, 10:30, 13:30.
+    - cron: '30 22,1,4 * * 0-5'
   workflow_dispatch: {}
 
 permissions:
   contents: write
+
+concurrency:
+  group: econ-briefing-generate
+  cancel-in-progress: false
 
 jobs:
   generate:

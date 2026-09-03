@@ -183,11 +183,19 @@ def main():
     if not api_key:
         print("::warning::ANTHROPIC_API_KEY 미설정 — 경제 정리글 건너뜀.")
         return
+    today = datetime.now(KST).strftime("%Y-%m-%d")
+    # 멱등 스킵 — GitHub 스케줄 드롭 대비용 catchup 백스톱이 하루 여러 번 이 스크립트를
+    # 돌려도, 이미 성공한 날은 Claude를 두 번(생성+검증) 다시 호출하지 않게 한다.
+    # kr_screener/daily_content.py의 _has_content 패턴과 동일(2026-09-04 도입).
+    _dst_check = os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                              "content_out", today, "ai_card_candidates", "econ_briefing.txt")
+    if "--force" not in sys.argv and os.path.isfile(_dst_check):
+        print(f"[스킵] 오늘({today}) 경제 정리글 이미 존재 — 멱등 스킵(재생성하려면 --force).")
+        return
     items = _gather()
     if len(items) < 3:
         print("::warning::수집된 뉴스가 너무 적음 — 생략.")
         return
-    today = datetime.now(KST).strftime("%Y-%m-%d")
     payload = ("[경제 뉴스 헤드라인]\n" + _numbered(items)
                + f"\n\n위 헤드라인만 근거로 오늘({today}) 경제 뉴스 정리글을 써주세요.")
     text = _call_claude(payload, api_key)
