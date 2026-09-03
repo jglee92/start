@@ -1,17 +1,14 @@
 name: 인스타그램 자동 게시
 
 on:
-  schedule:
-    # 매 평일+토요일 UTC 20:15 = KST 05:15(다음날) 목표. daily-content.yml을 04:45
-    # 목표로 1시간 더 당기면서(2026-08 사용자 일정 변경 — 06:00까지는 사이트에
-    # 올라와 있어야 한다는 요청) 이 워크플로우도 같은 30분 간격을 유지하도록 같이
-    # 당겼다 — daily-content.yml이 그날 콘텐츠를 이미 커밋해둔 뒤라야 하므로 순서가
-    # 바뀌면 안 됨. daily-content.yml이 그날 콘텐츠를 이미 커밋해둔 뒤라, 여기서는
-    # 재생성 없이 오늘자 content_out/ 폴더를 그대로 게시만 한다 — 콘텐츠 생성과
-    # 게시 시간을 분리해달라는 요청 반영. 토요일 분량(주간 마무리 카드)도
-    # daily-content.yml이 같은 폴더 구조로 만들어두므로 post_to_instagram.py는
-    # 요일 구분 없이 그대로 재사용된다.
-    - cron: '15 20 * * 0-5'
+  # 스케줄 자동 실행 중단(2026-09-04, 사용자 결정) — post_to_instagram.py가 읽던
+  # content_out/{date}/cards/ 폴더가 daily_content.py 개편(2026-09-02, 카드/캡션을
+  # ai_card_candidates/로 통합)으로 더 이상 생성되지 않아, 이 워크플로우는 매일
+  # "성공"으로 뜨지만 실제로는 아무것도 안 올리는 상태였다(post_to_instagram.py의
+  # 72-75행 graceful skip). 사용자가 인스타 게시는 수동으로 콘텐츠를 골라 직접
+  # 올리길 원해 자동 게시 자체를 끄기로 함. workflow_dispatch(수동 실행)는 남겨둠 —
+  # 나중에 재개하려면 post_to_instagram.py가 ai_card_candidates/를 읽도록 고친 뒤
+  # 아래 schedule을 다시 추가할 것.
   workflow_dispatch: {}
 
 permissions:
