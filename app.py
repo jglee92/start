@@ -145,7 +145,11 @@ def get_ranking():
             _cache["master"] = build_master()
         _cache["ranking"] = compute_ranking(conn, master=_cache["master"])
         conn.close()
-    halted = get_halted_codes()
+    # 상위권(=홈 카드·화면에 실제 노출되는 종목) 코드를 넘겨, 콜드부팅 직후엔 이 종목들만이라도
+    # 즉시 동기 스캔되게 한다(아래 get_halted_codes 참고) — 전 종목 스캔이 끝나기 전에 거래정지
+    # 종목이 '저평가 우량주 TOP5' 같은 카드에 잠깐 정상 종목처럼 노출되는 걸 방지.
+    top_codes = [r["code"] for r in _cache["ranking"][:150]]
+    halted = get_halted_codes(priority_codes=top_codes)
     if not halted:
         return _cache["ranking"]
     # 거래정지 종목 제외 후 순위를 1..N으로 다시 매긴다 — 안 그러면 상위 종목이 정지일 때
@@ -157,11 +161,18 @@ def get_ranking():
     return out
 
 
-def get_halted_codes():
+def get_halted_codes(priority_codes=None):
     """현재 거래정지 상태인 종목 코드 집합 — 전 종목 대상, 매수·매도 자체가 불가능한
     종목이 랭킹·섹터·비교 등 어디에도 섞여 나오지 않도록 get_ranking()에서 걸러내는 용도.
     거래정지는 분단위로 바뀌는 게 아니라서 실시간가(get_live_prices)보다 훨씬 긴 TTL로
-    캐시(폴링 서버 부담도 줄임). 오래됐어도 즉시 반환하고 갱신은 백그라운드에서."""
+    캐시(폴링 서버 부담도 줄임). 오래됐어도 즉시 반환하고 갱신은 백그라운드에서.
+
+    콜드부팅 직후(_cache["halted"]가 아예 None) 문제: 배포마다 이 캐시가 초기화되는데,
+    전 종목(~1500개) 스캔은 완료까지 수십 초~수 분 걸린다. 그 사이엔 halted가 빈 집합이라
+    필터가 전혀 안 걸려 거래정지 종목(예: 장기 정지된 피씨엘)이 홈 카드·랭킹에 잠깐 정상
+    종목처럼 노출되는 사고가 실제 있었음(2026-09-03). 전체를 동기로 기다리면 요청이 수
+    분간 멎을 위험이 있으니, priority_codes(=화면에 실제 노출되는 상위권)만 짧게 동기
+    스캔해 즉시 채우고, 전체 유니버스는 기존처럼 백그라운드에서 이어서 채운다."""
     import threading
     from datetime import datetime
     import live_price
@@ -171,6 +182,13 @@ def get_halted_codes():
     ts = _cache.get("halted_ts")
     now_kst = datetime.now(live_price.KST)
     stale = ts is None or (now_kst - ts).total_seconds() > TTL
+    cold = _cache.get("halted") is None
+    if cold and priority_codes:
+        try:
+            _cache["halted"] = live_price.fetch_halted_set(priority_codes[:150])
+            _cache["halted_ts"] = now_kst
+        except Exception:
+            pass
     if stale and not _cache.get("halted_refreshing"):
         _cache["halted_refreshing"] = True
 
