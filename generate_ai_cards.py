@@ -36,35 +36,81 @@ W = H = CR.W   # 1080
 
 
 # ── 배경 프롬프트(정직·글자 없음) ────────────────────────────────────────────
-def _scene_for(data):
-    """오늘 데이터의 지배적 신호에서 '분위기 장면'을 고른다. 특정 예측/문구가 아니라
-    무드만 — 이미지엔 절대 글자를 넣지 않는다."""
+# 각 무드마다 후보를 여러 개 두고 날짜+슬롯 시드로 로테이션한다(card_templates._rot
+# 재사용) — 예전엔 무드당 문장이 1개뿐이라 매일 거의 같은 그림이 나온다는 지적을
+# 받아 다양화함(2026-09-07). 스타일 래퍼(_prompt)는 그대로 둬 브랜드 톤은 유지.
+_SCENE_DOWN = [
+    "a moody dark city skyline of Seoul at dusk under heavy storm clouds, cold blue tones, sense of tension",
+    "an empty rain-soaked Seoul street at night reflecting red neon signs, tense atmospheric mood, cinematic",
+    "a lone figure walking through Yeouido's financial district under overcast skies, muted cold tones, cinematic wide shot",
+    "storm clouds gathering over the Han River bridges at dusk, dramatic low light, tense mood",
+    "a wilting potted plant on a dark office windowsill, blurred city lights behind, somber cinematic mood",
+]
+_SCENE_UP = [
+    "a bright modern Seoul financial district skyline at sunrise, warm optimistic light",
+    "sunlight breaking through clouds over Yeouido skyscrapers, warm golden hour, hopeful cinematic mood",
+    "a wide shot of the Han River at sunrise with the skyline glowing warm gold, optimistic atmosphere",
+    "a thriving green plant on a bright office desk with morning sun flare, hopeful cinematic mood",
+    "a busy Seoul street crossing at golden hour, energetic warm light, sense of momentum",
+]
+_SCENE_NEUTRAL = [
+    "an abstract cinematic representation of industry and technology, sleek modern, soft studio lighting",
+    "a macro shot of interlocking gears and circuit patterns, sleek metallic tones, soft studio lighting",
+    "an architectural photo of a glass office atrium with geometric light patterns, modern minimal",
+    "an abstract composition of flowing light trails through a city at night, sleek and modern",
+    "a modern minimalist workspace with soft window light and a blurred cityscape beyond",
+]
+_SCENE_DEFAULT = [
+    "a calm modern financial workspace, soft natural light, minimal desk with subtle out-of-focus charts in the background",
+    "a quiet minimalist office desk with morning coffee and a blurred city view, calm natural light",
+    "an overhead flat-lay of a notebook, pen, and coffee cup on a wooden desk, soft natural light, calm mood",
+    "a wide architectural shot of a bright modern office lobby, calm and orderly, soft daylight",
+    "sunlight filtering through office blinds onto an empty desk, calm minimal cinematic mood",
+]
+
+
+def _scene_for(data, seed):
+    """오늘 데이터의 지배적 신호에서 '분위기' 후보군을 고르고, 그 안에서 시드로
+    한 장을 뽑는다. 특정 예측/문구가 아니라 무드만 — 이미지엔 절대 글자를 넣지 않는다."""
     ix = (data.get("us_indices") or {})
     kospi = ix.get("kospi") or {}
     chg = kospi.get("chg_pct")
     if chg is not None and chg <= -1.0:
-        return ("a moody dark city skyline of Seoul at dusk under heavy clouds, "
-                "cold blue tones, sense of tension")
-    if chg is not None and chg >= 1.0:
-        return ("a bright modern Seoul financial district skyline at sunrise, "
-                "warm optimistic light")
-    themes = data.get("themes") or []
-    if themes:
-        return ("an abstract cinematic representation of industry and technology, "
-                "sleek modern, soft studio lighting")
-    return ("a calm modern financial workspace, soft natural light, minimal desk "
-            "with subtle out-of-focus charts in the background")
+        pool = _SCENE_DOWN
+    elif chg is not None and chg >= 1.0:
+        pool = _SCENE_UP
+    elif data.get("themes"):
+        pool = _SCENE_NEUTRAL
+    else:
+        pool = _SCENE_DEFAULT
+    return card_templates._rot(seed, pool)
 
 
-# 섹션별 배경 '무드' 장면(글자·예측 없음). 각 카드 주제에 맞춘 분위기만.
+# 섹션별 배경 '무드' 후보군(글자·예측 없음). 각 카드 주제에 맞춘 분위기만.
 _SECTION_SCENE = {
-    "signals": "a dark wooden desk with a financial newspaper and a magnifying glass, "
-               "investigative and cautious mood, dramatic side lighting",
-    "theme": "an abstract cinematic montage of modern industry and technology, sleek "
-             "surfaces, soft studio lighting, sense of momentum",
-    "company": "a modern corporate headquarters glass building seen from below at blue "
-               "hour, calm professional mood",
+    "signals": [
+        "a dark wooden desk with a financial newspaper and a magnifying glass, investigative and cautious mood, dramatic side lighting",
+        "a close-up of a red warning light blinking on a dark control panel, tense investigative mood",
+        "a desk with scattered documents and a desk lamp casting dramatic shadows, cautious mood",
+        "an abstract shot of a magnifying glass over blurred financial charts, dramatic side lighting, investigative tone",
+    ],
+    "theme": [
+        "an abstract cinematic montage of modern industry and technology, sleek surfaces, soft studio lighting, sense of momentum",
+        "a wide shot of a modern factory production line with soft industrial lighting, sense of momentum",
+        "an aerial view of a solar panel farm at golden hour, sleek modern energy theme",
+        "a macro shot of semiconductor circuitry with blue accent lighting, sleek high-tech mood",
+    ],
+    "company": [
+        "a modern corporate headquarters glass building seen from below at blue hour, calm professional mood",
+        "a sleek corporate lobby with marble floors and soft ambient light, professional calm mood",
+        "an aerial view of a modern corporate campus at dusk with lit windows, professional atmosphere",
+        "a close-up of a corporate glass facade reflecting a sunset sky, calm professional mood",
+    ],
 }
+
+
+def _section_scene(section, seed):
+    return card_templates._rot(seed, _SECTION_SCENE[section])
 
 
 def _prompt(scene):
@@ -194,26 +240,26 @@ def _specs(data, date_str):
     out = []
     # 1) 표지 — 그날 임팩트 큰 사실 헤드라인(로테이션). 배경은 지수 방향 무드.
     hl, sub, _tid = CT.pick_cover_headline(data, A._name_of, date_str)
-    out.append(("cover", hl, sub, _scene_for(data)))
+    out.append(("cover", hl, sub, _scene_for(data, seed + "|scene-cover")))
     # 2) 급등주(시장)
     if data.get("gainers"):
         r = _safe(CT._t_gainer_pct, data, seed + "|g")
         if r:
-            out.append(("gainers", r[0], r[1], _scene_for(data)))
+            out.append(("gainers", r[0], r[1], _scene_for(data, seed + "|scene-gainers")))
     # 3) 시그널(실적/이상신호)
     if data.get("earnings"):
         r = _safe(CT._t_earnings_split, data, seed + "|e")
         if r:
-            out.append(("signals", r[0], r[1], _SECTION_SCENE["signals"]))
+            out.append(("signals", r[0], r[1], _section_scene("signals", seed + "|scene-signals")))
     elif data.get("anomalies"):
         r = _safe(CT._t_anomaly_count, data, seed + "|a")
         if r:
-            out.append(("signals", r[0], r[1], _SECTION_SCENE["signals"]))
+            out.append(("signals", r[0], r[1], _section_scene("signals", seed + "|scene-signals")))
     # 4) 테마
     if data.get("themes"):
         r = _safe(CT._t_theme_hot, data, seed + "|t")
         if r:
-            out.append(("theme", r[0], r[1], _SECTION_SCENE["theme"]))
+            out.append(("theme", r[0], r[1], _section_scene("theme", seed + "|scene-theme")))
     # 5) 오늘의 기업 종합검진(featured) — 데이터 덱의 마지막 장과 동일 컨셉
     f = data.get("featured")
     if f and f.get("name"):
@@ -221,7 +267,7 @@ def _specs(data, date_str):
         hl = ["오늘의 기업 검진", str(f["name"])]
         sub = (f"건강점수 {score:.0f}점 · 가치+퀄리티로 살펴본 현주소"
                if score is not None else "가치+퀄리티 팩터로 살펴본 현주소")
-        out.append(("company", hl, sub, _SECTION_SCENE["company"]))
+        out.append(("company", hl, sub, _section_scene("company", seed + "|scene-company")))
     return out
 
 

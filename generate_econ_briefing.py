@@ -25,6 +25,7 @@ from dotenv import load_dotenv
 load_dotenv(os.path.join(os.path.dirname(os.path.abspath(__file__)), ".env"))
 
 import app as A
+import card_templates
 
 API_URL = "https://api.anthropic.com/v1/messages"
 MODEL = "claude-haiku-4-5-20251001"
@@ -153,9 +154,15 @@ def _verify(draft, items, api_key):
 
 # 경제 정리글에 곁들일 AI 배경 카드(글자 없는 배경 + 한국어 제목 합성). 카드/합성
 # 로직은 generate_ai_cards의 것을 재사용해 브랜드 톤을 통일한다. 키 없으면 폴백 배경.
-_ECON_SCENE = ("an early-morning economic briefing desk by a window overlooking a calm "
-               "modern city skyline at sunrise, a folded newspaper and a cup of coffee, "
-               "warm soft editorial light, sense of a quiet start to the day")
+# 후보를 여러 개 두고 날짜 시드로 로테이션(card_templates._rot 재사용) — 문장이
+# 1개뿐이라 매일 거의 같은 그림이 나온다는 지적을 받아 다양화함(2026-09-07).
+_ECON_SCENE = [
+    "an early-morning economic briefing desk by a window overlooking a calm modern city skyline at sunrise, a folded newspaper and a cup of coffee, warm soft editorial light, sense of a quiet start to the day",
+    "a quiet Seoul street at early dawn with soft golden light, calm morning cinematic mood",
+    "a folded newspaper and reading glasses on a cafe table by a window, soft morning light, calm editorial mood",
+    "an aerial view of the Yeouido financial district at sunrise with soft morning mist, calm editorial mood",
+    "a minimalist flat-lay of a coffee cup, notebook, and pen on a wooden table by a window, soft morning light",
+]
 
 
 def _make_card(title, today):
@@ -167,7 +174,8 @@ def _make_card(title, today):
     out_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)),
                            "content_out", today, "econ")
     os.makedirs(out_dir, exist_ok=True)
-    bgs = GC._gen_backgrounds(GC._prompt(_ECON_SCENE), 1)
+    scene = card_templates._rot(f"{today}|econ-scene", _ECON_SCENE)
+    bgs = GC._gen_backgrounds(GC._prompt(scene), 1)
     bg = bgs[0] if bgs else GC._fallback_bg(0)
     if not bgs:
         print("  [econ] 이미지 API 미설정/실패 — 폴백 배경 사용.")
