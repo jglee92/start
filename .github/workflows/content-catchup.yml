@@ -56,6 +56,28 @@ jobs:
             echo "변경 없음 — 오늘치 이미 존재(정상)."
           else
             git commit -m "chore: 콘텐츠 자가복구 $DATE_KST"
-            # 다른 워크플로우가 그 사이 push했으면 non-fast-forward로 거부되므로 rebase 후 재시도
-            git push || (git pull --rebase && git push)
+            # data/claude_api_status.json은 econ-briefing.yml 등 다른 워크플로우도 같이
+            # 커밋하는 공유 카운터 파일이라, 비슷한 시각에 겹치면 그 파일만 rebase
+            # 충돌이 나 이 실행의 커밋 전체가 유실될 수 있었음(2026-09-08 실제 사고).
+            # 그 파일 하나만 충돌하면 그 충돌만 접어두고 진행(git rebase 중 --theirs는
+            # 병합 때와 반대로 '지금 재생 중인 이 커밋 자신의 값'을 뜻함 — 단순 집계
+            # 카운터라 어느 쪽이 남든 상관없고 다음 성공 실행이 다시 갱신하므로 손실도
+            # 없음). 진짜 콘텐츠 충돌이면 여전히 실패시켜 수동 확인하게 한다.
+            ok=0
+            for i in 1 2; do
+              if git push; then ok=1; break; fi
+              git fetch origin main
+              if git rebase origin/main; then continue; fi
+              conflicts="$(git diff --name-only --diff-filter=U)"
+              if [ "$conflicts" = "data/claude_api_status.json" ]; then
+                git checkout --theirs data/claude_api_status.json
+                git add data/claude_api_status.json
+                git rebase --continue
+              else
+                echo "::error::rebase 충돌(콘텐츠 파일 포함) — 수동 확인 필요: $conflicts"
+                git rebase --abort
+                exit 1
+              fi
+            done
+            [ "$ok" = "1" ] || { echo "::error::재시도 후에도 push 실패"; exit 1; }
           fi
