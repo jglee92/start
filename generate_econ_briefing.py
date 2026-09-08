@@ -128,16 +128,46 @@ _VERIFY_SYSTEM = """당신은 '머니체크업' 경제 정리글의 팩트체커
 - 설명·주석·"수정했습니다" 같은 메타 코멘트 없이, 완성된 전체 글만 그대로 출력하세요."""
 
 
+# econ_briefing 전용 출처 화이트리스트 — app._is_blocked_source()는 블로그·카페
+# 정도만 거르는 넓은 블록리스트라 지역지·군소매체(부산국제신문·인천일보·천지일보·
+# 데일리팝·빅터뉴스·코리아리포트, 심지어 Vietnam.vn까지)가 섞여 나왔음. 이제 사설을
+# 매체명 붙여 직접 인용하는 "■ 오늘의 논조" 섹션이 있어 출처 신뢰도가 예전보다
+# 훨씬 중요해짐(2026-09-08, 사용자 제안) — 여기서만 종합일간지·경제전문지·통신사·
+# 지상파로 좁힌다(app.py의 종목별 뉴스 등 다른 용도는 그대로 넓은 필터 유지).
+_MAJOR_SOURCES = (
+    # 종합일간지
+    "조선일보", "중앙일보", "동아일보", "한겨레", "경향신문", "한국일보",
+    "서울신문", "국민일보", "문화일보", "세계일보",
+    # 경제전문지
+    "매일경제", "한국경제", "서울경제", "파이낸셜뉴스", "fnnews",
+    "헤럴드경제", "이데일리", "머니투데이", "아시아경제", "조선비즈",
+    # 통신사
+    "연합뉴스", "뉴시스", "뉴스1",
+    # 지상파
+    "KBS", "MBC", "SBS", "YTN",
+)
+
+
+def _is_major_source(src):
+    s = (src or "").strip()
+    return any(k in s for k in _MAJOR_SOURCES)
+
+
 def _gather_news(seen):
     items = []
     for q in QUERIES:
         try:
-            for n in A._google_news(q)[:5]:
+            picked = 0
+            for n in A._google_news(q):
+                if picked >= 5:
+                    break
                 t = (n.get("title") or "").strip()
-                if t and t not in seen:
-                    seen.add(t)
-                    src = n.get("source") or ""
-                    items.append(f"{t}" + (f" ({src})" if src else ""))
+                src = n.get("source") or ""
+                if not t or t in seen or not _is_major_source(src):
+                    continue
+                seen.add(t)
+                items.append(f"{t}" + (f" ({src})" if src else ""))
+                picked += 1
         except Exception:
             pass
         if len(items) >= 14:
@@ -153,12 +183,17 @@ def _gather_opinions(seen):
     items = []
     for q in OPINION_QUERIES:
         try:
-            for n in A._google_news(q)[:6]:
+            picked = 0
+            for n in A._google_news(q):
+                if picked >= 6:
+                    break
                 t = (n.get("title") or "").strip()
-                if t and t not in seen:
-                    seen.add(t)
-                    src = n.get("source") or ""
-                    items.append(f"{t}" + (f" ({src})" if src else ""))
+                src = n.get("source") or ""
+                if not t or t in seen or not _is_major_source(src):
+                    continue
+                seen.add(t)
+                items.append(f"{t}" + (f" ({src})" if src else ""))
+                picked += 1
         except Exception:
             pass
         if len(items) >= 6:
