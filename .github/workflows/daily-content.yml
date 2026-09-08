@@ -51,6 +51,11 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
+          # git rebase --continue가 비대화형 러너에서 커밋 메시지 편집기를 열려다
+          # "Terminal is dumb, but EDITOR unset"으로 실패해, 아래 충돌 자동복구
+          # 로직 자체가 또 콘텐츠를 유실시킨 사고가 있었음(2026-09-09, econ-briefing.yml
+          # 에서 발견). 편집기를 안 열고 기존 메시지를 그대로 쓰게 no-op 에디터로 고정.
+          git config core.editor true
           # cover_history.json 을 반드시 함께 커밋해야 커버 제목 로테이션(NO_REPEAT_DAYS)이
           # 실제로 작동한다 — 예전엔 이걸 안 올려서 러너가 매번 낡은 히스토리로 시작,
           # recent가 늘 비어 impact 최고(순이익 급증 '어닝')만 매일 뽑히던 버그가 있었음.

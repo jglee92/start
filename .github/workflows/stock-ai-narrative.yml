@@ -33,6 +33,11 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
+          # git rebase --continue가 비대화형 러너에서 커밋 메시지 편집기를 열려다
+          # "Terminal is dumb, but EDITOR unset"으로 실패해, 아래 충돌 자동복구
+          # 로직 자체가 또 콘텐츠를 유실시킨 사고가 있었음(2026-09-09, econ-briefing.yml
+          # 에서 발견). 편집기를 안 열고 기존 메시지를 그대로 쓰게 no-op 에디터로 고정.
+          git config core.editor true
           git add data/stock_ai_narratives.json data/claude_api_status.json
           if git diff --staged --quiet; then
             echo "변경 없음 - 모든 상위 종목 데이터 그대로(정상)."
