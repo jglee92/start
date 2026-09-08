@@ -32,21 +32,39 @@ MODEL = "claude-haiku-4-5-20251001"
 KST = timezone(timedelta(hours=9))
 
 QUERIES = ["한국 경제", "금리 환율", "코스피 증시", "부동산 물가"]
+# 사설·칼럼 전용 검색어 — 매체 논조/관점 차이를 보여주는 새 섹션용 재료(2026-09-08,
+# 사용자 제안). 본문을 가져오는 게 아니라 헤드라인만 짧게 인용+출처 표기하므로
+# 기존 '제목+출처' 수집 방식의 연장선이라 저작권 리스크가 낮다.
+OPINION_QUERIES = ["경제 사설", "증시 칼럼"]
 
-_SYSTEM = """당신은 '머니체크업'의 경제 뉴스 해설 필자입니다. 주어진 '뉴스 헤드라인'만
-근거로, 경제를 잘 모르는 개인투자자도 이해하기 쉬운 '교육형 경제 정리글'을 씁니다.
+_SYSTEM = """당신은 '머니체크업'의 경제 뉴스 해설 필자입니다. 주어진 '뉴스 헤드라인'
+(그리고 있다면 '오늘의 시장 데이터'·'사설·칼럼 헤드라인')만 근거로, 경제를 잘 모르는
+개인투자자도 이해하기 쉬운 '교육형 경제 정리글'을 씁니다.
 
-엄격한 규칙(절대 어기지 마세요 — 헤드라인은 제목 한 줄뿐이라 근거가 매우 얇습니다.
-빈 곳을 상상으로 채우고 싶어질 텐데, 그 유혹을 참는 게 이 작업에서 가장 중요합니다):
-- 모든 문장은 아래 번호 매긴 헤드라인 중 최소 하나에 직접 대응돼야 합니다. 헤드라인에
-  없는 원인·결론·전망·배경 설명을 지어내지 마세요.
+입력 자료 3종의 성격이 다릅니다 — 반드시 구분해서 다루세요:
+1. [오늘의 시장 데이터]: 머니체크업 자체 시스템이 계산한 실제 수치(코스피/코스닥
+   등락률, 환율, 강세테마 등). 검증된 사실이니 그대로 인용해도 됩니다. 다만 이
+   숫자에서 원인·전망을 새로 지어내진 마세요(예: "환율이 X% 올랐다"까지는 사실,
+   "그래서 내일도 오를 것"은 지어낸 전망).
+2. [경제 뉴스 헤드라인]: 사실 보도. 아래 규칙대로 사실 위주로만 옮기세요.
+3. [사설·칼럼 헤드라인]: 해당 매체의 주장·논조이지 확정된 사실이 아닙니다. 반드시
+   "OO일보는 사설에서 '헤드라인 원문'이라고 짚었습니다"처럼 매체명을 밝히고 헤드라인
+   문구를 따옴표로 짧게 인용하세요. 그 사설이 왜 그렇게 주장했는지, 본문에 뭐라고
+   더 썼을지는 헤드라인에 없으므로 지어내지 마세요. 여러 매체의 논조가 갈리면
+   ("A는 낙관적, B는 신중론") 그 차이 자체를 사실적으로 보여주되, 어느 쪽이 맞는지
+   당신이 판단하지 마세요.
+
+엄격한 규칙(절대 어기지 마세요 — 뉴스 헤드라인은 제목 한 줄뿐이라 근거가 매우
+얇습니다. 빈 곳을 상상으로 채우고 싶어질 텐데, 그 유혹을 참는 게 가장 중요합니다):
+- 모든 문장은 위 자료 중 최소 하나에 직접 대응돼야 합니다. 자료에 없는 원인·결론·
+  전망·배경 설명을 지어내지 마세요.
 - "~것으로 보인다", "~것으로 판단됩니다", "~것으로 추정됩니다" 같은 추측성 표현 금지 —
-  헤드라인이 명시하지 않은 이유·의도를 짐작해서 쓰지 마세요. 확실치 않으면 아예 쓰지 마세요.
+  자료가 명시하지 않은 이유·의도를 짐작해서 쓰지 마세요. 확실치 않으면 아예 쓰지 마세요.
 - 서로 다른 사안을 하나의 인과관계처럼 엮지 마세요. 같은 묶음(주제)에는 실제로 같은
-  사안을 다루는 헤드라인만 넣고, 우연히 같은 검색어로 걸린 무관한 헤드라인을 억지로
+  사안을 다루는 자료만 넣고, 우연히 같은 검색어로 걸린 무관한 헤드라인을 억지로
   같이 묶지 마세요.
-- 수치(%, 원, 억, 조 등 단위 포함)는 헤드라인에 적힌 그대로만 옮기세요. 단위를 임의로
-  바꾸거나(예: 억↔조), 어림잡아 다른 숫자로 바꾸지 마세요. 헤드라인에 숫자가 없으면
+- 수치(%, 원, 억, 조 등 단위 포함)는 자료에 적힌 그대로만 옮기세요. 단위를 임의로
+  바꾸거나(예: 억↔조), 어림잡아 다른 숫자로 바꾸지 마세요. 자료에 숫자가 없으면
   숫자를 만들어내지 마세요.
 - 특정인·기관의 발언이나 전망은 사실처럼 단정하지 말고 "~라는 분석이 나옵니다",
   "~라고 밝혔습니다"처럼 누가 한 말인지 드러나게 쓰세요.
@@ -57,6 +75,8 @@ _SYSTEM = """당신은 '머니체크업'의 경제 뉴스 해설 필자입니다
   괄호로 짧게 풀어 설명해 초보자도 읽히게 하세요.
 - 관련 뉴스는 주제별로 묶고, 각 묶음 끝에 "쉽게 말하면" 한 줄로 배경·의미를 사실에
   근거해 덧붙이세요(예측이 아니라 '왜 이런 뉴스가 나오는지/무엇을 뜻하는지' 설명).
+  [오늘의 시장 데이터]가 주어졌다면 관련 주제(증시·환율 등) 문단에 실제 수치를
+  자연스럽게 녹여서 두께를 더하세요.
 - 마크다운 문법(#, *, ** 등)을 절대 쓰지 마세요 — 네이버 블로그용 평문입니다.
 - 한국어. 아래 구조를 정확히 지키세요:
 
@@ -65,11 +85,16 @@ _SYSTEM = """당신은 '머니체크업'의 경제 뉴스 해설 필자입니다
 (첫 줄: 친근한 인사 한 문장 — 예: "오늘 아침 경제 흐름, 쉽게 정리해드려요.")
 
 ■ 오늘 한눈에
-- 핵심 흐름 2~3줄
+- 핵심 흐름 2~3줄([오늘의 시장 데이터]가 있으면 코스피/환율 등 숫자 포함)
 
 ■ 주제별 정리
 (있는 주제만: 금리·환율 / 증시 / 부동산·물가 / 정책 등)
-- 각 주제: 관련 뉴스 사실 요약 몇 줄 + "쉽게 말하면: ..." 한 줄 해설
+- 각 주제: 관련 뉴스·시장 데이터 사실 요약 몇 줄 + "쉽게 말하면: ..." 한 줄 해설
+
+■ 오늘의 논조
+([사설·칼럼 헤드라인]이 주어졌을 때만 이 섹션을 쓰세요. 없으면 생략.)
+- 매체명 + 헤드라인 원문을 따옴표로 짧게 인용 1~3개. 여러 관점이 있으면 대비해서
+  보여주되 어느 쪽이 옳다고 판단하지 마세요.
 
 ■ 오늘의 한 문장
 - 초보 투자자가 기억하면 좋을 핵심을 사실 위주로 한 문장
@@ -80,26 +105,31 @@ _SYSTEM = """당신은 '머니체크업'의 경제 뉴스 해설 필자입니다
 #경제뉴스 #금리 #환율 #코스피 #경제공부 #머니체크업 (주제에 맞게 6~8개)"""
 
 
-_VERIFY_SYSTEM = """당신은 '머니체크업' 경제 정리글의 팩트체커입니다. [원본 헤드라인]과
-[초안]을 비교해, 초안에서 헤드라인으로 뒷받침 안 되는 부분만 최소한으로 고칩니다.
+_VERIFY_SYSTEM = """당신은 '머니체크업' 경제 정리글의 팩트체커입니다. 주어진 원본 자료
+([오늘의 시장 데이터]/[원본 뉴스 헤드라인]/[원본 사설·칼럼 헤드라인])와 [초안]을
+비교해, 초안에서 원본으로 뒷받침 안 되는 부분만 최소한으로 고칩니다.
 
 반드시 고칠 것:
-- 헤드라인 어디에도 없는 원인·결론·전망을 지어낸 문장(예: "~것으로 보인다", "~것으로
-  판단됩니다" 같은 추측)은 삭제하거나, 헤드라인이 실제로 뒷받침하는 문장으로 바꾸세요.
+- 원본 어디에도 없는 원인·결론·전망을 지어낸 문장(예: "~것으로 보인다", "~것으로
+  판단됩니다" 같은 추측)은 삭제하거나, 원본이 실제로 뒷받침하는 문장으로 바꾸세요.
 - 서로 무관한 사안을 하나의 인과관계처럼 엮은 문장은 분리하거나 삭제하세요.
-- 수치(%, 원, 억, 조 등)가 해당 헤드라인과 다르면 헤드라인 값으로 정정하세요.
+- 수치(%, 원, 억, 조 등)가 해당 원본과 다르면 원본 값으로 정정하세요. [오늘의 시장
+  데이터]에 있는 숫자(코스피·환율 등)가 초안에서 틀리게 옮겨졌으면 바로잡으세요.
+- "■ 오늘의 논조" 섹션이 있다면: 인용한 문구가 [원본 사설·칼럼 헤드라인]의 실제
+  문구와 다르면 원문에 맞게 고치고, 매체명이 빠져 있으면 추가하세요. 헤드라인에
+  없는 내용(그 사설이 왜 그런 주장을 했는지 등)을 지어내 덧붙였으면 삭제하세요.
 - 특정인·기관의 발언·전망이 사실처럼 단정돼 있으면 "~라고 밝혔습니다"처럼 출처가
   드러나게 고치세요.
 
 하지 말 것:
 - 문제 없는 문장까지 다시 쓰거나 표현을 바꾸지 마세요(최소 수정 원칙).
-- 형식(제목 줄, ■ 오늘 한눈에, ■ 주제별 정리, ■ 오늘의 한 문장, 추천 태그, 마크다운
-  금지 등)은 그대로 유지하세요.
+- 형식(제목 줄, ■ 오늘 한눈에, ■ 주제별 정리, ■ 오늘의 논조(있으면), ■ 오늘의 한 문장,
+  추천 태그, 마크다운 금지 등)은 그대로 유지하세요.
 - 설명·주석·"수정했습니다" 같은 메타 코멘트 없이, 완성된 전체 글만 그대로 출력하세요."""
 
 
-def _gather():
-    seen, items = set(), []
+def _gather_news(seen):
+    items = []
     for q in QUERIES:
         try:
             for n in A._google_news(q)[:5]:
@@ -115,13 +145,69 @@ def _gather():
     return items[:14]
 
 
+def _gather_opinions(seen):
+    """사설·칼럼 헤드라인 — 매체 논조/관점 차이를 짧은 인용(헤드라인 원문 그대로 +
+    출처)으로 보여주기 위한 재료(2026-09-08, 사용자 제안). 본문을 가져오지 않고
+    제목만 인용하므로 기존 '제목+출처' 수집 방식의 연장선이라 저작권 리스크가 낮음.
+    news와 seen 집합을 공유해 같은 헤드라인이 양쪽에 중복 등장하지 않게 한다."""
+    items = []
+    for q in OPINION_QUERIES:
+        try:
+            for n in A._google_news(q)[:6]:
+                t = (n.get("title") or "").strip()
+                if t and t not in seen:
+                    seen.add(t)
+                    src = n.get("source") or ""
+                    items.append(f"{t}" + (f" ({src})" if src else ""))
+        except Exception:
+            pass
+        if len(items) >= 6:
+            break
+    return items[:6]
+
+
+def _market_snapshot():
+    """오늘의 실제 시장 숫자(코스피/코스닥/환율/간밤 미국지수 + 강세테마) — 우리 DB가
+    이미 매일 계산해두는 검증된 수치를 헤드라인과 별도 근거로 얹는다. 헤드라인만으로는
+    재료가 얇아 글이 빈약하다는 지적(2026-09-08)에 대응 — 실수치라 추측 없이도
+    두께를 더할 수 있다. daily_content.py/generate_ai_cards.py와 같은
+    A._blog_draft_data()를 재사용(휴장일 등으로 값이 없으면 조용히 생략)."""
+    try:
+        data = A._blog_draft_data()
+    except Exception as e:
+        print(f"::warning::시장 데이터 조회 실패(뉴스만으로 계속): {e}")
+        return None
+    if not data or data.get("is_holiday"):
+        return None
+    ix = data.get("us_indices") or {}
+    lines = []
+    kospi, kosdaq = ix.get("kospi"), ix.get("kosdaq")
+    if kospi and kospi.get("chg_pct") is not None:
+        lines.append(f"코스피 {kospi['price']:,.2f} ({kospi['chg_pct']:+.2f}%)")
+    if kosdaq and kosdaq.get("chg_pct") is not None:
+        lines.append(f"코스닥 {kosdaq['price']:,.2f} ({kosdaq['chg_pct']:+.2f}%)")
+    usdkrw = ix.get("usdkrw")
+    if usdkrw and usdkrw.get("price") is not None:
+        chg = f" ({usdkrw['chg_pct']:+.2f}%)" if usdkrw.get("chg_pct") is not None else ""
+        lines.append(f"원/달러 환율 {usdkrw['price']:,.1f}원{chg}")
+    nasdaq, sp500 = ix.get("nasdaq"), ix.get("sp500")
+    if nasdaq and nasdaq.get("chg_pct") is not None:
+        lines.append(f"간밤 나스닥 {nasdaq['chg_pct']:+.2f}%")
+    if sp500 and sp500.get("chg_pct") is not None:
+        lines.append(f"간밤 S&P500 {sp500['chg_pct']:+.2f}%")
+    for t in (data.get("themes") or [])[:2]:
+        if t.get("ret_1m") is not None:
+            lines.append(f"최근 1개월 강세 테마: {t['mid']} ({t['ret_1m']:+.1f}%)")
+    return lines or None
+
+
 def _numbered(items):
     return "\n".join(f"{i+1}. {t}" for i, t in enumerate(items))
 
 
 def _call_claude(payload, api_key, system=_SYSTEM, label="generate_econ_briefing"):
     import claude_status
-    body = {"model": MODEL, "max_tokens": 2800, "system": system,
+    body = {"model": MODEL, "max_tokens": 3500, "system": system,
             "messages": [{"role": "user", "content": payload}]}
     r = requests.post(API_URL, headers={
         "x-api-key": api_key, "anthropic-version": "2023-06-01",
@@ -136,12 +222,19 @@ def _call_claude(payload, api_key, system=_SYSTEM, label="generate_econ_briefing
     return text
 
 
-def _verify(draft, items, api_key):
-    """생성된 초안을 같은 헤드라인 목록과 대조해 사실 아닌 문장을 최소 수정으로 정리하는
-    2차 패스. 헤드라인이 제목 한 줄뿐이라 근거가 얇아 1차 생성만으로는 추측성 문장이
-    섞이기 쉬움(사용자가 실제로 틀린 부분을 지적해 도입, 2026-09-04). 실패해도 원본
-    초안으로 계속 진행(교정 실패가 게시 자체를 막지 않게)."""
-    payload = (f"[원본 헤드라인]\n{_numbered(items)}\n\n[초안]\n{draft}\n\n"
+def _verify(draft, items, opinions, market_lines, api_key):
+    """생성된 초안을 원본 자료(시장 데이터·뉴스·사설 헤드라인)와 대조해 사실 아닌
+    문장을 최소 수정으로 정리하는 2차 패스. 헤드라인이 제목 한 줄뿐이라 근거가 얇아
+    1차 생성만으로는 추측성 문장이 섞이기 쉬움(사용자가 실제로 틀린 부분을 지적해
+    도입, 2026-09-04; 사설 인용 검증은 2026-09-08 추가). 실패해도 원본 초안으로
+    계속 진행(교정 실패가 게시 자체를 막지 않게)."""
+    parts = []
+    if market_lines:
+        parts.append("[오늘의 시장 데이터]\n" + "\n".join(f"- {l}" for l in market_lines))
+    parts.append(f"[원본 뉴스 헤드라인]\n{_numbered(items)}")
+    if opinions:
+        parts.append(f"[원본 사설·칼럼 헤드라인]\n{_numbered(opinions)}")
+    payload = ("\n\n".join(parts) + f"\n\n[초안]\n{draft}\n\n"
                "위 규칙대로 최소 수정만 적용한 완성본을 출력해주세요.")
     try:
         fixed = _call_claude(payload, api_key, system=_VERIFY_SYSTEM,
@@ -200,18 +293,31 @@ def main():
     if "--force" not in sys.argv and os.path.isfile(_dst_check):
         print(f"[스킵] 오늘({today}) 경제 정리글 이미 존재 — 멱등 스킵(재생성하려면 --force).")
         return
-    items = _gather()
+    seen = set()
+    items = _gather_news(seen)
     if len(items) < 3:
         print("::warning::수집된 뉴스가 너무 적음 — 생략.")
         return
-    payload = ("[경제 뉴스 헤드라인]\n" + _numbered(items)
-               + f"\n\n위 헤드라인만 근거로 오늘({today}) 경제 뉴스 정리글을 써주세요.")
+    opinions = _gather_opinions(seen)
+    market_lines = _market_snapshot()
+    print(f"뉴스 {len(items)}건, 사설·칼럼 {len(opinions)}건, "
+          f"시장 데이터 {'있음' if market_lines else '없음'}")
+
+    parts = []
+    if market_lines:
+        parts.append("[오늘의 시장 데이터]\n" + "\n".join(f"- {l}" for l in market_lines))
+    parts.append("[경제 뉴스 헤드라인]\n" + _numbered(items))
+    if opinions:
+        parts.append("[사설·칼럼 헤드라인]\n" + _numbered(opinions))
+    payload = ("\n\n".join(parts)
+               + f"\n\n위 자료만 근거로 오늘({today}) 경제 뉴스 정리글을 써주세요.")
     text = _call_claude(payload, api_key)
     if not text:
         print("::warning::빈 응답 — 생략.")
         return
-    # 2차 검증 패스 — 같은 헤드라인과 대조해 추측성 문장·인과 왜곡·수치 오류를 정리.
-    text = _verify(text, items, api_key)
+    # 2차 검증 패스 — 같은 원본 자료와 대조해 추측성 문장·인과 왜곡·수치 오류·
+    # 사설 인용 오류를 정리.
+    text = _verify(text, items, opinions, market_lines, api_key)
     # 네이버 평문화: 마크다운 헤딩(#)·강조(*, **) 제거(모델이 종종 섞어 씀).
     text = text.replace("**", "")
     # 마크다운 헤딩(# 뒤 공백)만 제거. '#경제뉴스' 같은 해시태그(# 뒤 글자)는 보존.

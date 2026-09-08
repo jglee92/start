@@ -12,7 +12,12 @@ on:
     # no-op이고, 진짜 빠진 날에만 생성·커밋한다.
     # UTC 22:30,01:30,04:30 = KST 07:30, 10:30, 13:30.
     - cron: '30 22,1,4 * * 0-5'
-  workflow_dispatch: {}
+  workflow_dispatch:
+    inputs:
+      force:
+        description: '오늘 것이 이미 있어도 강제 재생성(테스트용)'
+        type: boolean
+        default: false
 
 permissions:
   contents: write
@@ -41,7 +46,7 @@ jobs:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
           # 정리글에 곁들일 AI 배경 카드용(없으면 폴백 배경으로라도 1장 생성).
           IMAGE_API_KEY: ${{ secrets.IMAGE_API_KEY }}
-        run: python generate_econ_briefing.py
+        run: python generate_econ_briefing.py ${{ (github.event_name == 'workflow_dispatch' && inputs.force) && '--force' || '' }}
 
       - name: 변경 있으면 커밋 + 푸시
         run: |
