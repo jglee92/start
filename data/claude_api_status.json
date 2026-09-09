@@ -1,12 +1,12 @@
 {
- "total_calls": 111,
- "total_success": 109,
+ "total_calls": 112,
+ "total_success": 110,
  "total_fallbacks": 2,
  "by_reason": {
   "no_api_key": 1,
   "other": 1
  },
- "last_success": "2026-09-09T20:31:14.042303+00:00",
+ "last_success": "2026-09-09T20:31:31.435982+00:00",
  "last_fallback": "2026-08-12T21:29:58.202865+00:00",
  "recent_failures": [
   {
