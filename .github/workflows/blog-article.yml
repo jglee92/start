@@ -8,10 +8,22 @@ on:
     # 받아가기 전에 커밋되게 한다. 교육글은 시의성이 없어 휴장일·주말에도 발행 OK라
     # 요일 제한 없이 매일(*).
     - cron: '30 19 * * *'
+    # 백스톱 — GitHub Actions 스케줄 이벤트가 통째로 드롭될 수 있는 알려진 한계
+    # (econ-briefing.yml 등에서 수차례 실제 발생)인데, 이 워크플로우는 로컬
+    # self-heal·GitHub 측 백스톱 어느 쪽에도 안 걸려 있어 2026-11-02~03 이틀
+    # 연속으로 통째로 드롭되고도 아무도 못 알아챈 사고가 있었음(사용자 신고로
+    # 발견). publish_blog_article.py가 발행 간격(3일)을 자체 게이트하므로 하루
+    # 여러 번 돌아도 안전 — 정상적인 날엔 몇 초짜리 no-op. UTC 21:00,00:00,03:00
+    # = KST 06:00, 09:00, 12:00.
+    - cron: '0 21,0,3 * * *'
   workflow_dispatch: {}
 
 permissions:
   contents: write
+
+concurrency:
+  group: blog-article-publish
+  cancel-in-progress: false
 
 jobs:
   publish:

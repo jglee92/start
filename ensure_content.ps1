@@ -101,6 +101,20 @@ elseif (-not (Test-Path $emark)) {
     if ($?) { New-Item -ItemType File -Path $emark -Force | Out-Null }
 }
 
+# 에버그린 블로그(blog-article.yml)도 같은 이유로 로컬 보장 - 2026-11-02~03 이틀
+# 연속 스케줄 자체가 통째로 드롭됐는데 이 워크플로우는 로컬 self-heal도 GitHub
+# 측 백스톱도 없어 아무도 못 알아챈 사고 이후 추가(사용자 신고로 발견). 3일
+# 간격 발행이라 '오늘 새 글 없음'이 정상인 날이 더 많으므로(파일 존재로 판단
+# 불가) 그냥 하루 1회 무조건 트리거 - publish_blog_article.py가 발행 간격을
+# 자체 게이트하므로 매일 트리거해도 안전(평소엔 몇 초짜리 no-op). 시의성 없는
+# 콘텐츠라 주말에도 발행하므로 일요일 스킵 없음.
+$blogMark = Join-Path $env:LOCALAPPDATA "moneycheckup_blogarticle_triggered_$today.flag"
+if (-not (Test-Path $blogMark)) {
+    Log "ensure_content: blog-article.yml daily force-trigger"
+    & 'C:\Program Files\GitHub CLI\gh.exe' workflow run blog-article.yml *>> $log
+    if ($?) { New-Item -ItemType File -Path $blogMark -Force | Out-Null }
+}
+
 # ============ us_screener (US market) morning pipeline force-trigger ============
 # GitHub schedule events run 2-8h late on us_screener too (prices "06:00" often
 # actually starts 08-14h; fundamentals takes ~33min). workflow_dispatch is not
