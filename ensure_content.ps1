@@ -87,6 +87,13 @@ elseif (-not (Test-Path $cmark)) {
 # 정규 슬롯이 통째로 드롭되고 07:30 GitHub 백스톱마저 25분 밀려 07:55에야 만들어진
 # 사고 이후 추가. workflow_dispatch는 클라우드 cron 큐잉 지연이 없어 백스톱보다
 # 빠르게 복구된다. generate_econ_briefing.py가 멱등이라 반복 트리거해도 안전.
+#
+# 2026-11-12: 마커가 "트리거 성공 여부"만 기록하고 "실제 생성 성공 여부"는 확인 안 해서,
+# 트리거한 workflow_dispatch 실행 자체가 startup_failure(GitHub 러너 기동 실패 - 일회성
+# 인프라 문제, 동일 파일로 즉시 재실행하니 바로 성공해 코드 문제는 아니었음)로 끝나면
+# 그날 더 이상 아무도 재시도를 안 해 사용자 신고 전까지 방치됐음. 그날 GH 쪽 정규 슬롯
+# +07:30 백스톱까지 같이 드롭된 날과 겹쳐 로컬 쪽 유일한 시도가 실패하자 안전망이 전혀
+# 없었음. 마커에 "횟수|마지막 시도 시각"을 남겨 최대 3회까지, 20분 이상 간격으로 재시도.
 $econ = Join-Path $proj "content_out\$today\econ\econ_briefing.txt"
 $emark = Join-Path $env:LOCALAPPDATA "moneycheckup_econ_triggered_$today.flag"
 if ((Get-Date).DayOfWeek -eq 'Sunday') {
@@ -95,10 +102,27 @@ if ((Get-Date).DayOfWeek -eq 'Sunday') {
 elseif (Test-Path $econ) {
     Log "ensure_content: today ($today) econ briefing present - OK"
 }
-elseif (-not (Test-Path $emark)) {
-    Log "ensure_content: today ($today) econ briefing missing - force-triggering econ-briefing.yml"
-    & 'C:\Program Files\GitHub CLI\gh.exe' workflow run econ-briefing.yml *>> $log
-    if ($?) { New-Item -ItemType File -Path $emark -Force | Out-Null }
+else {
+    $attempts = 0
+    $lastTry = [datetime]::MinValue
+    if (Test-Path $emark) {
+        $raw = (Get-Content $emark -Raw -ErrorAction SilentlyContinue)
+        if ($raw -match '^(\d+)\|(.+)$') {
+            $attempts = [int]$Matches[1]
+            try { $lastTry = [datetime]::Parse($Matches[2]) } catch {}
+        }
+    }
+    $minsSince = (New-TimeSpan -Start $lastTry -End (Get-Date)).TotalMinutes
+    if ($attempts -lt 3 -and $minsSince -ge 20) {
+        Log "ensure_content: today ($today) econ briefing missing (attempt $($attempts + 1)/3) - force-triggering econ-briefing.yml"
+        & 'C:\Program Files\GitHub CLI\gh.exe' workflow run econ-briefing.yml *>> $log
+        if ($?) {
+            "$($attempts + 1)|$((Get-Date).ToString('o'))" | Set-Content -Path $emark -Encoding utf8
+        }
+    }
+    else {
+        Log "ensure_content: today ($today) econ briefing still missing after $attempts attempt(s) - waiting"
+    }
 }
 
 # 에버그린 블로그(blog-article.yml)도 같은 이유로 로컬 보장 - 2026-11-02~03 이틀
