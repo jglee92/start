@@ -51,24 +51,43 @@ $today = (Get-Date).ToString('yyyy-MM-dd')
 $draft = Join-Path $proj "content_out\$today\blog_draft.txt"
 $marker = Join-Path $env:LOCALAPPDATA "moneycheckup_content_triggered_$today.flag"
 
+# 2026-11-12: a one-shot marker (triggered once -> never retried) left today
+# stranded when the triggered workflow_dispatch run itself ended in
+# startup_failure (a one-off GitHub runner provisioning glitch - rerunning the
+# identical workflow immediately succeeded, so this was not a code bug). Same
+# gap as econ-briefing.yml hit the same morning. Now retries up to 3 times,
+# >=20min apart, tracked as "count|last-attempt-time" in the marker file.
 if ((Get-Date).DayOfWeek -eq 'Sunday') {
     Log "ensure_content: Sunday - no content day, skip"
 }
 elseif (Test-Path $draft) {
     Log "ensure_content: today ($today) content present - OK"
 }
-elseif (Test-Path $marker) {
-    Log "ensure_content: today ($today) still missing but already triggered - waiting (next slot pulls)"
-}
 else {
-    Log "ensure_content: today ($today) content missing - force-triggering daily-content.yml"
-    & 'C:\Program Files\GitHub CLI\gh.exe' workflow run daily-content.yml *>> $log
-    if ($?) { New-Item -ItemType File -Path $marker -Force | Out-Null; Log 'ensure_content: trigger OK, marker created' }
-    else { Log 'ensure_content: trigger FAILED (gh) - will retry next slot' }
+    $attempts = 0
+    $lastTry = [datetime]::MinValue
+    if (Test-Path $marker) {
+        $raw = (Get-Content $marker -Raw -ErrorAction SilentlyContinue)
+        if ($raw -match '^(\d+)\|(.+)$') {
+            $attempts = [int]$Matches[1]
+            try { $lastTry = [datetime]::Parse($Matches[2]) } catch {}
+        }
+    }
+    $minsSince = (New-TimeSpan -Start $lastTry -End (Get-Date)).TotalMinutes
+    if ($attempts -lt 3 -and $minsSince -ge 20) {
+        Log "ensure_content: today ($today) content missing (attempt $($attempts + 1)/3) - force-triggering daily-content.yml"
+        & 'C:\Program Files\GitHub CLI\gh.exe' workflow run daily-content.yml *>> $log
+        if ($?) { "$($attempts + 1)|$((Get-Date).ToString('o'))" | Set-Content -Path $marker -Encoding utf8; Log 'ensure_content: trigger OK, marker updated' }
+        else { Log 'ensure_content: trigger FAILED (gh) - will retry next slot' }
+    }
+    else {
+        Log "ensure_content: today ($today) content still missing after $attempts attempt(s) - waiting"
+    }
 }
 
 # AI 배경 카드(ai-cards.yml)도 스케줄 드롭 대비 로컬에서 보장 — 오늘 후보 폴더가
-# 없으면 워크플로우를 강제 트리거(하루 1회). content와 별개 마커 사용.
+# 없으면 워크플로우를 강제 트리거. content와 별개 마커 사용. econ/content와 같은
+# 이유(트리거한 run 자체가 startup_failure로 끝나도 재시도되게)로 attempt-count 패턴.
 $cards = Join-Path $proj "content_out\$today\ai_card_candidates\cover.png"
 $cmark = Join-Path $env:LOCALAPPDATA "moneycheckup_cards_triggered_$today.flag"
 if ((Get-Date).DayOfWeek -eq 'Sunday') {
@@ -77,10 +96,25 @@ if ((Get-Date).DayOfWeek -eq 'Sunday') {
 elseif (Test-Path $cards) {
     Log "ensure_content: today ($today) AI cards present - OK"
 }
-elseif (-not (Test-Path $cmark)) {
-    Log "ensure_content: today ($today) AI cards missing - force-triggering ai-cards.yml"
-    & 'C:\Program Files\GitHub CLI\gh.exe' workflow run ai-cards.yml *>> $log
-    if ($?) { New-Item -ItemType File -Path $cmark -Force | Out-Null }
+else {
+    $cAttempts = 0
+    $cLastTry = [datetime]::MinValue
+    if (Test-Path $cmark) {
+        $craw = (Get-Content $cmark -Raw -ErrorAction SilentlyContinue)
+        if ($craw -match '^(\d+)\|(.+)$') {
+            $cAttempts = [int]$Matches[1]
+            try { $cLastTry = [datetime]::Parse($Matches[2]) } catch {}
+        }
+    }
+    $cMinsSince = (New-TimeSpan -Start $cLastTry -End (Get-Date)).TotalMinutes
+    if ($cAttempts -lt 3 -and $cMinsSince -ge 20) {
+        Log "ensure_content: today ($today) AI cards missing (attempt $($cAttempts + 1)/3) - force-triggering ai-cards.yml"
+        & 'C:\Program Files\GitHub CLI\gh.exe' workflow run ai-cards.yml *>> $log
+        if ($?) { "$($cAttempts + 1)|$((Get-Date).ToString('o'))" | Set-Content -Path $cmark -Encoding utf8 }
+    }
+    else {
+        Log "ensure_content: today ($today) AI cards still missing after $cAttempts attempt(s) - waiting"
+    }
 }
 
 # 경제뉴스 정리(econ-briefing.yml)도 같은 이유로 로컬 보장 - 2026-09-04 06:00 KST
